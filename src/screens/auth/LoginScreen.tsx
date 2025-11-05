@@ -11,7 +11,6 @@ import {
   TextInput,
   TouchableOpacity,
   KeyboardAvoidingView,
-  Platform,
   ScrollView,
   StatusBar,
 } from 'react-native';
@@ -24,6 +23,7 @@ import { useAuthStore } from '@/stores/authStore';
 import { useToastStore } from '@/stores/toastStore';
 import { validateEmail, validatePassword } from '@/utils/validation';
 import { haptics } from '@/utils/haptics';
+import { getKeyboardBehavior, getTextSelectionProps, getShadowStyle } from '@/utils/platform';
 
 export function LoginScreen({ navigation }: any) {
   const { login } = useAuthStore();
@@ -81,7 +81,7 @@ export function LoginScreen({ navigation }: any) {
   return (
     <KeyboardAvoidingView
       style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      behavior={getKeyboardBehavior()}
     >
       <StatusBar barStyle="light-content" backgroundColor={colors.primaryBlack} />
 
@@ -120,6 +120,7 @@ export function LoginScreen({ navigation }: any) {
                   keyboardType="email-address"
                   autoComplete="email"
                   editable={!loading}
+                  {...getTextSelectionProps(colors.platinumSilver)}
                 />
               </View>
               {errors.email && <Text style={styles.errorText}>{errors.email}</Text>}
@@ -142,6 +143,7 @@ export function LoginScreen({ navigation }: any) {
                   secureTextEntry={!showPassword}
                   autoComplete="password"
                   editable={!loading}
+                  {...getTextSelectionProps(colors.platinumSilver)}
                 />
                 <TouchableOpacity
                   onPress={() => {

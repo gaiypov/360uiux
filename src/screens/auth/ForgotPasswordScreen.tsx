@@ -11,7 +11,6 @@ import {
   TextInput,
   TouchableOpacity,
   KeyboardAvoidingView,
-  Platform,
   StatusBar,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -22,6 +21,7 @@ import { colors, metalGradients, typography, sizes } from '@/constants';
 import { useToastStore } from '@/stores/toastStore';
 import { validateEmail } from '@/utils/validation';
 import { haptics } from '@/utils/haptics';
+import { getKeyboardBehavior, getTextSelectionProps } from '@/utils/platform';
 
 export function ForgotPasswordScreen({ navigation }: any) {
   const { showToast } = useToastStore();
@@ -64,7 +64,7 @@ export function ForgotPasswordScreen({ navigation }: any) {
   return (
     <KeyboardAvoidingView
       style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      behavior={getKeyboardBehavior()}
     >
       <StatusBar barStyle="light-content" backgroundColor={colors.primaryBlack} />
 
@@ -97,6 +97,7 @@ export function ForgotPasswordScreen({ navigation }: any) {
                     keyboardType="email-address"
                     autoFocus
                     editable={!loading}
+                    {...getTextSelectionProps(colors.platinumSilver)}
                   />
                 </View>
                 {error && <Text style={styles.errorText}>{error}</Text>}

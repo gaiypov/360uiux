@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import { colors, metalGradients, typography, sizes } from '@/constants';
+import { getShadowStyle, getRippleConfig } from '@/utils/platform';
 
 interface GlassButtonProps {
   title: string;
@@ -37,8 +38,9 @@ export function GlassButton({
       <TouchableOpacity
         onPress={onPress}
         disabled={disabled || loading}
-        style={[styles.container, style]}
+        style={[styles.container, getShadowStyle(8), style]}
         activeOpacity={0.8}
+        {...getRippleConfig('rgba(255, 255, 255, 0.3)')}
       >
         <LinearGradient
           colors={metalGradients.platinum}
@@ -63,6 +65,7 @@ export function GlassButton({
         disabled={disabled || loading}
         style={[styles.container, styles.secondary, style]}
         activeOpacity={0.8}
+        {...getRippleConfig('rgba(255, 255, 255, 0.2)')}
       >
         {loading ? (
           <ActivityIndicator color={colors.liquidSilver} />
@@ -80,6 +83,7 @@ export function GlassButton({
       disabled={disabled || loading}
       style={[styles.ghost, style]}
       activeOpacity={0.6}
+      {...getRippleConfig('rgba(255, 255, 255, 0.1)')}
     >
       {loading ? (
         <ActivityIndicator color={colors.liquidSilver} />
@@ -100,12 +104,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: sizes.lg,
     alignItems: 'center',
     justifyContent: 'center',
-    // Premium glow effect
-    shadowColor: colors.platinumSilver,
-    shadowOffset: sizes.glowSoft.offset,
-    shadowRadius: sizes.glowSoft.radius,
-    shadowOpacity: sizes.glowSoft.opacity,
-    elevation: 8,
   },
   primaryText: {
     ...typography.button,

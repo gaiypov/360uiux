@@ -11,7 +11,6 @@ import {
   TextInput,
   TouchableOpacity,
   KeyboardAvoidingView,
-  Platform,
   ScrollView,
   StatusBar,
 } from 'react-native';
@@ -24,6 +23,7 @@ import { useAuthStore } from '@/stores/authStore';
 import { useToastStore } from '@/stores/toastStore';
 import { validateEmail, validatePassword, validateName } from '@/utils/validation';
 import { haptics } from '@/utils/haptics';
+import { getKeyboardBehavior, getTextSelectionProps } from '@/utils/platform';
 
 type UserRole = 'jobseeker' | 'employer';
 
@@ -91,7 +91,7 @@ export function RegisterScreen({ navigation }: any) {
   return (
     <KeyboardAvoidingView
       style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      behavior={getKeyboardBehavior()}
     >
       <StatusBar barStyle="light-content" backgroundColor={colors.primaryBlack} />
 
@@ -143,6 +143,7 @@ export function RegisterScreen({ navigation }: any) {
                     if (errors.name) setErrors({ ...errors, name: undefined });
                   }}
                   editable={!loading}
+                  {...getTextSelectionProps(colors.platinumSilver)}
                 />
               </View>
               {errors.name && <Text style={styles.errorText}>{errors.name}</Text>}
@@ -165,6 +166,7 @@ export function RegisterScreen({ navigation }: any) {
                   autoCapitalize="none"
                   keyboardType="email-address"
                   editable={!loading}
+                  {...getTextSelectionProps(colors.platinumSilver)}
                 />
               </View>
               {errors.email && <Text style={styles.errorText}>{errors.email}</Text>}
@@ -186,6 +188,7 @@ export function RegisterScreen({ navigation }: any) {
                   }}
                   secureTextEntry={!showPassword}
                   editable={!loading}
+                  {...getTextSelectionProps(colors.platinumSilver)}
                 />
                 <TouchableOpacity onPress={() => { setShowPassword(!showPassword); haptics.light(); }} disabled={loading}>
                   <Icon name={showPassword ? 'eye-off' : 'eye'} size={20} color={colors.chromeSilver} />
@@ -210,6 +213,7 @@ export function RegisterScreen({ navigation }: any) {
                   }}
                   secureTextEntry={!showPassword}
                   editable={!loading}
+                  {...getTextSelectionProps(colors.platinumSilver)}
                 />
               </View>
               {errors.confirmPassword && <Text style={styles.errorText}>{errors.confirmPassword}</Text>}

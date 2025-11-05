@@ -13,7 +13,6 @@ import {
   ScrollView,
   StatusBar,
   KeyboardAvoidingView,
-  Platform,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import Animated, { FadeInDown } from 'react-native-reanimated';
@@ -24,6 +23,7 @@ import { useAuthStore } from '@/stores/authStore';
 import { useToastStore } from '@/stores/toastStore';
 import { validateName, validateEmail, validatePhone } from '@/utils/validation';
 import { haptics } from '@/utils/haptics';
+import { getKeyboardBehavior, getTextSelectionProps } from '@/utils/platform';
 
 export function EditProfileScreen({ navigation }: any) {
   const { user } = useAuthStore();
@@ -78,7 +78,7 @@ export function EditProfileScreen({ navigation }: any) {
   return (
     <KeyboardAvoidingView
       style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      behavior={getKeyboardBehavior()}
     >
       <StatusBar barStyle="light-content" />
 
@@ -129,6 +129,7 @@ export function EditProfileScreen({ navigation }: any) {
                     if (errors.name) setErrors({ ...errors, name: '' });
                   }}
                   editable={!loading}
+                  {...getTextSelectionProps(colors.platinumSilver)}
                 />
               </View>
               {errors.name && <Text style={styles.errorText}>{errors.name}</Text>}
@@ -151,6 +152,7 @@ export function EditProfileScreen({ navigation }: any) {
                   autoCapitalize="none"
                   keyboardType="email-address"
                   editable={!loading}
+                  {...getTextSelectionProps(colors.platinumSilver)}
                 />
               </View>
               {errors.email && <Text style={styles.errorText}>{errors.email}</Text>}
@@ -172,6 +174,7 @@ export function EditProfileScreen({ navigation }: any) {
                   }}
                   keyboardType="phone-pad"
                   editable={!loading}
+                  {...getTextSelectionProps(colors.platinumSilver)}
                 />
               </View>
               {errors.phone && <Text style={styles.errorText}>{errors.phone}</Text>}
@@ -189,6 +192,7 @@ export function EditProfileScreen({ navigation }: any) {
                   value={city}
                   onChangeText={setCity}
                   editable={!loading}
+                  {...getTextSelectionProps(colors.platinumSilver)}
                 />
               </View>
             </View>
@@ -207,6 +211,7 @@ export function EditProfileScreen({ navigation }: any) {
                   numberOfLines={4}
                   textAlignVertical="top"
                   editable={!loading}
+                  {...getTextSelectionProps(colors.platinumSilver)}
                 />
               </View>
             </View>
