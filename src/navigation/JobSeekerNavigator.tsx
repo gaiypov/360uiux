@@ -1,32 +1,28 @@
 /**
  * 360° РАБОТА - Revolut Ultra Edition
- * Job Seeker Bottom Tab Navigator
+ * Job Seeker Navigation (Tab + Stack)
  */
 
 import React from 'react';
 import { View, StyleSheet, Platform } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { BlurView } from '@react-native-community/blur';
 import { colors, sizes } from '@/constants';
 import { VacancyFeedScreen } from '@/screens/jobseeker/VacancyFeedScreen';
+import { SearchScreen } from '@/screens/jobseeker/SearchScreen';
+import { ApplicationsScreen } from '@/screens/jobseeker/ApplicationsScreen';
+import { ProfileScreen } from '@/screens/jobseeker/ProfileScreen';
+import { FavoritesScreen } from '@/screens/jobseeker/FavoritesScreen';
+import { VacancyDetailScreen } from '@/screens/jobseeker/VacancyDetailScreen';
+import { CompanyDetailScreen } from '@/screens/jobseeker/CompanyDetailScreen';
 
 const Tab = createBottomTabNavigator();
+const Stack = createNativeStackNavigator();
 
-// Placeholder screens
-function SearchScreen() {
-  return <View style={styles.placeholder} />;
-}
-
-function ApplicationsScreen() {
-  return <View style={styles.placeholder} />;
-}
-
-function ProfileScreen() {
-  return <View style={styles.placeholder} />;
-}
-
-export function JobSeekerNavigator() {
+// Tab Navigator
+function JobSeekerTabs() {
   return (
     <Tab.Navigator
       screenOptions={{
@@ -106,6 +102,23 @@ export function JobSeekerNavigator() {
         }}
       />
     </Tab.Navigator>
+  );
+}
+
+// Main Stack Navigator with Tabs
+export function JobSeekerNavigator() {
+  return (
+    <Stack.Navigator
+      screenOptions={{
+        headerShown: false,
+        animation: 'slide_from_right',
+      }}
+    >
+      <Stack.Screen name="Tabs" component={JobSeekerTabs} />
+      <Stack.Screen name="VacancyDetail" component={VacancyDetailScreen} />
+      <Stack.Screen name="CompanyDetail" component={CompanyDetailScreen} />
+      <Stack.Screen name="Favorites" component={FavoritesScreen} />
+    </Stack.Navigator>
   );
 }
 
