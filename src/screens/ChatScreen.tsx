@@ -21,6 +21,7 @@ import LinearGradient from 'react-native-linear-gradient';
 import { GlassCard } from '@/components/ui';
 import { colors, metalGradients, typography, sizes } from '@/constants';
 import { useChatStore, type Message } from '@/stores/chatStore';
+import { haptics } from '@/utils/haptics';
 
 interface ChatScreenProps {
   route: {
@@ -101,6 +102,7 @@ export function ChatScreen({ route, navigation }: ChatScreenProps) {
   const sendMessage = () => {
     if (!inputText.trim()) return;
 
+    haptics.light();
     sendMessageToStore(conversationId, inputText.trim());
     setInputText('');
 

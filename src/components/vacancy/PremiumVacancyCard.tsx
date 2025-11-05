@@ -3,7 +3,7 @@
  * Ultra Vacancy Card Component (TikTok-style)
  */
 
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, memo } from 'react';
 import {
   View,
   Text,
@@ -34,14 +34,14 @@ interface PremiumVacancyCardProps {
   onShare?: () => void;
 }
 
-export function PremiumVacancyCard({
+const PremiumVacancyCardComponent = ({
   vacancy,
   isActive,
   onApply,
   onCompanyPress,
   onLike,
   onShare,
-}: PremiumVacancyCardProps) {
+}: PremiumVacancyCardProps) => {
   const videoRef = useRef<Video>(null);
   const scale = useSharedValue(1);
 
@@ -201,7 +201,19 @@ export function PremiumVacancyCard({
       </View>
     </Animated.View>
   );
-}
+};
+
+// Memoized export with custom comparison
+export const PremiumVacancyCard = memo(
+  PremiumVacancyCardComponent,
+  (prevProps, nextProps) => {
+    // Only re-render if vacancy ID or isActive changes
+    return (
+      prevProps.vacancy.id === nextProps.vacancy.id &&
+      prevProps.isActive === nextProps.isActive
+    );
+  }
+);
 
 const styles = StyleSheet.create({
   container: {

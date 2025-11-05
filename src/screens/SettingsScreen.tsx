@@ -19,6 +19,8 @@ import { GlassCard, GlassButton, MetalIcon } from '@/components/ui';
 import { colors, typography, sizes } from '@/constants';
 import { useAuthStore } from '@/stores/authStore';
 import { useSettingsStore } from '@/stores/settingsStore';
+import { useToastStore } from '@/stores/toastStore';
+import { haptics } from '@/utils/haptics';
 
 export function SettingsScreen({ navigation }: any) {
   const { user, logout } = useAuthStore();
@@ -28,9 +30,12 @@ export function SettingsScreen({ navigation }: any) {
     updateNotificationSettings,
     updatePrivacySettings,
   } = useSettingsStore();
+  const { showToast } = useToastStore();
 
   const handleLogout = () => {
+    haptics.medium();
     logout();
+    showToast('info', 'Вы вышли из аккаунта');
     navigation.replace('Auth');
   };
 

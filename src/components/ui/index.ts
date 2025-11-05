@@ -14,3 +14,4 @@ export { MetalIcon } from './MetalIcon';
 export { PressableScale } from './PressableScale';
 export { ShimmerLoader } from './ShimmerLoader';
 export { PullToRefresh } from './PullToRefresh';
+export { LoadingSpinner, LoadingOverlay } from './LoadingSpinner';
