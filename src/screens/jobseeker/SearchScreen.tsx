@@ -1,5 +1,5 @@
 /**
- * 360° РАБОТА - Revolut Ultra Edition
+ * 360° РАБОТА - ULTRA EDITION
  * Search Screen with Premium Filters
  */
 
@@ -16,7 +16,7 @@ import {
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { GlassCard, GlassButton } from '@/components/ui';
-import { colors, typography, sizes } from '@/constants';
+import { colors, metalGradients, typography, sizes } from "@/constants";
 import { Vacancy } from '@/types';
 
 export function SearchScreen() {
@@ -80,7 +80,7 @@ export function SearchScreen() {
           <Icon
             name={showFilters ? 'filter-minus' : 'filter-plus'}
             size={20}
-            color={colors.ultraViolet}
+            color={colors.platinumSilver}
           />
           <Text style={styles.filterToggleText}>
             {showFilters ? 'Скрыть фильтры' : 'Показать фильтры'}
@@ -293,7 +293,7 @@ const styles = StyleSheet.create({
   },
   filterToggleText: {
     ...typography.bodyMedium,
-    color: colors.ultraViolet,
+    color: colors.platinumSilver,
   },
   filtersCard: {
     marginBottom: sizes.lg,
@@ -343,15 +343,15 @@ const styles = StyleSheet.create({
     paddingVertical: sizes.sm,
   },
   chipActive: {
-    backgroundColor: 'rgba(142, 127, 255, 0.2)',
-    borderColor: colors.ultraViolet,
+    backgroundColor: 'rgba(232, 232, 237, 0.2)',
+    borderColor: colors.platinumSilver,
   },
   chipText: {
     ...typography.caption,
     color: colors.liquidSilver,
   },
   chipTextActive: {
-    color: colors.ultraViolet,
+    color: colors.platinumSilver,
     fontWeight: '600',
   },
   filterActions: {
@@ -390,10 +390,10 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: colors.ultraViolet,
+    backgroundColor: colors.platinumSilver,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: colors.ultraViolet,
+    shadowColor: colors.platinumSilver,
     shadowOffset: { width: 0, height: 4 },
     shadowRadius: 16,
     shadowOpacity: 0.5,

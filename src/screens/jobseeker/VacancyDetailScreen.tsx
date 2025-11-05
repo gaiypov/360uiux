@@ -1,5 +1,5 @@
 /**
- * 360° РАБОТА - Revolut Ultra Edition
+ * 360° РАБОТА - ULTRA EDITION
  * Vacancy Detail Screen
  */
 
@@ -17,7 +17,7 @@ import Video from 'react-native-video';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import LinearGradient from 'react-native-linear-gradient';
 import { GlassCard, GlassButton } from '@/components/ui';
-import { colors, typography, sizes } from '@/constants';
+import { colors, metalGradients, typography, sizes } from "@/constants";
 import { Vacancy } from '@/types';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -54,7 +54,7 @@ export function VacancyDetailScreen({
           muted={false}
         />
         <LinearGradient
-          colors={['transparent', 'rgba(5,5,5,0.9)']}
+          colors={['transparent', 'rgba(2,2,4,0.9)']}
           style={styles.videoGradient}
         />
       </View>
@@ -96,11 +96,11 @@ export function VacancyDetailScreen({
             }
           >
             <View style={styles.companyIcon}>
-              <Icon name="office-building" size={20} color={colors.ultraViolet} />
+              <Icon name="office-building" size={20} color={colors.platinumSilver} />
             </View>
             <Text style={styles.companyName}>{vacancy.employer.companyName}</Text>
             {vacancy.employer.verified && (
-              <Icon name="check-decagram" size={16} color={colors.cyberBlue} />
+              <Icon name="check-decagram" size={16} color={colors.platinumSilver} />
             )}
             <Icon
               name="chevron-right"
@@ -116,7 +116,7 @@ export function VacancyDetailScreen({
           {/* Salary */}
           <View style={styles.salaryContainer}>
             <LinearGradient
-              colors={[colors.ultraViolet, colors.cyberBlue]}
+              colors={metalGradients.platinum}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
               style={styles.salaryGradient}
@@ -167,7 +167,7 @@ export function VacancyDetailScreen({
                   <Icon
                     name="check-circle"
                     size={20}
-                    color={colors.cyberBlue}
+                    color={colors.platinumSilver}
                   />
                   <Text style={styles.benefitText}>{benefit}</Text>
                 </View>
@@ -200,13 +200,13 @@ export function VacancyDetailScreen({
         {/* Stats */}
         <GlassCard style={styles.statsCard}>
           <View style={styles.statItem}>
-            <Icon name="eye-outline" size={24} color={colors.cyberBlue} />
+            <Icon name="eye-outline" size={24} color={colors.platinumSilver} />
             <Text style={styles.statValue}>{vacancy.applications}</Text>
             <Text style={styles.statLabel}>откликов</Text>
           </View>
           <View style={styles.statDivider} />
           <View style={styles.statItem}>
-            <Icon name="star" size={24} color={colors.ultraViolet} />
+            <Icon name="star" size={24} color={colors.platinumSilver} />
             <Text style={styles.statValue}>
               {vacancy.employer.rating.toFixed(1)}
             </Text>
@@ -294,7 +294,7 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: 'rgba(142, 127, 255, 0.2)',
+    backgroundColor: 'rgba(232, 232, 237, 0.2)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -370,7 +370,7 @@ const styles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: colors.ultraViolet,
+    backgroundColor: colors.platinumSilver,
     marginTop: 8,
   },
   requirementText: {

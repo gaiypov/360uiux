@@ -1,5 +1,5 @@
 /**
- * 360° РАБОТА - Revolut Ultra Edition
+ * 360° РАБОТА - ULTRA EDITION
  * Create Vacancy Screen (Employer)
  */
 
@@ -15,7 +15,7 @@ import {
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { GlassCard, GlassButton } from '@/components/ui';
-import { colors, typography, sizes } from '@/constants';
+import { colors, metalGradients, typography, sizes } from "@/constants";
 import { useToastStore } from '@/stores';
 
 export function CreateVacancyScreen({ navigation }: any) {
@@ -84,7 +84,7 @@ export function CreateVacancyScreen({ navigation }: any) {
           </Text>
 
           <TouchableOpacity style={styles.videoUpload}>
-            <Icon name="video-plus" size={48} color={colors.ultraViolet} />
+            <Icon name="video-plus" size={48} color={colors.platinumSilver} />
             <Text style={styles.videoUploadText}>
               {videoUrl ? 'Видео загружено' : 'Загрузить видео'}
             </Text>
@@ -333,7 +333,7 @@ const styles = StyleSheet.create({
   },
   videoUploadText: {
     ...typography.bodyMedium,
-    color: colors.ultraViolet,
+    color: colors.platinumSilver,
   },
   inputGroup: {
     marginBottom: sizes.md,
@@ -377,15 +377,15 @@ const styles = StyleSheet.create({
     paddingVertical: sizes.sm,
   },
   chipActive: {
-    backgroundColor: 'rgba(142, 127, 255, 0.2)',
-    borderColor: colors.ultraViolet,
+    backgroundColor: 'rgba(232, 232, 237, 0.2)',
+    borderColor: colors.platinumSilver,
   },
   chipText: {
     ...typography.caption,
     color: colors.liquidSilver,
   },
   chipTextActive: {
-    color: colors.ultraViolet,
+    color: colors.platinumSilver,
     fontWeight: '600',
   },
   createContainer: {

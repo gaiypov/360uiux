@@ -1,5 +1,5 @@
 /**
- * 360° РАБОТА - Revolut Ultra Edition
+ * 360° РАБОТА - ULTRA EDITION
  * A/B Testing Screen
  */
 
@@ -15,7 +15,7 @@ import {
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import LinearGradient from 'react-native-linear-gradient';
 import { GlassCard, GlassButton } from '@/components/ui';
-import { colors, typography, sizes } from '@/constants';
+import { colors, metalGradients, typography, sizes } from "@/constants";
 
 export function ABTestingScreen({ navigation }: any) {
   const [activeTests, setActiveTests] = useState([
@@ -92,7 +92,7 @@ export function ABTestingScreen({ navigation }: any) {
           onPress={() => navigation.navigate('CreateABTest')}
         >
           <LinearGradient
-            colors={[colors.ultraViolet, colors.cyberBlue]}
+            colors={metalGradients.platinum}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
             style={styles.createTestGradient}
@@ -199,7 +199,7 @@ export function ABTestingScreen({ navigation }: any) {
                 {test.confidence >= 80 && (
                   <TouchableOpacity style={styles.implementButton}>
                     <LinearGradient
-                      colors={[colors.ultraViolet, colors.cyberBlue]}
+                      colors={metalGradients.platinum}
                       start={{ x: 0, y: 0 }}
                       end={{ x: 1, y: 0 }}
                       style={styles.implementGradient}
@@ -320,7 +320,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: sizes.xs,
-    backgroundColor: 'rgba(57, 224, 248, 0.15)',
+    backgroundColor: 'rgba(232, 232, 237, 0.15)',
     paddingHorizontal: sizes.sm,
     paddingVertical: 4,
     borderRadius: sizes.radiusSmall,
@@ -329,11 +329,11 @@ const styles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: colors.cyberBlue,
+    backgroundColor: colors.platinumSilver,
   },
   statusText: {
     ...typography.caption,
-    color: colors.cyberBlue,
+    color: colors.platinumSilver,
     fontSize: 11,
   },
   variantsContainer: {
@@ -350,7 +350,7 @@ const styles = StyleSheet.create({
     padding: sizes.md,
   },
   variantWinning: {
-    borderColor: colors.ultraViolet,
+    borderColor: colors.platinumSilver,
     borderWidth: 2,
   },
   variantHeader: {
@@ -362,7 +362,7 @@ const styles = StyleSheet.create({
   variantLabel: {
     ...typography.h3,
     fontSize: 18,
-    color: colors.ultraViolet,
+    color: colors.platinumSilver,
     fontWeight: '700',
   },
   variantName: {
@@ -388,7 +388,7 @@ const styles = StyleSheet.create({
     color: colors.softWhite,
   },
   conversionValue: {
-    color: colors.cyberBlue,
+    color: colors.platinumSilver,
     fontWeight: '700',
   },
   vsContainer: {
@@ -416,7 +416,7 @@ const styles = StyleSheet.create({
   },
   confidenceValue: {
     ...typography.bodyMedium,
-    color: colors.ultraViolet,
+    color: colors.platinumSilver,
     fontWeight: '700',
   },
   confidenceBar: {
@@ -427,7 +427,7 @@ const styles = StyleSheet.create({
   },
   confidenceFill: {
     height: '100%',
-    backgroundColor: colors.ultraViolet,
+    backgroundColor: colors.platinumSilver,
   },
   readyBadge: {
     flexDirection: 'row',

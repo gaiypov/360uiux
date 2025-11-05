@@ -1,5 +1,5 @@
 /**
- * 360° РАБОТА - Revolut Ultra Edition
+ * 360° РАБОТА - ULTRA EDITION
  * Login Screen
  */
 
@@ -15,7 +15,7 @@ import {
   Platform,
 } from 'react-native';
 import { GlassButton, GlassCard } from '@/components/ui';
-import { colors, typography, sizes } from '@/constants';
+import { colors, metalGradients, typography, sizes } from "@/constants";
 
 interface LoginScreenProps {
   onLogin: () => void;
@@ -138,7 +138,7 @@ const styles = StyleSheet.create({
   input: {
     ...typography.body,
     color: colors.softWhite,
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    backgroundColor: colors.slateGray,
     borderWidth: 1,
     borderColor: colors.glassBorder,
     borderRadius: sizes.radiusMedium,
@@ -150,7 +150,7 @@ const styles = StyleSheet.create({
   },
   forgotText: {
     ...typography.caption,
-    color: colors.cyberBlue,
+    color: colors.platinumSilver,
   },
   buttonContainer: {
     gap: sizes.md,

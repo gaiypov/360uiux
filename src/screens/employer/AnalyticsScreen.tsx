@@ -1,5 +1,5 @@
 /**
- * 360° РАБОТА - Revolut Ultra Edition
+ * 360° РАБОТА - ULTRA EDITION
  * Analytics Screen with Premium Charts
  */
 
@@ -17,7 +17,7 @@ import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { GlassCard } from '@/components/ui';
 import { StatCard } from '@/components/charts/StatCard';
 import { MiniLineChart } from '@/components/charts/MiniLineChart';
-import { colors, typography, sizes } from '@/constants';
+import { colors, metalGradients, typography, sizes } from "@/constants";
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -148,7 +148,7 @@ export function AnalyticsScreen() {
           <View style={styles.chartHeader}>
             <Text style={styles.chartTitle}>Отклики</Text>
             <View style={styles.chartLegend}>
-              <View style={[styles.legendDot, { backgroundColor: colors.cyberBlue }]} />
+              <View style={[styles.legendDot, { backgroundColor: colors.platinumSilver }]} />
               <Text style={styles.legendText}>За неделю</Text>
             </View>
           </View>
@@ -196,7 +196,7 @@ export function AnalyticsScreen() {
         {/* Performance Insights */}
         <GlassCard style={styles.insightsCard}>
           <View style={styles.insightsHeader}>
-            <Icon name="lightbulb-on" size={24} color={colors.cyberBlue} />
+            <Icon name="lightbulb-on" size={24} color={colors.platinumSilver} />
             <Text style={styles.insightsTitle}>Рекомендации</Text>
           </View>
           <View style={styles.insights}>
@@ -207,7 +207,7 @@ export function AnalyticsScreen() {
               </Text>
             </View>
             <View style={styles.insightItem}>
-              <Icon name="trending-up" size={20} color={colors.ultraViolet} />
+              <Icon name="trending-up" size={20} color={colors.platinumSilver} />
               <Text style={styles.insightText}>
                 Лучшее время публикации: Вт-Чт, 10:00-12:00
               </Text>
@@ -259,15 +259,15 @@ const styles = StyleSheet.create({
     borderColor: colors.glassBorder,
   },
   periodButtonActive: {
-    backgroundColor: 'rgba(142, 127, 255, 0.2)',
-    borderColor: colors.ultraViolet,
+    backgroundColor: 'rgba(232, 232, 237, 0.2)',
+    borderColor: colors.platinumSilver,
   },
   periodText: {
     ...typography.caption,
     color: colors.liquidSilver,
   },
   periodTextActive: {
-    color: colors.ultraViolet,
+    color: colors.platinumSilver,
     fontWeight: '600',
   },
   statsGrid: {
@@ -304,7 +304,7 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: colors.ultraViolet,
+    backgroundColor: colors.platinumSilver,
   },
   legendText: {
     ...typography.caption,
@@ -318,7 +318,7 @@ const styles = StyleSheet.create({
   },
   chartFooterText: {
     ...typography.caption,
-    color: colors.cyberBlue,
+    color: colors.platinumSilver,
   },
   section: {
     marginBottom: sizes.lg,
@@ -342,13 +342,13 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: 'rgba(142, 127, 255, 0.2)',
+    backgroundColor: 'rgba(232, 232, 237, 0.2)',
     alignItems: 'center',
     justifyContent: 'center',
   },
   vacancyRankText: {
     ...typography.bodyMedium,
-    color: colors.ultraViolet,
+    color: colors.platinumSilver,
     fontWeight: '700',
   },
   vacancyTitle: {
@@ -372,14 +372,14 @@ const styles = StyleSheet.create({
   },
   conversionBadge: {
     marginLeft: 'auto',
-    backgroundColor: 'rgba(57, 224, 248, 0.15)',
+    backgroundColor: 'rgba(232, 232, 237, 0.15)',
     paddingHorizontal: sizes.sm,
     paddingVertical: 4,
     borderRadius: sizes.radiusSmall,
   },
   conversionText: {
     ...typography.caption,
-    color: colors.cyberBlue,
+    color: colors.platinumSilver,
     fontWeight: '600',
   },
   insightsCard: {

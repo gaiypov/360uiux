@@ -1,5 +1,5 @@
 /**
- * 360° РАБОТА - Revolut Ultra Edition
+ * 360° РАБОТА - ULTRA EDITION
  * Job Seeker Profile Screen
  */
 
@@ -16,7 +16,7 @@ import {
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import LinearGradient from 'react-native-linear-gradient';
 import { GlassCard, GlassButton } from '@/components/ui';
-import { colors, typography, sizes } from '@/constants';
+import { colors, metalGradients, typography, sizes } from "@/constants";
 import { useAuthStore } from '@/stores/authStore';
 
 export function ProfileScreen() {
@@ -44,7 +44,7 @@ export function ProfileScreen() {
               <Image source={{ uri: profile.avatar }} style={styles.avatar} />
             ) : (
               <View style={styles.avatarPlaceholder}>
-                <Icon name="account" size={48} color={colors.ultraViolet} />
+                <Icon name="account" size={48} color={colors.platinumSilver} />
               </View>
             )}
             <TouchableOpacity style={styles.editAvatarButton}>
@@ -60,7 +60,7 @@ export function ProfileScreen() {
           {profile.profession && (
             <View style={styles.professionBadge}>
               <LinearGradient
-                colors={[colors.ultraViolet, colors.cyberBlue]}
+                colors={metalGradients.platinum}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
                 style={styles.professionGradient}
@@ -91,7 +91,7 @@ export function ProfileScreen() {
         {/* Info Sections */}
         <GlassCard style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Icon name="map-marker" size={24} color={colors.ultraViolet} />
+            <Icon name="map-marker" size={24} color={colors.platinumSilver} />
             <Text style={styles.sectionTitle}>Локация</Text>
           </View>
           <Text style={styles.sectionValue}>
@@ -102,7 +102,7 @@ export function ProfileScreen() {
         {profile.experience && (
           <GlassCard style={styles.section}>
             <View style={styles.sectionHeader}>
-              <Icon name="briefcase" size={24} color={colors.ultraViolet} />
+              <Icon name="briefcase" size={24} color={colors.platinumSilver} />
               <Text style={styles.sectionTitle}>Опыт работы</Text>
             </View>
             <Text style={styles.sectionValue}>
@@ -114,12 +114,12 @@ export function ProfileScreen() {
         {profile.resume && (
           <GlassCard style={styles.section}>
             <View style={styles.sectionHeader}>
-              <Icon name="file-document" size={24} color={colors.ultraViolet} />
+              <Icon name="file-document" size={24} color={colors.platinumSilver} />
               <Text style={styles.sectionTitle}>Резюме</Text>
             </View>
             <TouchableOpacity style={styles.resumeButton}>
               <Text style={styles.resumeButtonText}>Посмотреть резюме</Text>
-              <Icon name="arrow-right" size={20} color={colors.cyberBlue} />
+              <Icon name="arrow-right" size={20} color={colors.platinumSilver} />
             </TouchableOpacity>
           </GlassCard>
         )}
@@ -179,17 +179,17 @@ const styles = StyleSheet.create({
     height: 100,
     borderRadius: 50,
     borderWidth: 3,
-    borderColor: colors.ultraViolet,
+    borderColor: colors.platinumSilver,
   },
   avatarPlaceholder: {
     width: 100,
     height: 100,
     borderRadius: 50,
-    backgroundColor: 'rgba(142, 127, 255, 0.2)',
+    backgroundColor: 'rgba(232, 232, 237, 0.2)',
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 3,
-    borderColor: colors.ultraViolet,
+    borderColor: colors.platinumSilver,
   },
   editAvatarButton: {
     position: 'absolute',
@@ -198,7 +198,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: colors.ultraViolet,
+    backgroundColor: colors.platinumSilver,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 2,
@@ -241,7 +241,7 @@ const styles = StyleSheet.create({
   },
   statValue: {
     ...typography.h2,
-    color: colors.ultraViolet,
+    color: colors.platinumSilver,
     marginBottom: sizes.xs,
   },
   statLabel: {
@@ -275,14 +275,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: 'rgba(57, 224, 248, 0.1)',
+    backgroundColor: 'rgba(232, 232, 237, 0.1)',
     borderRadius: sizes.radiusMedium,
     padding: sizes.md,
     marginTop: sizes.sm,
   },
   resumeButtonText: {
     ...typography.bodyMedium,
-    color: colors.cyberBlue,
+    color: colors.platinumSilver,
   },
   actions: {
     gap: sizes.md,

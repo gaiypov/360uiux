@@ -1,5 +1,5 @@
 /**
- * 360° РАБОТА - Revolut Ultra Edition
+ * 360° РАБОТА - ULTRA EDITION
  * Onboarding Screen
  */
 
@@ -14,7 +14,7 @@ import {
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import { GlassButton } from '@/components/ui';
-import { colors, typography, sizes } from '@/constants';
+import { colors, metalGradients, typography, sizes } from "@/constants";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -44,7 +44,7 @@ export function OnboardingScreen({ onGetStarted }: OnboardingScreenProps) {
           {/* Tagline with neon accent */}
           <View style={styles.taglineContainer}>
             <LinearGradient
-              colors={[colors.ultraViolet, colors.cyberBlue]}
+              colors={metalGradients.platinum}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
               style={styles.taglineGradient}
@@ -167,7 +167,7 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: 'rgba(142, 127, 255, 0.2)',
+    backgroundColor: 'rgba(232, 232, 237, 0.2)',
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: sizes.md,
@@ -199,6 +199,6 @@ const styles = StyleSheet.create({
     marginTop: sizes.md,
   },
   termsLink: {
-    color: colors.cyberBlue,
+    color: colors.platinumSilver,
   },
 });

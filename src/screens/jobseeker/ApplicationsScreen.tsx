@@ -1,5 +1,5 @@
 /**
- * 360° РАБОТА - Revolut Ultra Edition
+ * 360° РАБОТА - ULTRA EDITION
  * Applications History Screen
  */
 
@@ -15,7 +15,7 @@ import {
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import LinearGradient from 'react-native-linear-gradient';
 import { GlassCard } from '@/components/ui';
-import { colors, typography, sizes } from '@/constants';
+import { colors, metalGradients, typography, sizes } from "@/constants";
 import { Application, Vacancy } from '@/types';
 
 // Mock data
@@ -97,7 +97,7 @@ export function ApplicationsScreen() {
       case 'pending':
         return colors.warning;
       case 'viewed':
-        return colors.cyberBlue;
+        return colors.platinumSilver;
       case 'accepted':
         return colors.success;
       case 'rejected':
@@ -225,7 +225,7 @@ export function ApplicationsScreen() {
                       <Icon
                         name="office-building"
                         size={20}
-                        color={colors.ultraViolet}
+                        color={colors.platinumSilver}
                       />
                     </View>
                     <Text style={styles.companyName}>
@@ -235,7 +235,7 @@ export function ApplicationsScreen() {
                       <Icon
                         name="check-decagram"
                         size={16}
-                        color={colors.cyberBlue}
+                        color={colors.platinumSilver}
                       />
                     )}
                   </View>
@@ -248,7 +248,7 @@ export function ApplicationsScreen() {
                   {/* Salary */}
                   <View style={styles.salaryContainer}>
                     <LinearGradient
-                      colors={[colors.ultraViolet, colors.cyberBlue]}
+                      colors={metalGradients.platinum}
                       start={{ x: 0, y: 0 }}
                       end={{ x: 1, y: 0 }}
                       style={styles.salaryGradient}
@@ -331,15 +331,15 @@ const styles = StyleSheet.create({
     paddingVertical: sizes.sm,
   },
   filterChipActive: {
-    backgroundColor: 'rgba(142, 127, 255, 0.2)',
-    borderColor: colors.ultraViolet,
+    backgroundColor: 'rgba(232, 232, 237, 0.2)',
+    borderColor: colors.platinumSilver,
   },
   filterChipText: {
     ...typography.caption,
     color: colors.liquidSilver,
   },
   filterChipTextActive: {
-    color: colors.ultraViolet,
+    color: colors.platinumSilver,
     fontWeight: '600',
   },
   applicationsList: {
@@ -372,7 +372,7 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: 'rgba(142, 127, 255, 0.2)',
+    backgroundColor: 'rgba(232, 232, 237, 0.2)',
     alignItems: 'center',
     justifyContent: 'center',
   },

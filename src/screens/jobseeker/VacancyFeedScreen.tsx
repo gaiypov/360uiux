@@ -1,5 +1,5 @@
 /**
- * 360° РАБОТА - Revolut Ultra Edition
+ * 360° РАБОТА - ULTRA EDITION
  * Vacancy Feed Screen (TikTok-style vertical swipe)
  */
 
@@ -7,7 +7,7 @@ import React, { useRef, useState } from 'react';
 import { View, StyleSheet, Dimensions, StatusBar, FlatList } from 'react-native';
 import { GestureDetector, Gesture } from 'react-native-gesture-handler';
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
-import { colors } from '@/constants';
+import { colors, metalGradients } from "@/constants";
 import { PremiumVacancyCard } from '@/components/vacancy';
 import { useVacancyFeed } from '@/hooks/useVacancyFeed';
 

@@ -1,5 +1,5 @@
 /**
- * 360° РАБОТА - Revolut Ultra Edition
+ * 360° РАБОТА - ULTRA EDITION
  * Splash Screen with 360° Ring Animation
  */
 
@@ -13,7 +13,7 @@ import Animated, {
   Easing,
 } from 'react-native-reanimated';
 import LinearGradient from 'react-native-linear-gradient';
-import { colors, typography } from '@/constants';
+import { colors, metalGradients, metalGradients, typography } from "@/constants";
 
 interface SplashScreenProps {
   onComplete: () => void;
@@ -71,14 +71,10 @@ export function SplashScreen({ onComplete }: SplashScreenProps) {
 
   return (
     <View style={styles.container}>
-      {/* Вращающееся неоновое кольцо */}
+      {/* Вращающееся металлическое кольцо */}
       <Animated.View style={[styles.ringContainer, ringStyle]}>
         <LinearGradient
-          colors={[
-            colors.ultraViolet,
-            colors.cyberBlue,
-            colors.ultraViolet,
-          ]}
+          colors={metalGradients.platinum}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={styles.ring}
@@ -112,10 +108,10 @@ const styles = StyleSheet.create({
     borderRadius: 100,
     borderWidth: 4,
     borderColor: 'transparent',
-    shadowColor: colors.ultraViolet,
+    shadowColor: colors.platinumSilver,
     shadowOffset: { width: 0, height: 0 },
     shadowRadius: 30,
-    shadowOpacity: 0.8,
+    shadowOpacity: 0.6,
     elevation: 20,
   },
   logo: {

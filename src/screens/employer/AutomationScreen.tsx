@@ -1,5 +1,5 @@
 /**
- * 360° РАБОТА - Revolut Ultra Edition
+ * 360° РАБОТА - ULTRA EDITION
  * Automation Screen
  */
 
@@ -15,7 +15,7 @@ import {
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { GlassCard, GlassButton } from '@/components/ui';
-import { colors, typography, sizes } from '@/constants';
+import { colors, metalGradients, typography, sizes } from "@/constants";
 import { useToastStore } from '@/stores';
 
 export function AutomationScreen() {
@@ -40,7 +40,7 @@ export function AutomationScreen() {
       enabled: automations.autoReply,
       key: 'autoReply' as const,
       icon: 'reply',
-      color: colors.cyberBlue,
+      color: colors.platinumSilver,
     },
     {
       id: '2',
@@ -58,7 +58,7 @@ export function AutomationScreen() {
       enabled: automations.smartFiltering,
       key: 'smartFiltering' as const,
       icon: 'brain',
-      color: colors.ultraViolet,
+      color: colors.platinumSilver,
     },
     {
       id: '4',
@@ -117,7 +117,7 @@ export function AutomationScreen() {
                   onValueChange={() => toggleAutomation(rule.key)}
                   trackColor={{
                     false: colors.glassBorder,
-                    true: colors.ultraViolet,
+                    true: colors.platinumSilver,
                   }}
                   thumbColor={rule.enabled ? colors.softWhite : colors.liquidSilver}
                 />
@@ -129,7 +129,7 @@ export function AutomationScreen() {
               {rule.enabled && (
                 <TouchableOpacity style={styles.configureButton}>
                   <Text style={styles.configureText}>Настроить</Text>
-                  <Icon name="chevron-right" size={20} color={colors.cyberBlue} />
+                  <Icon name="chevron-right" size={20} color={colors.platinumSilver} />
                 </TouchableOpacity>
               )}
             </GlassCard>
@@ -140,7 +140,7 @@ export function AutomationScreen() {
         <GlassCard style={styles.aiCard}>
           <View style={styles.aiHeader}>
             <View style={styles.aiIconContainer}>
-              <Icon name="robot" size={32} color={colors.ultraViolet} />
+              <Icon name="robot" size={32} color={colors.platinumSilver} />
             </View>
             <View style={styles.aiText}>
               <Text style={styles.aiTitle}>AI Помощник</Text>
@@ -194,14 +194,14 @@ export function AutomationScreen() {
 
           <GlassCard style={styles.triggerCard}>
             <View style={styles.triggerHeader}>
-              <Icon name="clock-outline" size={20} color={colors.cyberBlue} />
+              <Icon name="clock-outline" size={20} color={colors.platinumSilver} />
               <Text style={styles.triggerTitle}>24 часа без ответа</Text>
             </View>
             <Text style={styles.triggerAction}>→ Отправить напоминание</Text>
           </GlassCard>
 
           <TouchableOpacity style={styles.addTrigger}>
-            <Icon name="plus-circle" size={24} color={colors.ultraViolet} />
+            <Icon name="plus-circle" size={24} color={colors.platinumSilver} />
             <Text style={styles.addTriggerText}>Добавить триггер</Text>
           </TouchableOpacity>
         </View>
@@ -248,7 +248,7 @@ const styles = StyleSheet.create({
   statValue: {
     ...typography.h1,
     fontSize: 32,
-    color: colors.ultraViolet,
+    color: colors.platinumSilver,
     marginBottom: sizes.xs,
   },
   statLabel: {
@@ -303,7 +303,7 @@ const styles = StyleSheet.create({
   },
   configureText: {
     ...typography.bodyMedium,
-    color: colors.cyberBlue,
+    color: colors.platinumSilver,
   },
   aiCard: {
     marginBottom: sizes.lg,
@@ -318,7 +318,7 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: 'rgba(142, 127, 255, 0.2)',
+    backgroundColor: 'rgba(232, 232, 237, 0.2)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -387,6 +387,6 @@ const styles = StyleSheet.create({
   },
   addTriggerText: {
     ...typography.bodyMedium,
-    color: colors.ultraViolet,
+    color: colors.platinumSilver,
   },
 });

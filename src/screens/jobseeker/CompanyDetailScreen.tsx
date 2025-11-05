@@ -1,5 +1,5 @@
 /**
- * 360° РАБОТА - Revolut Ultra Edition
+ * 360° РАБОТА - ULTRA EDITION
  * Company Detail Screen
  */
 
@@ -15,7 +15,7 @@ import {
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import LinearGradient from 'react-native-linear-gradient';
 import { GlassCard, GlassButton } from '@/components/ui';
-import { colors, typography, sizes } from '@/constants';
+import { colors, metalGradients, typography, sizes } from "@/constants";
 import { Employer } from '@/types';
 
 interface CompanyDetailScreenProps {
@@ -56,7 +56,7 @@ export function CompanyDetailScreen({
         <GlassCard style={styles.companyCard}>
           <View style={styles.logoContainer}>
             <View style={styles.logo}>
-              <Icon name="office-building" size={48} color={colors.ultraViolet} />
+              <Icon name="office-building" size={48} color={colors.platinumSilver} />
             </View>
           </View>
 
@@ -64,7 +64,7 @@ export function CompanyDetailScreen({
 
           {company.verified && (
             <View style={styles.verifiedBadge}>
-              <Icon name="check-decagram" size={20} color={colors.cyberBlue} />
+              <Icon name="check-decagram" size={20} color={colors.platinumSilver} />
               <Text style={styles.verifiedText}>Проверенный работодатель</Text>
             </View>
           )}
@@ -72,7 +72,7 @@ export function CompanyDetailScreen({
           {/* Rating */}
           <View style={styles.ratingContainer}>
             <LinearGradient
-              colors={[colors.ultraViolet, colors.cyberBlue]}
+              colors={metalGradients.platinum}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
               style={styles.ratingGradient}
@@ -105,7 +105,7 @@ export function CompanyDetailScreen({
         {company.industry && (
           <GlassCard style={styles.section}>
             <View style={styles.sectionHeader}>
-              <Icon name="factory" size={24} color={colors.ultraViolet} />
+              <Icon name="factory" size={24} color={colors.platinumSilver} />
               <Text style={styles.sectionTitle}>Индустрия</Text>
             </View>
             <Text style={styles.sectionValue}>{company.industry}</Text>
@@ -116,7 +116,7 @@ export function CompanyDetailScreen({
         {company.website && (
           <GlassCard style={styles.section}>
             <View style={styles.sectionHeader}>
-              <Icon name="web" size={24} color={colors.ultraViolet} />
+              <Icon name="web" size={24} color={colors.platinumSilver} />
               <Text style={styles.sectionTitle}>Сайт</Text>
             </View>
             <TouchableOpacity>
@@ -148,7 +148,7 @@ export function CompanyDetailScreen({
               'Корпоративные мероприятия',
             ].map((benefit, index) => (
               <View key={index} style={styles.benefitItem}>
-                <Icon name="check-circle" size={20} color={colors.cyberBlue} />
+                <Icon name="check-circle" size={20} color={colors.platinumSilver} />
                 <Text style={styles.benefitText}>{benefit}</Text>
               </View>
             ))}
@@ -207,9 +207,9 @@ const styles = StyleSheet.create({
     width: 100,
     height: 100,
     borderRadius: 50,
-    backgroundColor: 'rgba(142, 127, 255, 0.2)',
+    backgroundColor: 'rgba(232, 232, 237, 0.2)',
     borderWidth: 3,
-    borderColor: colors.ultraViolet,
+    borderColor: colors.platinumSilver,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -224,7 +224,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: sizes.xs,
-    backgroundColor: 'rgba(57, 224, 248, 0.15)',
+    backgroundColor: 'rgba(232, 232, 237, 0.15)',
     paddingHorizontal: sizes.md,
     paddingVertical: sizes.xs,
     borderRadius: sizes.radiusMedium,
@@ -232,7 +232,7 @@ const styles = StyleSheet.create({
   },
   verifiedText: {
     ...typography.caption,
-    color: colors.cyberBlue,
+    color: colors.platinumSilver,
     fontWeight: '600',
   },
   ratingContainer: {
@@ -266,7 +266,7 @@ const styles = StyleSheet.create({
   },
   statValue: {
     ...typography.h2,
-    color: colors.ultraViolet,
+    color: colors.platinumSilver,
     marginBottom: sizes.xs,
   },
   statLabel: {
@@ -298,7 +298,7 @@ const styles = StyleSheet.create({
   },
   websiteLink: {
     ...typography.body,
-    color: colors.cyberBlue,
+    color: colors.platinumSilver,
     textDecorationLine: 'underline',
   },
   aboutText: {

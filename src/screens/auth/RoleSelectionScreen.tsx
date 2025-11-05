@@ -1,5 +1,5 @@
 /**
- * 360° РАБОТА - Revolut Ultra Edition
+ * 360° РАБОТА - ULTRA EDITION
  * Role Selection Screen
  */
 
@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import { colors, typography, sizes } from '@/constants';
+import { colors, metalGradients, metalGradients, typography, sizes } from "@/constants";
 
 interface RoleSelectionScreenProps {
   onSelectRole: (role: 'jobseeker' | 'employer') => void;
@@ -43,13 +43,13 @@ export function RoleSelectionScreen({ onSelectRole }: RoleSelectionScreenProps) 
           onPress={() => onSelectRole('jobseeker')}
         >
           <LinearGradient
-            colors={[colors.ultraViolet, colors.cyberBlue]}
+            colors={metalGradients.platinum}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={styles.cardGradient}
           >
             <View style={styles.iconContainer}>
-              <Icon name="account-search" size={48} color={colors.softWhite} />
+              <Icon name="account-search" size={48} color={colors.graphiteBlack} />
             </View>
             <Text style={styles.cardTitle}>Ищу работу</Text>
             <Text style={styles.cardDescription}>
@@ -66,7 +66,7 @@ export function RoleSelectionScreen({ onSelectRole }: RoleSelectionScreenProps) 
         >
           <View style={styles.cardSecondary}>
             <View style={styles.iconContainer}>
-              <Icon name="office-building" size={48} color={colors.ultraViolet} />
+              <Icon name="office-building" size={48} color={colors.platinumSilver} />
             </View>
             <Text style={styles.cardTitle}>Работодатель</Text>
             <Text style={styles.cardDescription}>
@@ -105,7 +105,7 @@ const styles = StyleSheet.create({
   card: {
     borderRadius: sizes.radiusXLarge,
     overflow: 'hidden',
-    shadowColor: colors.ultraViolet,
+    shadowColor: colors.platinumSilver,
     shadowOffset: { width: 0, height: 8 },
     shadowRadius: 24,
     shadowOpacity: 0.3,
@@ -142,7 +142,7 @@ const styles = StyleSheet.create({
   },
   cardDescription: {
     ...typography.body,
-    color: colors.liquidSilver,
+    color: colors.chromeSilver,
     textAlign: 'center',
   },
 });

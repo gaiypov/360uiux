@@ -1,5 +1,5 @@
 /**
- * 360° РАБОТА - Revolut Ultra Edition
+ * 360° РАБОТА - ULTRA EDITION
  * Candidates Screen (Employer)
  */
 
@@ -15,7 +15,7 @@ import {
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import LinearGradient from 'react-native-linear-gradient';
 import { GlassCard } from '@/components/ui';
-import { colors, typography, sizes } from '@/constants';
+import { colors, metalGradients, typography, sizes } from "@/constants";
 
 export function CandidatesScreen() {
   const candidates = [
@@ -43,7 +43,7 @@ export function CandidatesScreen() {
           <GlassCard key={candidate.id} style={styles.card}>
             <View style={styles.candidateHeader}>
               <View style={styles.avatar}>
-                <Icon name="account" size={32} color={colors.ultraViolet} />
+                <Icon name="account" size={32} color={colors.platinumSilver} />
               </View>
               <View style={styles.info}>
                 <Text style={styles.name}>{candidate.name}</Text>
@@ -68,7 +68,7 @@ export function CandidatesScreen() {
               </TouchableOpacity>
               <TouchableOpacity style={styles.actionButtonAccept}>
                 <LinearGradient
-                  colors={[colors.ultraViolet, colors.cyberBlue]}
+                  colors={metalGradients.platinum}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 0 }}
                   style={styles.actionGradient}
@@ -121,7 +121,7 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: 'rgba(142, 127, 255, 0.2)',
+    backgroundColor: 'rgba(232, 232, 237, 0.2)',
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: sizes.md,

@@ -1,5 +1,5 @@
 /**
- * 360° РАБОТА - Revolut Ultra Edition
+ * 360° РАБОТА - ULTRA EDITION
  * Mass Mailing Screen
  */
 
@@ -16,7 +16,7 @@ import {
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import LinearGradient from 'react-native-linear-gradient';
 import { GlassCard, GlassButton } from '@/components/ui';
-import { colors, typography, sizes } from '@/constants';
+import { colors, metalGradients, typography, sizes } from "@/constants";
 import { useToastStore } from '@/stores';
 
 export function MassMailingScreen({ navigation }: any) {
@@ -103,7 +103,7 @@ export function MassMailingScreen({ navigation }: any) {
               <Icon
                 name="account-multiple"
                 size={24}
-                color={recipients === 'all' ? colors.ultraViolet : colors.liquidSilver}
+                color={recipients === 'all' ? colors.platinumSilver : colors.liquidSilver}
               />
               <View style={styles.recipientOptionText}>
                 <Text style={[styles.recipientOptionTitle, recipients === 'all' && styles.activeText]}>
@@ -113,7 +113,7 @@ export function MassMailingScreen({ navigation }: any) {
               </View>
             </View>
             {recipients === 'all' && (
-              <Icon name="check-circle" size={24} color={colors.ultraViolet} />
+              <Icon name="check-circle" size={24} color={colors.platinumSilver} />
             )}
           </TouchableOpacity>
 
@@ -125,7 +125,7 @@ export function MassMailingScreen({ navigation }: any) {
               <Icon
                 name="briefcase"
                 size={24}
-                color={recipients === 'vacancy' ? colors.ultraViolet : colors.liquidSilver}
+                color={recipients === 'vacancy' ? colors.platinumSilver : colors.liquidSilver}
               />
               <View style={styles.recipientOptionText}>
                 <Text style={[styles.recipientOptionTitle, recipients === 'vacancy' && styles.activeText]}>
@@ -135,7 +135,7 @@ export function MassMailingScreen({ navigation }: any) {
               </View>
             </View>
             {recipients === 'vacancy' && (
-              <Icon name="check-circle" size={24} color={colors.ultraViolet} />
+              <Icon name="check-circle" size={24} color={colors.platinumSilver} />
             )}
           </TouchableOpacity>
 
@@ -147,7 +147,7 @@ export function MassMailingScreen({ navigation }: any) {
               <Icon
                 name="account-check"
                 size={24}
-                color={recipients === 'selected' ? colors.ultraViolet : colors.liquidSilver}
+                color={recipients === 'selected' ? colors.platinumSilver : colors.liquidSilver}
               />
               <View style={styles.recipientOptionText}>
                 <Text style={[styles.recipientOptionTitle, recipients === 'selected' && styles.activeText]}>
@@ -157,7 +157,7 @@ export function MassMailingScreen({ navigation }: any) {
               </View>
             </View>
             {recipients === 'selected' && (
-              <Icon name="check-circle" size={24} color={colors.ultraViolet} />
+              <Icon name="check-circle" size={24} color={colors.platinumSilver} />
             )}
           </TouchableOpacity>
         </GlassCard>
@@ -176,7 +176,7 @@ export function MassMailingScreen({ navigation }: any) {
                 style={styles.templateCard}
                 onPress={() => useTemplate(template)}
               >
-                <Icon name="file-document-outline" size={32} color={colors.ultraViolet} />
+                <Icon name="file-document-outline" size={32} color={colors.platinumSilver} />
                 <Text style={styles.templateName} numberOfLines={2}>
                   {template.name}
                 </Text>
@@ -233,7 +233,7 @@ export function MassMailingScreen({ navigation }: any) {
         {/* Preview */}
         <GlassCard style={styles.previewCard}>
           <View style={styles.previewHeader}>
-            <Icon name="eye-outline" size={20} color={colors.cyberBlue} />
+            <Icon name="eye-outline" size={20} color={colors.platinumSilver} />
             <Text style={styles.previewTitle}>Предпросмотр</Text>
           </View>
           <Text style={styles.previewSubject}>{subject || 'Тема письма'}</Text>
@@ -246,7 +246,7 @@ export function MassMailingScreen({ navigation }: any) {
       {/* Send Button */}
       <View style={styles.sendContainer}>
         <View style={styles.recipientCount}>
-          <Icon name="send" size={20} color={colors.cyberBlue} />
+          <Icon name="send" size={20} color={colors.platinumSilver} />
           <Text style={styles.recipientCountText}>
             Отправить {recipients === 'all' ? 89 : recipients === 'selected' ? selectedCount : 24} кандидатам
           </Text>
@@ -316,8 +316,8 @@ const styles = StyleSheet.create({
     marginBottom: sizes.sm,
   },
   recipientOptionActive: {
-    backgroundColor: 'rgba(142, 127, 255, 0.15)',
-    borderColor: colors.ultraViolet,
+    backgroundColor: 'rgba(232, 232, 237, 0.15)',
+    borderColor: colors.platinumSilver,
   },
   recipientOptionContent: {
     flexDirection: 'row',
@@ -334,7 +334,7 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   activeText: {
-    color: colors.ultraViolet,
+    color: colors.platinumSilver,
     fontWeight: '600',
   },
   recipientOptionSubtitle: {
@@ -400,14 +400,14 @@ const styles = StyleSheet.create({
     gap: sizes.sm,
   },
   variableChip: {
-    backgroundColor: 'rgba(57, 224, 248, 0.15)',
+    backgroundColor: 'rgba(232, 232, 237, 0.15)',
     borderRadius: sizes.radiusSmall,
     paddingHorizontal: sizes.sm,
     paddingVertical: 4,
   },
   variableText: {
     ...typography.caption,
-    color: colors.cyberBlue,
+    color: colors.platinumSilver,
     fontWeight: '600',
   },
   previewCard: {
@@ -421,7 +421,7 @@ const styles = StyleSheet.create({
   },
   previewTitle: {
     ...typography.bodyMedium,
-    color: colors.cyberBlue,
+    color: colors.platinumSilver,
   },
   previewSubject: {
     ...typography.h3,
@@ -453,6 +453,6 @@ const styles = StyleSheet.create({
   },
   recipientCountText: {
     ...typography.caption,
-    color: colors.cyberBlue,
+    color: colors.platinumSilver,
   },
 });
