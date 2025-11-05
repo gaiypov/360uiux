@@ -6,3 +6,4 @@
 export { useAuthStore } from './authStore';
 export { useFavoritesStore } from './favoritesStore';
 export { useApplicationsStore } from './applicationsStore';
+export { useToastStore } from './toastStore';

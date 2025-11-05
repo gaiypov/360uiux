@@ -1,9 +1,9 @@
 /**
  * 360° РАБОТА - Revolut Ultra Edition
- * API Service
+ * API Service with Retry Logic
  */
 
-import axios from 'axios';
+import axios, { AxiosError } from 'axios';
 import { Vacancy, User } from '@/types';
 
 const API_BASE_URL = process.env.API_BASE_URL || 'https://api.360rabota.ru/v1';
@@ -15,6 +15,38 @@ const api = axios.create({
     'Content-Type': 'application/json',
   },
 });
+
+// Retry configuration
+const MAX_RETRIES = 3;
+const RETRY_DELAY = 1000; // 1 second
+
+// Retry helper function
+async function retryRequest<T>(
+  fn: () => Promise<T>,
+  retries = MAX_RETRIES
+): Promise<T> {
+  try {
+    return await fn();
+  } catch (error) {
+    if (retries > 0 && shouldRetry(error as AxiosError)) {
+      await delay(RETRY_DELAY);
+      return retryRequest(fn, retries - 1);
+    }
+    throw error;
+  }
+}
+
+function shouldRetry(error: AxiosError): boolean {
+  // Retry on network errors or 5xx server errors
+  return (
+    !error.response ||
+    (error.response.status >= 500 && error.response.status < 600)
+  );
+}
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
 // Request interceptor для добавления токена
 api.interceptors.request.use(
