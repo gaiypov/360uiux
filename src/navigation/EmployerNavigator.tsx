@@ -20,6 +20,7 @@ import { DetailedAnalyticsScreen } from '@/screens/DetailedAnalyticsScreen';
 import { SettingsScreen } from '@/screens/SettingsScreen';
 import { NotificationsScreen } from '@/screens/NotificationsScreen';
 import { ChatScreen } from '@/screens/ChatScreen';
+import { WalletScreen, TopUpModal } from '@/screens/wallet';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -145,6 +146,15 @@ export function EmployerNavigator() {
       <Stack.Screen name="ABTesting" component={ABTestingScreen} />
       <Stack.Screen name="DetailedAnalytics" component={DetailedAnalyticsScreen} />
       <Stack.Screen name="Chat" component={ChatScreen} />
+      <Stack.Screen name="Wallet" component={WalletScreen} />
+      <Stack.Screen
+        name="TopUpModal"
+        component={TopUpModal}
+        options={{
+          presentation: 'transparentModal',
+          animation: 'fade',
+        }}
+      />
     </Stack.Navigator>
   );
 }

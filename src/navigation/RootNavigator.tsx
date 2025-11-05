@@ -8,8 +8,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { SplashScreen } from '@/screens/SplashScreen';
 import { OnboardingScreen } from '@/screens/OnboardingScreen';
-import { RoleSelectionScreen } from '@/screens/auth/RoleSelectionScreen';
-import { LoginScreen } from '@/screens/auth/LoginScreen';
+import { PhoneInputScreen, SMSVerificationScreen, RegistrationScreen } from '@/screens/auth';
 import { JobSeekerNavigator } from './JobSeekerNavigator';
 import { EmployerNavigator } from './EmployerNavigator';
 import { useAuthStore } from '@/stores/authStore';
@@ -49,27 +48,9 @@ export function RootNavigator() {
                 )}
               </Stack.Screen>
             )}
-            <Stack.Screen name="RoleSelection">
-              {() => (
-                <RoleSelectionScreen
-                  onSelectRole={(role) => {
-                    console.log('Selected role:', role);
-                    // Navigate to appropriate flow
-                  }}
-                />
-              )}
-            </Stack.Screen>
-            <Stack.Screen name="Login">
-              {({ navigation }) => (
-                <LoginScreen
-                  onLogin={() => {
-                    // In real app, call useAuthStore().login()
-                    useAuthStore.getState().login('test@example.com', 'password');
-                  }}
-                  onSignUp={() => console.log('Sign up')}
-                />
-              )}
-            </Stack.Screen>
+            <Stack.Screen name="PhoneInput" component={PhoneInputScreen} />
+            <Stack.Screen name="SMSVerification" component={SMSVerificationScreen} />
+            <Stack.Screen name="Registration" component={RegistrationScreen} />
           </>
         ) : (
           <Stack.Screen
