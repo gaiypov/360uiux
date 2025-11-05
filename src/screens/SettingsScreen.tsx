@@ -3,7 +3,7 @@
  * Settings Screen - Profile & Notifications Management
  */
 
-import React, { useState } from 'react';
+import React from 'react';
 import {
   View,
   Text,
@@ -18,21 +18,16 @@ import Animated, { FadeInDown } from 'react-native-reanimated';
 import { GlassCard, GlassButton, MetalIcon } from '@/components/ui';
 import { colors, typography, sizes } from '@/constants';
 import { useAuthStore } from '@/stores/authStore';
+import { useSettingsStore } from '@/stores/settingsStore';
 
 export function SettingsScreen({ navigation }: any) {
   const { user, logout } = useAuthStore();
-
-  // Notification Settings
-  const [pushEnabled, setPushEnabled] = useState(true);
-  const [emailEnabled, setEmailEnabled] = useState(true);
-  const [smsEnabled, setSmsEnabled] = useState(false);
-  const [newVacanciesAlert, setNewVacanciesAlert] = useState(true);
-  const [applicationUpdates, setApplicationUpdates] = useState(true);
-  const [chatMessages, setChatMessages] = useState(true);
-
-  // Privacy Settings
-  const [profileVisible, setProfileVisible] = useState(true);
-  const [showActivity, setShowActivity] = useState(false);
+  const {
+    notifications,
+    privacy,
+    updateNotificationSettings,
+    updatePrivacySettings,
+  } = useSettingsStore();
 
   const handleLogout = () => {
     logout();
@@ -94,24 +89,30 @@ export function SettingsScreen({ navigation }: any) {
               icon="bell"
               title="Push-уведомления"
               description="Получать уведомления в приложении"
-              value={pushEnabled}
-              onValueChange={setPushEnabled}
+              value={notifications.pushEnabled}
+              onValueChange={(value) =>
+                updateNotificationSettings({ pushEnabled: value })
+              }
             />
             <View style={styles.divider} />
             <SettingToggle
               icon="email"
               title="Email"
               description="Получать уведомления на почту"
-              value={emailEnabled}
-              onValueChange={setEmailEnabled}
+              value={notifications.emailEnabled}
+              onValueChange={(value) =>
+                updateNotificationSettings({ emailEnabled: value })
+              }
             />
             <View style={styles.divider} />
             <SettingToggle
               icon="message"
               title="SMS"
               description="Получать SMS уведомления"
-              value={smsEnabled}
-              onValueChange={setSmsEnabled}
+              value={notifications.smsEnabled}
+              onValueChange={(value) =>
+                updateNotificationSettings({ smsEnabled: value })
+              }
             />
           </GlassCard>
         </Animated.View>
@@ -124,24 +125,30 @@ export function SettingsScreen({ navigation }: any) {
               icon="briefcase-search"
               title="Новые вакансии"
               description="Подходящие вакансии по фильтрам"
-              value={newVacanciesAlert}
-              onValueChange={setNewVacanciesAlert}
+              value={notifications.vacancyNotifications}
+              onValueChange={(value) =>
+                updateNotificationSettings({ vacancyNotifications: value })
+              }
             />
             <View style={styles.divider} />
             <SettingToggle
               icon="clipboard-check"
               title="Статус откликов"
               description="Обновления по вашим откликам"
-              value={applicationUpdates}
-              onValueChange={setApplicationUpdates}
+              value={notifications.applicationNotifications}
+              onValueChange={(value) =>
+                updateNotificationSettings({ applicationNotifications: value })
+              }
             />
             <View style={styles.divider} />
             <SettingToggle
               icon="chat"
               title="Сообщения в чате"
               description="Новые сообщения от работодателей"
-              value={chatMessages}
-              onValueChange={setChatMessages}
+              value={notifications.chatNotifications}
+              onValueChange={(value) =>
+                updateNotificationSettings({ chatNotifications: value })
+              }
             />
           </GlassCard>
         </Animated.View>
@@ -154,16 +161,20 @@ export function SettingsScreen({ navigation }: any) {
               icon="eye"
               title="Видимость профиля"
               description="Работодатели могут найти ваш профиль"
-              value={profileVisible}
-              onValueChange={setProfileVisible}
+              value={privacy.profileVisible}
+              onValueChange={(value) =>
+                updatePrivacySettings({ profileVisible: value })
+              }
             />
             <View style={styles.divider} />
             <SettingToggle
               icon="chart-line"
               title="Показывать активность"
               description="Отображать время последней активности"
-              value={showActivity}
-              onValueChange={setShowActivity}
+              value={privacy.showActivityStatus}
+              onValueChange={(value) =>
+                updatePrivacySettings({ showActivityStatus: value })
+              }
             />
           </GlassCard>
         </Animated.View>

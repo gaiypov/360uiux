@@ -20,89 +20,88 @@ import Animated, { FadeInLeft, FadeInRight, FadeInDown } from 'react-native-rean
 import LinearGradient from 'react-native-linear-gradient';
 import { GlassCard } from '@/components/ui';
 import { colors, metalGradients, typography, sizes } from '@/constants';
-
-interface Message {
-  id: string;
-  text: string;
-  timestamp: Date;
-  isOwn: boolean;
-  read?: boolean;
-}
+import { useChatStore, type Message } from '@/stores/chatStore';
 
 interface ChatScreenProps {
   route: {
     params: {
+      conversationId?: string;
       employerName: string;
+      employerId?: string;
       employerLogo?: string;
       vacancyTitle?: string;
+      vacancyId?: string;
     };
   };
   navigation: any;
 }
 
-const MOCK_MESSAGES: Message[] = [
-  {
-    id: '1',
-    text: 'Добрый день! Мы рассмотрели ваше резюме и хотели бы пригласить вас на собеседование.',
-    timestamp: new Date(Date.now() - 1000 * 60 * 60 * 2),
-    isOwn: false,
-    read: true,
-  },
-  {
-    id: '2',
-    text: 'Здравствуйте! Благодарю за приглашение. В какое время вам удобно?',
-    timestamp: new Date(Date.now() - 1000 * 60 * 60),
-    isOwn: true,
-    read: true,
-  },
-  {
-    id: '3',
-    text: 'Отлично! Давайте назначим встречу на завтра в 15:00. Вам удобно?',
-    timestamp: new Date(Date.now() - 1000 * 60 * 30),
-    isOwn: false,
-    read: true,
-  },
-  {
-    id: '4',
-    text: 'Да, завтра в 15:00 мне подходит. Собеседование будет онлайн или в офисе?',
-    timestamp: new Date(Date.now() - 1000 * 60 * 15),
-    isOwn: true,
-    read: true,
-  },
-  {
-    id: '5',
-    text: 'Собеседование пройдет в офисе. Отправлю вам адрес и контактное лицо.',
-    timestamp: new Date(Date.now() - 1000 * 60 * 5),
-    isOwn: false,
-    read: false,
-  },
-];
-
 export function ChatScreen({ route, navigation }: ChatScreenProps) {
-  const { employerName, vacancyTitle } = route.params;
-  const [messages, setMessages] = useState(MOCK_MESSAGES);
+  const {
+    conversationId: routeConversationId,
+    employerName,
+    employerId = 'employer-1',
+    vacancyTitle = 'Вакансия',
+    vacancyId = 'vacancy-1',
+  } = route.params;
+
+  const {
+    conversations,
+    createConversation,
+    getConversation,
+    sendMessage: sendMessageToStore,
+    setActiveConversation,
+  } = useChatStore();
+
   const [inputText, setInputText] = useState('');
   const flatListRef = useRef<FlatList>(null);
 
+  // Get or create conversation
+  const conversationId = routeConversationId || `${employerId}-${vacancyId}`;
+  const conversation = getConversation(conversationId);
+
   useEffect(() => {
+    // Create conversation if it doesn't exist
+    if (!conversation) {
+      createConversation({
+        id: conversationId,
+        employerName,
+        employerId,
+        vacancyTitle,
+        vacancyId,
+      });
+
+      // Add mock messages for development
+      setTimeout(() => {
+        const conv = getConversation(conversationId);
+        if (conv && conv.messages.length === 0) {
+          sendMessageToStore(
+            conversationId,
+            'Добрый день! Мы рассмотрели ваше резюме и хотели бы пригласить вас на собеседование.'
+          );
+        }
+      }, 500);
+    }
+
+    // Set as active and mark as read
+    setActiveConversation(conversationId);
+
     // Scroll to bottom on mount
     setTimeout(() => {
       flatListRef.current?.scrollToEnd({ animated: false });
-    }, 100);
-  }, []);
+    }, 200);
+
+    return () => {
+      setActiveConversation(null);
+    };
+  }, [conversationId]);
+
+  const messages = conversation?.messages || [];
 
   const sendMessage = () => {
     if (!inputText.trim()) return;
 
-    const newMessage: Message = {
-      id: Date.now().toString(),
-      text: inputText.trim(),
-      timestamp: new Date(),
-      isOwn: true,
-      read: false,
-    };
-
-    setMessages(prev => [...prev, newMessage]);
+    sendMessageToStore(conversationId, inputText.trim());
     setInputText('');
 
     // Scroll to bottom

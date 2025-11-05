@@ -3,7 +3,7 @@
  * Notifications Screen - Activity Feed
  */
 
-import React, { useState } from 'react';
+import React, { useEffect } from 'react';
 import {
   View,
   Text,
@@ -16,73 +16,32 @@ import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import Animated, { FadeInDown, FadeInRight } from 'react-native-reanimated';
 import { GlassCard, MetalIcon } from '@/components/ui';
 import { colors, typography, sizes } from '@/constants';
-
-interface Notification {
-  id: string;
-  type: 'application' | 'message' | 'vacancy' | 'system';
-  title: string;
-  message: string;
-  timestamp: Date;
-  read: boolean;
-  actionUrl?: string;
-}
-
-const MOCK_NOTIFICATIONS: Notification[] = [
-  {
-    id: '1',
-    type: 'application',
-    title: 'Отклик просмотрен',
-    message: 'Компания "Яндекс" просмотрела ваш отклик на вакансию Senior React Native Developer',
-    timestamp: new Date(Date.now() - 1000 * 60 * 5), // 5 min ago
-    read: false,
-  },
-  {
-    id: '2',
-    type: 'message',
-    title: 'Новое сообщение',
-    message: 'HR-менеджер компании "Сбер" отправил вам сообщение',
-    timestamp: new Date(Date.now() - 1000 * 60 * 30), // 30 min ago
-    read: false,
-  },
-  {
-    id: '3',
-    type: 'vacancy',
-    title: 'Новая подходящая вакансия',
-    message: 'Найдена вакансия "Mobile Developer" в компании "ВКонтакте"',
-    timestamp: new Date(Date.now() - 1000 * 60 * 60 * 2), // 2 hours ago
-    read: true,
-  },
-  {
-    id: '4',
-    type: 'application',
-    title: 'Приглашение на собеседование',
-    message: 'Компания "Тинькофф" приглашает вас на собеседование',
-    timestamp: new Date(Date.now() - 1000 * 60 * 60 * 5), // 5 hours ago
-    read: true,
-  },
-  {
-    id: '5',
-    type: 'system',
-    title: 'Обновление приложения',
-    message: 'Доступна новая версия 360° РАБОТА Ultra Edition',
-    timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24), // 1 day ago
-    read: true,
-  },
-];
+import { useNotificationsStore, type Notification } from '@/stores/notificationsStore';
 
 export function NotificationsScreen({ navigation }: any) {
-  const [notifications, setNotifications] = useState(MOCK_NOTIFICATIONS);
-  const unreadCount = notifications.filter(n => !n.read).length;
+  const { notifications, unreadCount, markAsRead, markAllAsRead, addNotification } =
+    useNotificationsStore();
 
-  const markAsRead = (id: string) => {
-    setNotifications(prev =>
-      prev.map(n => (n.id === id ? { ...n, read: true } : n))
-    );
-  };
-
-  const markAllAsRead = () => {
-    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
-  };
+  // Initialize with mock data if empty (development only)
+  useEffect(() => {
+    if (notifications.length === 0) {
+      addNotification({
+        type: 'application',
+        title: 'Отклик просмотрен',
+        message: 'Компания "Яндекс" просмотрела ваш отклик на вакансию Senior React Native Developer',
+      });
+      addNotification({
+        type: 'message',
+        title: 'Новое сообщение',
+        message: 'HR-менеджер компании "Сбер" отправил вам сообщение',
+      });
+      addNotification({
+        type: 'vacancy',
+        title: 'Новая подходящая вакансия',
+        message: 'Найдена вакансия "Mobile Developer" в компании "ВКонтакте"',
+      });
+    }
+  }, []);
 
   const getNotificationIcon = (type: Notification['type']) => {
     switch (type) {
