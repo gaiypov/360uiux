@@ -1,12 +1,11 @@
 /**
- * 360° РАБОТА - Revolut Ultra Edition
+ * 360° РАБОТА - ULTRA EDITION
  * Stat Card Component
  */
 
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import LinearGradient from 'react-native-linear-gradient';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { GlassCard } from '@/components/ui';
 import { colors, typography, sizes } from '@/constants';
@@ -33,7 +32,7 @@ export function StatCard({
       <GlassCard style={styles.card}>
         <View style={styles.header}>
           <View style={styles.iconContainer}>
-            <Icon name={icon} size={24} color={colors.ultraViolet} />
+            <Icon name={icon} size={24} color={colors.platinumSilver} />
           </View>
           {change !== undefined && (
             <View
@@ -85,7 +84,7 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: 'rgba(142, 127, 255, 0.2)',
+    backgroundColor: 'rgba(232, 232, 237, 0.12)',
     alignItems: 'center',
     justifyContent: 'center',
   },

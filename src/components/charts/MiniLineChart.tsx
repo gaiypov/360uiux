@@ -1,5 +1,5 @@
 /**
- * 360° РАБОТА - Revolut Ultra Edition
+ * 360° РАБОТА - ULTRA EDITION
  * Mini Line Chart Component (Premium Style)
  */
 
@@ -19,7 +19,7 @@ export function MiniLineChart({
   data,
   width = Dimensions.get('window').width - 64,
   height = 120,
-  color = colors.ultraViolet,
+  color = colors.platinumSilver,
 }: MiniLineChartProps) {
   if (data.length === 0) return null;
 
@@ -49,8 +49,8 @@ export function MiniLineChart({
       <Svg width={width} height={height}>
         <Defs>
           <SvgGradient id="lineGradient" x1="0" y1="0" x2="1" y2="0">
-            <Stop offset="0" stopColor={colors.ultraViolet} stopOpacity="1" />
-            <Stop offset="1" stopColor={colors.cyberBlue} stopOpacity="1" />
+            <Stop offset="0" stopColor={colors.platinumSilver} stopOpacity="1" />
+            <Stop offset="1" stopColor={colors.liquidSilver} stopOpacity="1" />
           </SvgGradient>
         </Defs>
         <Path

@@ -1,5 +1,5 @@
 /**
- * 360° РАБОТА - Revolut Ultra Edition
+ * 360° РАБОТА - ULTRA EDITION
  * Loading Skeleton Card
  */
 
@@ -12,7 +12,6 @@ import Animated, {
   withTiming,
   withSequence,
 } from 'react-native-reanimated';
-import LinearGradient from 'react-native-linear-gradient';
 import { GlassCard } from './GlassCard';
 import { colors, sizes } from '@/constants';
 
@@ -104,13 +103,13 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: 'rgba(142, 127, 255, 0.3)',
+    backgroundColor: 'rgba(232, 232, 237, 0.15)',
   },
   companyLogo: {
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: 'rgba(142, 127, 255, 0.3)',
+    backgroundColor: 'rgba(232, 232, 237, 0.15)',
     marginBottom: sizes.lg,
   },
   headerText: {
@@ -119,7 +118,7 @@ const styles = StyleSheet.create({
   },
   textLine: {
     height: 14,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: colors.slateGray,
     borderRadius: sizes.radiusSmall,
   },
   textShort: {
@@ -133,7 +132,7 @@ const styles = StyleSheet.create({
   },
   title: {
     height: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    backgroundColor: colors.carbonGray,
     borderRadius: sizes.radiusSmall,
     marginBottom: sizes.sm,
   },
@@ -143,14 +142,14 @@ const styles = StyleSheet.create({
   badge: {
     width: 120,
     height: 32,
-    backgroundColor: 'rgba(142, 127, 255, 0.2)',
+    backgroundColor: 'rgba(232, 232, 237, 0.1)',
     borderRadius: sizes.radiusMedium,
     marginBottom: sizes.md,
   },
   statusBadge: {
     width: 80,
     height: 24,
-    backgroundColor: 'rgba(57, 224, 248, 0.2)',
+    backgroundColor: 'rgba(200, 200, 208, 0.15)',
     borderRadius: sizes.radiusSmall,
     marginBottom: sizes.sm,
   },
@@ -161,7 +160,7 @@ const styles = StyleSheet.create({
   chip: {
     width: 60,
     height: 24,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: colors.slateGray,
     borderRadius: sizes.radiusSmall,
   },
 });

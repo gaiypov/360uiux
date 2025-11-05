@@ -1,5 +1,5 @@
 /**
- * 360° РАБОТА - Revolut Ultra Edition
+ * 360° РАБОТА - ULTRA EDITION
  * Toast Notification Component
  */
 
@@ -90,7 +90,7 @@ export function Toast({
         style={styles.blur}
         blurType="dark"
         blurAmount={12}
-        reducedTransparencyFallbackColor={colors.graphiteGray}
+        reducedTransparencyFallbackColor={colors.graphiteBlack}
       >
         <View style={styles.content}>
           <View style={[styles.iconContainer, { backgroundColor: `${getColor()}20` }]}>

@@ -1,6 +1,6 @@
 /**
- * 360° РАБОТА - Revolut Ultra Edition
- * Neon Icon Button Component
+ * 360° РАБОТА - ULTRA EDITION
+ * Premium Icon Button Component
  */
 
 import React from 'react';
@@ -41,12 +41,12 @@ export function NeonIconButton({
       <Icon
         name={icon}
         size={size}
-        color={iconColor || (active ? colors.ultraViolet : colors.liquidSilver)}
+        color={iconColor || (active ? colors.platinumSilver : colors.chromeSilver)}
       />
       {active && (
         <View
           style={[
-            styles.neonRing,
+            styles.glowRing,
             {
               width: buttonSize + 8,
               height: buttonSize + 8,
@@ -69,16 +69,16 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   active: {
-    backgroundColor: 'rgba(142, 127, 255, 0.15)',
+    backgroundColor: 'rgba(232, 232, 237, 0.12)',
   },
-  neonRing: {
+  glowRing: {
     position: 'absolute',
     borderWidth: 2,
-    borderColor: colors.ultraViolet,
-    shadowColor: colors.ultraViolet,
+    borderColor: colors.platinumSilver,
+    shadowColor: colors.platinumSilver,
     shadowOffset: { width: 0, height: 0 },
     shadowRadius: 12,
-    shadowOpacity: 0.6,
+    shadowOpacity: 0.4,
     elevation: 8,
   },
 });
