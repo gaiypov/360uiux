@@ -1,140 +1,334 @@
 /**
- * 360° РАБОТА - Revolut Ultra Edition
- * API Service with Retry Logic
+ * 360° РАБОТА - ULTRA EDITION
+ * API Service - Backend Integration
  */
 
-import axios, { AxiosError } from 'axios';
-import { Vacancy, User } from '@/types';
+import axios, { AxiosInstance, AxiosError } from 'axios';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const API_BASE_URL = process.env.API_BASE_URL || 'https://api.360rabota.ru/v1';
+// API Configuration
+const API_BASE_URL = __DEV__
+  ? 'http://localhost:5000/api/v1'
+  : 'https://api.360rabota.ru/api/v1';
 
-const api = axios.create({
-  baseURL: API_BASE_URL,
-  timeout: 10000,
-  headers: {
-    'Content-Type': 'application/json',
-  },
-});
-
-// Retry configuration
-const MAX_RETRIES = 3;
-const RETRY_DELAY = 1000; // 1 second
-
-// Retry helper function
-async function retryRequest<T>(
-  fn: () => Promise<T>,
-  retries = MAX_RETRIES
-): Promise<T> {
-  try {
-    return await fn();
-  } catch (error) {
-    if (retries > 0 && shouldRetry(error as AxiosError)) {
-      await delay(RETRY_DELAY);
-      return retryRequest(fn, retries - 1);
-    }
-    throw error;
-  }
-}
-
-function shouldRetry(error: AxiosError): boolean {
-  // Retry on network errors or 5xx server errors
-  return (
-    !error.response ||
-    (error.response.status >= 500 && error.response.status < 600)
-  );
-}
-
-function delay(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-// Request interceptor для добавления токена
-api.interceptors.request.use(
-  (config) => {
-    // В реальном приложении здесь получение токена из AsyncStorage
-    // const token = await AsyncStorage.getItem('authToken');
-    // if (token) {
-    //   config.headers.Authorization = `Bearer ${token}`;
-    // }
-    return config;
-  },
-  (error) => {
-    return Promise.reject(error);
-  }
-);
-
-// Response interceptor для обработки ошибок
-api.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    if (error.response?.status === 401) {
-      // Handle unauthorized - logout user
-      console.log('Unauthorized - logging out');
-    }
-    return Promise.reject(error);
-  }
-);
-
-// Auth API
-export const authAPI = {
-  login: async (email: string, password: string) => {
-    const response = await api.post<{ user: User; token: string }>('/auth/login', {
-      email,
-      password,
-    });
-    return response.data;
-  },
-
-  register: async (email: string, password: string, role: 'jobseeker' | 'employer') => {
-    const response = await api.post<{ user: User; token: string }>('/auth/register', {
-      email,
-      password,
-      role,
-    });
-    return response.data;
-  },
-
-  logout: async () => {
-    await api.post('/auth/logout');
-  },
+const STORAGE_KEYS = {
+  ACCESS_TOKEN: '@360rabota:access_token',
+  REFRESH_TOKEN: '@360rabota:refresh_token',
+  USER: '@360rabota:user',
 };
 
-// Vacancy API
-export const vacancyAPI = {
-  getVacancies: async (page = 1, limit = 10) => {
-    const response = await api.get<{ vacancies: Vacancy[]; total: number }>(
-      '/vacancies',
-      {
-        params: { page, limit },
+// ===================================
+// Types
+// ===================================
+
+export interface AuthTokens {
+  accessToken: string;
+  refreshToken: string;
+}
+
+export interface User {
+  id: string;
+  phone: string;
+  email?: string;
+  role: 'jobseeker' | 'employer';
+  name?: string;
+  company_name?: string;
+  verified?: boolean;
+}
+
+export interface SendCodeResponse {
+  success: boolean;
+  message: string;
+  expiresAt: string;
+}
+
+export interface VerifyCodeResponse {
+  success: boolean;
+  requiresRegistration: boolean;
+  phone?: string;
+  user?: User;
+  tokens?: AuthTokens;
+}
+
+export interface RegisterJobSeekerRequest {
+  phone: string;
+  name: string;
+  profession: string;
+  city: string;
+}
+
+export interface RegisterEmployerRequest {
+  phone: string;
+  email: string;
+  company_name: string;
+  inn: string;
+  legal_address?: string;
+}
+
+export interface WalletBalance {
+  balance: number;
+  currency: string;
+}
+
+export interface Transaction {
+  id: string;
+  type: 'deposit' | 'withdrawal' | 'payment' | 'refund';
+  amount: number;
+  status: 'pending' | 'completed' | 'failed' | 'cancelled';
+  description?: string;
+  created_at: string;
+  completed_at?: string;
+}
+
+export interface InitPaymentRequest {
+  amount: number;
+  paymentSystem: 'tinkoff' | 'alfabank';
+  cardType?: 'business' | 'mir' | 'regular';
+}
+
+export interface InitPaymentResponse {
+  transactionId: string;
+  paymentUrl: string;
+  amount: number;
+}
+
+// ===================================
+// API Service Class
+// ===================================
+
+class APIService {
+  private client: AxiosInstance;
+  private accessToken: string | null = null;
+  private refreshToken: string | null = null;
+
+  constructor() {
+    this.client = axios.create({
+      baseURL: API_BASE_URL,
+      timeout: 30000,
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    // Request interceptor - добавляем токен
+    this.client.interceptors.request.use(
+      async (config) => {
+        if (!this.accessToken) {
+          await this.loadTokensFromStorage();
+        }
+
+        if (this.accessToken) {
+          config.headers.Authorization = `Bearer ${this.accessToken}`;
+        }
+
+        return config;
+      },
+      (error) => Promise.reject(error)
+    );
+
+    // Response interceptor - обработка 401 и refresh token
+    this.client.interceptors.response.use(
+      (response) => response,
+      async (error: AxiosError) => {
+        const originalRequest = error.config as any;
+
+        // Если 401 и еще не пытались обновить токен
+        if (error.response?.status === 401 && !originalRequest._retry) {
+          originalRequest._retry = true;
+
+          try {
+            // Пытаемся обновить токен
+            const newTokens = await this.refreshAccessToken();
+
+            if (newTokens) {
+              // Повторяем оригинальный запрос с новым токеном
+              originalRequest.headers.Authorization = `Bearer ${newTokens.accessToken}`;
+              return this.client(originalRequest);
+            }
+          } catch (refreshError) {
+            // Не удалось обновить токен - выходим
+            await this.logout();
+            return Promise.reject(refreshError);
+          }
+        }
+
+        return Promise.reject(error);
       }
     );
-    return response.data;
-  },
+  }
 
-  getVacancyById: async (id: string) => {
-    const response = await api.get<Vacancy>(`/vacancies/${id}`);
-    return response.data;
-  },
+  // ===================================
+  // Token Management
+  // ===================================
 
-  searchVacancies: async (query: string) => {
-    const response = await api.get<{ vacancies: Vacancy[] }>('/vacancies/search', {
-      params: { q: query },
-    });
-    return response.data;
-  },
-};
+  private async loadTokensFromStorage() {
+    try {
+      const [accessToken, refreshToken] = await Promise.all([
+        AsyncStorage.getItem(STORAGE_KEYS.ACCESS_TOKEN),
+        AsyncStorage.getItem(STORAGE_KEYS.REFRESH_TOKEN),
+      ]);
 
-// Application API
-export const applicationAPI = {
-  apply: async (vacancyId: string) => {
-    const response = await api.post('/applications', { vacancyId });
-    return response.data;
-  },
+      this.accessToken = accessToken;
+      this.refreshToken = refreshToken;
+    } catch (error) {
+      console.error('Error loading tokens:', error);
+    }
+  }
 
-  getMyApplications: async () => {
-    const response = await api.get('/applications/me');
-    return response.data;
-  },
-};
+  private async saveTokens(tokens: AuthTokens) {
+    try {
+      await Promise.all([
+        AsyncStorage.setItem(STORAGE_KEYS.ACCESS_TOKEN, tokens.accessToken),
+        AsyncStorage.setItem(STORAGE_KEYS.REFRESH_TOKEN, tokens.refreshToken),
+      ]);
 
-export default api;
+      this.accessToken = tokens.accessToken;
+      this.refreshToken = tokens.refreshToken;
+    } catch (error) {
+      console.error('Error saving tokens:', error);
+    }
+  }
+
+  private async refreshAccessToken(): Promise<AuthTokens | null> {
+    try {
+      if (!this.refreshToken) {
+        await this.loadTokensFromStorage();
+      }
+
+      if (!this.refreshToken) {
+        return null;
+      }
+
+      const response = await axios.post(`${API_BASE_URL}/auth/refresh`, {
+        refreshToken: this.refreshToken,
+      });
+
+      const tokens = response.data.tokens;
+      await this.saveTokens(tokens);
+
+      return tokens;
+    } catch (error) {
+      console.error('Error refreshing token:', error);
+      return null;
+    }
+  }
+
+  // ===================================
+  // AUTH API
+  // ===================================
+
+  async sendCode(phone: string): Promise<SendCodeResponse> {
+    const response = await this.client.post('/auth/send-code', { phone });
+    return response.data;
+  }
+
+  async verifyCode(phone: string, code: string): Promise<VerifyCodeResponse> {
+    const response = await this.client.post('/auth/verify-code', { phone, code });
+
+    // Если пользователь существует - сохраняем токены
+    if (response.data.tokens) {
+      await this.saveTokens(response.data.tokens);
+    }
+
+    // Сохраняем пользователя
+    if (response.data.user) {
+      await AsyncStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(response.data.user));
+    }
+
+    return response.data;
+  }
+
+  async registerJobSeeker(data: RegisterJobSeekerRequest): Promise<{ user: User; tokens: AuthTokens }> {
+    const response = await this.client.post('/auth/register/jobseeker', data);
+
+    await this.saveTokens(response.data.tokens);
+    await AsyncStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(response.data.user));
+
+    return response.data;
+  }
+
+  async registerEmployer(data: RegisterEmployerRequest): Promise<{ user: User; tokens: AuthTokens }> {
+    const response = await this.client.post('/auth/register/employer', data);
+
+    await this.saveTokens(response.data.tokens);
+    await AsyncStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(response.data.user));
+
+    return response.data;
+  }
+
+  async getCurrentUser(): Promise<User> {
+    const response = await this.client.get('/auth/me');
+    return response.data;
+  }
+
+  async logout(): Promise<void> {
+    try {
+      await this.client.post('/auth/logout');
+    } catch (error) {
+      console.error('Logout error:', error);
+    } finally {
+      // Очищаем токены и данные
+      await Promise.all([
+        AsyncStorage.removeItem(STORAGE_KEYS.ACCESS_TOKEN),
+        AsyncStorage.removeItem(STORAGE_KEYS.REFRESH_TOKEN),
+        AsyncStorage.removeItem(STORAGE_KEYS.USER),
+      ]);
+
+      this.accessToken = null;
+      this.refreshToken = null;
+    }
+  }
+
+  // ===================================
+  // BILLING API
+  // ===================================
+
+  async getWalletBalance(): Promise<WalletBalance> {
+    const response = await this.client.get('/billing/wallet/balance');
+    return response.data;
+  }
+
+  async getTransactions(params?: {
+    limit?: number;
+    offset?: number;
+    type?: string;
+  }): Promise<Transaction[]> {
+    const response = await this.client.get('/billing/wallet/transactions', { params });
+    return response.data.transactions;
+  }
+
+  async initPayment(data: InitPaymentRequest): Promise<InitPaymentResponse> {
+    const response = await this.client.post('/billing/payment/init', data);
+    return response.data;
+  }
+
+  async getPaymentStatus(paymentId: string): Promise<any> {
+    const response = await this.client.get(`/billing/payment/${paymentId}/status`);
+    return response.data;
+  }
+
+  // ===================================
+  // Helper Methods
+  // ===================================
+
+  async isAuthenticated(): Promise<boolean> {
+    try {
+      await this.loadTokensFromStorage();
+      return !!this.accessToken;
+    } catch (error) {
+      return false;
+    }
+  }
+
+  async getStoredUser(): Promise<User | null> {
+    try {
+      const userJson = await AsyncStorage.getItem(STORAGE_KEYS.USER);
+      return userJson ? JSON.parse(userJson) : null;
+    } catch (error) {
+      return null;
+    }
+  }
+}
+
+// Export singleton instance
+export const api = new APIService();
