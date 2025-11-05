@@ -11,6 +11,7 @@ import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { BlurView } from '@react-native-community/blur';
 import { colors, sizes } from '@/constants';
 import { CreateVacancyScreen } from '@/screens/employer/CreateVacancyScreen';
+import { CreateVacancyScreenV2 } from '@/screens/employer/CreateVacancyScreenV2';
 import { CandidatesScreen } from '@/screens/employer/CandidatesScreen';
 import { AnalyticsScreen } from '@/screens/employer/AnalyticsScreen';
 import { MassMailingScreen } from '@/screens/employer/MassMailingScreen';
@@ -21,6 +22,7 @@ import { SettingsScreen } from '@/screens/SettingsScreen';
 import { NotificationsScreen } from '@/screens/NotificationsScreen';
 import { ChatScreen } from '@/screens/ChatScreen';
 import { WalletScreen, TopUpModal } from '@/screens/wallet';
+import { VideoRecordScreen, VideoPlayerScreen } from '@/screens/video';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -141,6 +143,9 @@ export function EmployerNavigator() {
     >
       <Stack.Screen name="Tabs" component={EmployerTabs} />
       <Stack.Screen name="CreateVacancy" component={CreateVacancyScreen} />
+      <Stack.Screen name="CreateVacancyV2" component={CreateVacancyScreenV2} />
+      <Stack.Screen name="VideoRecord" component={VideoRecordScreen} />
+      <Stack.Screen name="VideoPlayer" component={VideoPlayerScreen} />
       <Stack.Screen name="MassMailing" component={MassMailingScreen} />
       <Stack.Screen name="Automation" component={AutomationScreen} />
       <Stack.Screen name="ABTesting" component={ABTestingScreen} />

@@ -16,6 +16,7 @@ import {
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { GlassCard, GlassButton, MetalIcon } from '@/components/ui';
+import { RoleSwitcher } from '@/components/RoleSwitcher';
 import { colors, typography, sizes } from '@/constants';
 import { useAuthStore } from '@/stores/authStore';
 import { useSettingsStore } from '@/stores/settingsStore';
@@ -84,6 +85,14 @@ export function SettingsScreen({ navigation }: any) {
               showArrow
             />
           </GlassCard>
+        </Animated.View>
+
+        {/* Role Switcher */}
+        <Animated.View entering={FadeInDown.delay(150).duration(400)}>
+          <Text style={styles.sectionTitle}>РЕЖИМ РАБОТЫ</Text>
+          <View style={styles.roleSwitcherContainer}>
+            <RoleSwitcher />
+          </View>
         </Animated.View>
 
         {/* Notifications Section */}
@@ -321,6 +330,10 @@ const styles = StyleSheet.create({
     marginBottom: sizes.md,
   },
   card: {
+    marginHorizontal: sizes.lg,
+    marginBottom: sizes.md,
+  },
+  roleSwitcherContainer: {
     marginHorizontal: sizes.lg,
     marginBottom: sizes.md,
   },

@@ -17,9 +17,11 @@ import { ProfileScreen } from '@/screens/jobseeker/ProfileScreen';
 import { FavoritesScreen } from '@/screens/jobseeker/FavoritesScreen';
 import { VacancyDetailScreen } from '@/screens/jobseeker/VacancyDetailScreen';
 import { CompanyDetailScreen } from '@/screens/jobseeker/CompanyDetailScreen';
+import { CreateResumeScreen } from '@/screens/jobseeker/CreateResumeScreen';
 import { SettingsScreen } from '@/screens/SettingsScreen';
 import { NotificationsScreen } from '@/screens/NotificationsScreen';
 import { ChatScreen } from '@/screens/ChatScreen';
+import { VideoRecordScreen, VideoPlayerScreen } from '@/screens/video';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -136,6 +138,9 @@ export function JobSeekerNavigator() {
       <Stack.Screen name="CompanyDetail" component={CompanyDetailScreen} />
       <Stack.Screen name="Favorites" component={FavoritesScreen} />
       <Stack.Screen name="Profile" component={ProfileScreen} />
+      <Stack.Screen name="CreateResume" component={CreateResumeScreen} />
+      <Stack.Screen name="VideoRecord" component={VideoRecordScreen} />
+      <Stack.Screen name="VideoPlayer" component={VideoPlayerScreen} />
       <Stack.Screen name="Chat" component={ChatScreen} />
     </Stack.Navigator>
   );

@@ -13,6 +13,7 @@ interface AuthState {
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
   setUser: (user: User) => void;
+  switchRole: (role: 'jobseeker' | 'employer') => void;
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
@@ -56,5 +57,11 @@ export const useAuthStore = create<AuthState>((set) => ({
       user,
       isAuthenticated: true,
     });
+  },
+
+  switchRole: (role: 'jobseeker' | 'employer') => {
+    set((state) => ({
+      user: state.user ? { ...state.user, role } : null,
+    }));
   },
 }));
