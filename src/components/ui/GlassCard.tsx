@@ -1,16 +1,19 @@
 /**
- * 360° РАБОТА - Revolut Ultra Edition
- * Glass Card Component
+ * 360° РАБОТА - ULTRA EDITION
+ * Premium Glass Card Component with Variants
  */
 
 import React from 'react';
 import { View, StyleSheet, ViewStyle } from 'react-native';
 import { BlurView } from '@react-native-community/blur';
-import { colors, sizes } from '@/constants';
+import { glassVariants, colors, sizes } from '@/constants';
+
+type GlassVariant = 'light' | 'medium' | 'strong' | 'dark';
 
 interface GlassCardProps {
   children: React.ReactNode;
   style?: ViewStyle;
+  variant?: GlassVariant;
   blurAmount?: number;
   noPadding?: boolean;
 }
@@ -18,16 +21,29 @@ interface GlassCardProps {
 export function GlassCard({
   children,
   style,
-  blurAmount = 12,
+  variant = 'medium',
+  blurAmount,
   noPadding = false,
 }: GlassCardProps) {
+  const glassConfig = glassVariants[variant];
+  const finalBlurAmount = blurAmount ?? glassConfig.blur;
+
   return (
-    <View style={[styles.container, style]}>
+    <View
+      style={[
+        styles.container,
+        {
+          backgroundColor: glassConfig.background,
+          borderColor: glassConfig.border,
+        },
+        style,
+      ]}
+    >
       <BlurView
         style={styles.blur}
         blurType="dark"
-        blurAmount={blurAmount}
-        reducedTransparencyFallbackColor={colors.graphiteGray}
+        blurAmount={finalBlurAmount}
+        reducedTransparencyFallbackColor={colors.graphiteBlack}
       >
         <View style={[styles.content, noPadding && styles.noPadding]}>
           {children}
@@ -41,9 +57,7 @@ const styles = StyleSheet.create({
   container: {
     borderRadius: sizes.radiusLarge,
     overflow: 'hidden',
-    backgroundColor: colors.glassBackground,
     borderWidth: 1,
-    borderColor: colors.glassBorder,
   },
   blur: {
     flex: 1,

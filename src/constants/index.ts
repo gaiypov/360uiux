@@ -1,6 +1,6 @@
 /**
- * 360° РАБОТА - Revolut Ultra Edition
- * Design System - Central Export
+ * 360° РАБОТА - ULTRA EDITION
+ * Premium Design System - Central Export
  */
 
 export * from './colors';

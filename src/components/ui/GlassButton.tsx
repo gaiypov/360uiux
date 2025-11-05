@@ -1,6 +1,6 @@
 /**
- * 360° РАБОТА - Revolut Ultra Edition
- * Glass Button Component
+ * 360° РАБОТА - ULTRA EDITION
+ * Premium Glass Button Component
  */
 
 import React from 'react';
@@ -13,7 +13,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
-import { colors, typography, sizes } from '@/constants';
+import { colors, metalGradients, typography, sizes } from '@/constants';
 
 interface GlassButtonProps {
   title: string;
@@ -41,13 +41,13 @@ export function GlassButton({
         activeOpacity={0.8}
       >
         <LinearGradient
-          colors={[colors.ultraViolet, colors.cyberBlue]}
+          colors={metalGradients.platinum}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={styles.gradient}
         >
           {loading ? (
-            <ActivityIndicator color={colors.softWhite} />
+            <ActivityIndicator color={colors.graphiteBlack} />
           ) : (
             <Text style={styles.primaryText}>{title}</Text>
           )}
@@ -100,21 +100,21 @@ const styles = StyleSheet.create({
     paddingHorizontal: sizes.lg,
     alignItems: 'center',
     justifyContent: 'center',
-    // Glow effect
-    shadowColor: colors.ultraViolet,
-    shadowOffset: { width: 0, height: 0 },
-    shadowRadius: 20,
-    shadowOpacity: 0.3,
+    // Premium glow effect
+    shadowColor: colors.platinumSilver,
+    shadowOffset: sizes.glowSoft.offset,
+    shadowRadius: sizes.glowSoft.radius,
+    shadowOpacity: sizes.glowSoft.opacity,
     elevation: 8,
   },
   primaryText: {
     ...typography.button,
-    color: colors.softWhite,
+    color: colors.graphiteBlack,
   } as TextStyle,
   secondary: {
     backgroundColor: 'transparent',
     borderWidth: 1,
-    borderColor: colors.glassBorder,
+    borderColor: colors.steelGray,
     paddingVertical: sizes.md,
     paddingHorizontal: sizes.lg,
   },
@@ -129,6 +129,6 @@ const styles = StyleSheet.create({
   },
   ghostText: {
     ...typography.bodyMedium,
-    color: colors.liquidSilver,
+    color: colors.chromeSilver,
   } as TextStyle,
 });
