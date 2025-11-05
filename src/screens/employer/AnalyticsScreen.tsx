@@ -21,7 +21,7 @@ import { colors, metalGradients, typography, sizes } from "@/constants";
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
-export function AnalyticsScreen() {
+export function AnalyticsScreen({ navigation }: any) {
   const [period, setPeriod] = useState<'week' | 'month' | 'year'>('week');
 
   // Mock data
@@ -52,7 +52,17 @@ export function AnalyticsScreen() {
       >
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.title}>Аналитика</Text>
+          <View style={styles.headerTop}>
+            <Text style={styles.title}>Аналитика</Text>
+            <TouchableOpacity
+              style={styles.detailedButton}
+              onPress={() => navigation.navigate('DetailedAnalytics')}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.detailedButtonText}>Подробнее</Text>
+              <Icon name="arrow-right" size={16} color={colors.platinumSilver} />
+            </TouchableOpacity>
+          </View>
 
           {/* Period Selector */}
           <View style={styles.periodSelector}>
@@ -241,10 +251,28 @@ const styles = StyleSheet.create({
     marginBottom: sizes.lg,
     marginTop: sizes.lg,
   },
+  headerTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: sizes.md,
+  },
   title: {
     ...typography.h1,
     color: colors.softWhite,
-    marginBottom: sizes.md,
+  },
+  detailedButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: sizes.md,
+    paddingVertical: sizes.sm,
+    backgroundColor: colors.carbonGray,
+    borderRadius: sizes.radiusMedium,
+  },
+  detailedButtonText: {
+    ...typography.bodyMedium,
+    color: colors.platinumSilver,
   },
   periodSelector: {
     flexDirection: 'row',

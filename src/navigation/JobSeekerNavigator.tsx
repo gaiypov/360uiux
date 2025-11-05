@@ -1,5 +1,5 @@
 /**
- * 360° РАБОТА - Revolut Ultra Edition
+ * 360° РАБОТА - ULTRA EDITION
  * Job Seeker Navigation (Tab + Stack)
  */
 
@@ -17,6 +17,9 @@ import { ProfileScreen } from '@/screens/jobseeker/ProfileScreen';
 import { FavoritesScreen } from '@/screens/jobseeker/FavoritesScreen';
 import { VacancyDetailScreen } from '@/screens/jobseeker/VacancyDetailScreen';
 import { CompanyDetailScreen } from '@/screens/jobseeker/CompanyDetailScreen';
+import { SettingsScreen } from '@/screens/SettingsScreen';
+import { NotificationsScreen } from '@/screens/NotificationsScreen';
+import { ChatScreen } from '@/screens/ChatScreen';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -28,8 +31,8 @@ function JobSeekerTabs() {
       screenOptions={{
         headerShown: false,
         tabBarStyle: styles.tabBar,
-        tabBarActiveTintColor: colors.ultraViolet,
-        tabBarInactiveTintColor: colors.liquidSilver,
+        tabBarActiveTintColor: colors.platinumSilver,
+        tabBarInactiveTintColor: colors.chromeSilver,
         tabBarLabelStyle: styles.tabBarLabel,
         tabBarBackground: () => (
           Platform.OS === 'ios' ? (
@@ -37,7 +40,7 @@ function JobSeekerTabs() {
               style={styles.blurView}
               blurType="dark"
               blurAmount={12}
-              reducedTransparencyFallbackColor={colors.graphiteGray}
+              reducedTransparencyFallbackColor={colors.graphiteBlack}
             />
           ) : (
             <View style={styles.androidBackground} />
@@ -88,13 +91,27 @@ function JobSeekerTabs() {
         }}
       />
       <Tab.Screen
-        name="Profile"
-        component={ProfileScreen}
+        name="Notifications"
+        component={NotificationsScreen}
         options={{
-          title: 'ПРОФИЛЬ',
+          title: 'УВЕДОМЛЕНИЯ',
           tabBarIcon: ({ focused, color, size }) => (
             <Icon
-              name={focused ? 'account' : 'account-outline'}
+              name={focused ? 'bell' : 'bell-outline'}
+              size={size}
+              color={color}
+            />
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="Settings"
+        component={SettingsScreen}
+        options={{
+          title: 'НАСТРОЙКИ',
+          tabBarIcon: ({ focused, color, size }) => (
+            <Icon
+              name={focused ? 'cog' : 'cog-outline'}
               size={size}
               color={color}
             />
@@ -118,6 +135,8 @@ export function JobSeekerNavigator() {
       <Stack.Screen name="VacancyDetail" component={VacancyDetailScreen} />
       <Stack.Screen name="CompanyDetail" component={CompanyDetailScreen} />
       <Stack.Screen name="Favorites" component={FavoritesScreen} />
+      <Stack.Screen name="Profile" component={ProfileScreen} />
+      <Stack.Screen name="Chat" component={ChatScreen} />
     </Stack.Navigator>
   );
 }
@@ -150,7 +169,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: colors.graphiteGray,
+    backgroundColor: colors.graphiteBlack,
   },
   placeholder: {
     flex: 1,
