@@ -1,6 +1,6 @@
 /**
- * 360° РАБОТА - Revolut Ultra Edition
- * Premium Vacancy Card Component (TikTok-style)
+ * 360° РАБОТА - ULTRA EDITION
+ * Ultra Vacancy Card Component (TikTok-style)
  */
 
 import React, { useRef, useEffect } from 'react';
@@ -20,7 +20,7 @@ import Animated, {
   useAnimatedStyle,
   withSpring,
 } from 'react-native-reanimated';
-import { colors, typography, sizes } from '@/constants';
+import { colors, metalGradients, glassVariants, typography, sizes } from '@/constants';
 import { Vacancy } from '@/types';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -73,7 +73,7 @@ export function PremiumVacancyCard({
 
       {/* Темный градиент снизу */}
       <LinearGradient
-        colors={['transparent', 'rgba(5,5,5,0.9)']}
+        colors={['transparent', 'rgba(2,2,4,0.95)']}
         style={styles.bottomGradient}
       />
 
@@ -82,24 +82,24 @@ export function PremiumVacancyCard({
         <BlurView
           style={styles.glassCard}
           blurType="dark"
-          blurAmount={12}
-          reducedTransparencyFallbackColor={colors.graphiteGray}
+          blurAmount={glassVariants.dark.blur}
+          reducedTransparencyFallbackColor={colors.graphiteBlack}
         >
           {/* Header с компанией */}
           <View style={styles.header}>
             <View style={styles.companyRow}>
               <View style={styles.companyIcon}>
-                <Icon name="office-building" size={20} color={colors.ultraViolet} />
+                <Icon name="office-building" size={20} color={colors.platinumSilver} />
               </View>
               <Text style={styles.companyName}>
                 {vacancy.employer.companyName}
               </Text>
               {vacancy.employer.verified && (
-                <Icon name="check-decagram" size={16} color={colors.cyberBlue} />
+                <Icon name="check-decagram" size={16} color={colors.platinumSilver} />
               )}
             </View>
             <View style={styles.ratingBadge}>
-              <Icon name="star" size={14} color={colors.cyberBlue} />
+              <Icon name="star" size={14} color={colors.platinumSilver} />
               <Text style={styles.rating}>{vacancy.employer.rating.toFixed(1)}</Text>
             </View>
           </View>
@@ -109,10 +109,10 @@ export function PremiumVacancyCard({
             {vacancy.title}
           </Text>
 
-          {/* Зарплата с неоновым акцентом */}
+          {/* Зарплата с metal gradient */}
           <View style={styles.salaryContainer}>
             <LinearGradient
-              colors={[colors.ultraViolet, colors.cyberBlue]}
+              colors={metalGradients.platinum}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
               style={styles.salaryGradient}
@@ -189,12 +189,12 @@ export function PremiumVacancyCard({
           onPress={onApply}
         >
           <LinearGradient
-            colors={[colors.ultraViolet, colors.cyberBlue]}
+            colors={metalGradients.platinum}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
             style={styles.ctaGradient}
           >
-            <Icon name="flash" size={20} color={colors.softWhite} />
+            <Icon name="flash" size={20} color={colors.graphiteBlack} />
             <Text style={styles.ctaText}>В РАБОТУ</Text>
           </LinearGradient>
         </TouchableOpacity>
@@ -232,9 +232,9 @@ const styles = StyleSheet.create({
   glassCard: {
     borderRadius: sizes.radiusXLarge,
     overflow: 'hidden',
-    backgroundColor: colors.glassBackground,
+    backgroundColor: glassVariants.dark.background,
     borderWidth: 1,
-    borderColor: colors.glassBorder,
+    borderColor: glassVariants.dark.border,
     padding: sizes.lg,
   },
   header: {
@@ -253,7 +253,7 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: 'rgba(142, 127, 255, 0.2)',
+    backgroundColor: 'rgba(232, 232, 237, 0.12)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -265,7 +265,7 @@ const styles = StyleSheet.create({
   ratingBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(57, 224, 248, 0.15)',
+    backgroundColor: 'rgba(232, 232, 237, 0.15)',
     paddingHorizontal: sizes.sm,
     paddingVertical: 4,
     borderRadius: sizes.radiusSmall,
@@ -273,7 +273,7 @@ const styles = StyleSheet.create({
   },
   rating: {
     ...typography.caption,
-    color: colors.cyberBlue,
+    color: colors.platinumSilver,
     fontWeight: '600',
   },
   title: {
@@ -293,7 +293,7 @@ const styles = StyleSheet.create({
   },
   salary: {
     ...typography.numbers,
-    color: colors.softWhite,
+    color: colors.graphiteBlack,
     fontWeight: '700',
   },
   locationRow: {
@@ -312,12 +312,12 @@ const styles = StyleSheet.create({
     gap: sizes.sm,
   },
   benefitChip: {
-    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+    backgroundColor: colors.carbonGray,
     borderRadius: sizes.radiusSmall,
     paddingHorizontal: sizes.md,
     paddingVertical: 6,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.15)',
+    borderColor: colors.steelGray,
   },
   benefitText: {
     ...typography.caption,
@@ -336,9 +336,9 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+    backgroundColor: glassVariants.strong.background,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.15)',
+    borderColor: glassVariants.strong.border,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 6,
@@ -356,10 +356,10 @@ const styles = StyleSheet.create({
   ctaButton: {
     borderRadius: sizes.radiusMedium,
     overflow: 'hidden',
-    shadowColor: colors.ultraViolet,
-    shadowOffset: { width: 0, height: 0 },
-    shadowRadius: 24,
-    shadowOpacity: 0.5,
+    shadowColor: colors.platinumSilver,
+    shadowOffset: sizes.glowSoft.offset,
+    shadowRadius: sizes.glowSoft.radius,
+    shadowOpacity: sizes.glowSoft.opacity,
     elevation: 12,
   },
   ctaGradient: {
@@ -371,7 +371,7 @@ const styles = StyleSheet.create({
   },
   ctaText: {
     ...typography.h3,
-    color: colors.softWhite,
+    color: colors.graphiteBlack,
     fontWeight: '700',
     letterSpacing: 2,
   },
