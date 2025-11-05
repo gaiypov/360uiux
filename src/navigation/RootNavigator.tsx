@@ -11,6 +11,7 @@ import { OnboardingScreen } from '@/screens/OnboardingScreen';
 import { RoleSelectionScreen } from '@/screens/auth/RoleSelectionScreen';
 import { LoginScreen } from '@/screens/auth/LoginScreen';
 import { JobSeekerNavigator } from './JobSeekerNavigator';
+import { EmployerNavigator } from './EmployerNavigator';
 import { useAuthStore } from '@/stores/authStore';
 
 const Stack = createNativeStackNavigator();
@@ -18,7 +19,7 @@ const Stack = createNativeStackNavigator();
 export function RootNavigator() {
   const [showSplash, setShowSplash] = useState(true);
   const [showOnboarding, setShowOnboarding] = useState(true);
-  const { isAuthenticated } = useAuthStore();
+  const { isAuthenticated, user } = useAuthStore();
 
   useEffect(() => {
     // В реальном приложении здесь проверка AsyncStorage
@@ -73,7 +74,9 @@ export function RootNavigator() {
         ) : (
           <Stack.Screen
             name="MainApp"
-            component={JobSeekerNavigator}
+            component={
+              user?.role === 'employer' ? EmployerNavigator : JobSeekerNavigator
+            }
           />
         )}
       </Stack.Navigator>
