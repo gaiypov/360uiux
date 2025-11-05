@@ -19,6 +19,7 @@ import applicationRoutes from './routes/application.routes';
 import chatRoutes from './routes/chat.routes';
 import userRoutes from './routes/user.routes';
 import videoRoutes from './routes/video.routes';
+import moderationRoutes from './routes/moderation.routes';
 
 // Initialize Express
 const app: Express = express();
@@ -72,6 +73,7 @@ app.use('/api/v1/applications', applicationRoutes);
 app.use('/api/v1/chats', chatRoutes);
 app.use('/api/v1/users', userRoutes);
 app.use('/api/v1', videoRoutes); // Video routes
+app.use('/api/v1/moderation', moderationRoutes); // Moderation routes
 
 // 404 handler
 app.use((req: Request, res: Response) => {

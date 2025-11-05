@@ -317,7 +317,17 @@ export interface JWTPayload {
 // ===================================
 
 export type VideoType = 'vacancy' | 'resume';
-export type VideoStatus = 'uploading' | 'processing' | 'ready' | 'failed';
+export type VideoStatus =
+  | 'uploading'           // ⬆️ Загружается
+  | 'transcoding'         // 🔄 Обработка
+  | 'auto_moderation'     // 🤖 AI проверяет
+  | 'pending_moderation'  // ⏳ Ждёт модератора
+  | 'approved'            // ✅ Опубликовано
+  | 'rejected'            // ❌ Отклонено
+  | 'flagged'             // 🚩 Есть жалобы
+  | 'blocked';            // 🚫 Заблокировано
+
+export type ModerationStatus = 'pending' | 'in_review' | 'approved' | 'rejected';
 
 export interface Video {
   id: string;
@@ -334,8 +344,81 @@ export interface Video {
   status: VideoStatus;
   views: number;
   provider: 'api.video' | 'yandex'; // Какой провайдер использовался
+
+  // Moderation fields
+  moderation_status: ModerationStatus;
+  moderated_by?: string; // User ID модератора
+  moderated_at?: Date;
+  ai_check_passed: boolean;
+  ai_check_results?: Record<string, any>; // JSON результаты AI проверки
+  rejection_reason?: string;
+  complaints_count: number;
+  priority_moderation: boolean; // Приоритетная модерация (+500₽)
+
   created_at: Date;
   updated_at: Date;
+}
+
+// ===================================
+// VIDEO COMPLAINTS
+// ===================================
+
+export type ComplaintReason =
+  | 'inappropriate_content'
+  | 'misleading_info'
+  | 'spam'
+  | 'violence'
+  | 'harassment'
+  | 'copyright'
+  | 'other';
+
+export type ComplaintStatus =
+  | 'pending'      // Ожидает рассмотрения
+  | 'in_review'    // На рассмотрении модератором
+  | 'confirmed'    // Жалоба подтверждена
+  | 'dismissed'    // Жалоба отклонена
+  | 'resolved';    // Проблема решена
+
+export interface VideoComplaint {
+  id: string;
+  video_id: string;
+  user_id: string;
+  reason: ComplaintReason;
+  description?: string;
+  status: ComplaintStatus;
+  reviewed_by?: string; // User ID модератора
+  reviewed_at?: Date;
+  moderator_comment?: string;
+  created_at: Date;
+  updated_at: Date;
+}
+
+// ===================================
+// MODERATION LOGS
+// ===================================
+
+export type ModerationAction =
+  | 'ai_check_started'
+  | 'ai_check_completed'
+  | 'ai_check_failed'
+  | 'manual_review_started'
+  | 'manual_review_completed'
+  | 'approved'
+  | 'rejected'
+  | 'flagged'
+  | 'blocked'
+  | 'unblocked'
+  | 'complaint_received'
+  | 'complaint_resolved';
+
+export interface ModerationLog {
+  id: string;
+  video_id: string;
+  action: ModerationAction;
+  performed_by?: string; // null для AI
+  details?: Record<string, any>;
+  comment?: string;
+  created_at: Date;
 }
 
 export interface UploadVideoRequest {
@@ -353,6 +436,44 @@ export interface VideoStatsResponse {
   views: number;
   duration: number;
   completion: number;
+}
+
+// ===================================
+// MODERATION API TYPES
+// ===================================
+
+export interface SubmitComplaintRequest {
+  video_id: string;
+  reason: ComplaintReason;
+  description?: string;
+}
+
+export interface ReviewComplaintRequest {
+  complaint_id: string;
+  status: ComplaintStatus;
+  comment?: string;
+}
+
+export interface ModerateVideoRequest {
+  video_id: string;
+  action: 'approve' | 'reject' | 'flag' | 'block';
+  reason?: string;
+  comment?: string;
+}
+
+export interface GetPendingVideosResponse {
+  videos: Video[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
+export interface AICheckResult {
+  passed: boolean;
+  confidence: number;
+  labels?: string[];
+  issues?: string[];
+  details?: Record<string, any>;
 }
 
 // ===================================
