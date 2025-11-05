@@ -12,28 +12,85 @@ import {
   ScrollView,
   TouchableOpacity,
   StatusBar,
+  FlatList,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import Animated, { FadeInDown } from 'react-native-reanimated';
-import { GlassCard, GlassButton } from '@/components/ui';
-import { colors, metalGradients, typography, sizes } from "@/constants";
+import LinearGradient from 'react-native-linear-gradient';
+import { GlassCard, GlassButton, PressableScale, ShimmerLoader } from '@/components/ui';
+import { FilterModal, type FilterValues } from '@/components/FilterModal';
+import { colors, metalGradients, typography, sizes } from '@/constants';
+import { useToastStore } from '@/stores/toastStore';
+import { haptics } from '@/utils/haptics';
 import { Vacancy } from '@/types';
 
-export function SearchScreen() {
+export function SearchScreen({ navigation }: any) {
+  const { showToast } = useToastStore();
   const [searchQuery, setSearchQuery] = useState('');
-  const [showFilters, setShowFilters] = useState(false);
-  const [filters, setFilters] = useState({
-    salaryMin: '',
-    salaryMax: '',
-    city: '',
-    experience: 'any',
-    schedule: 'any',
+  const [showFilterModal, setShowFilterModal] = useState(false);
+  const [filters, setFilters] = useState<FilterValues>({
+    cities: [],
+    experience: [],
+    employment: [],
+    schedule: [],
   });
   const [results, setResults] = useState<Vacancy[]>([]);
+  const [searching, setSearching] = useState(false);
 
-  const handleSearch = () => {
-    // TODO: Implement search with filters
-    console.log('Searching:', searchQuery, filters);
+  const activeFiltersCount =
+    filters.cities.length +
+    filters.experience.length +
+    filters.employment.length +
+    filters.schedule.length +
+    (filters.salaryMin ? 1 : 0) +
+    (filters.salaryMax ? 1 : 0);
+
+  const handleSearch = async () => {
+    if (!searchQuery.trim() && activeFiltersCount === 0) {
+      haptics.error();
+      showToast('warning', 'Введите запрос или выберите фильтры');
+      return;
+    }
+
+    haptics.light();
+    setSearching(true);
+
+    try {
+      // Simulate API call
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+
+      // Mock results
+      const mockResults: Vacancy[] = [
+        // Add mock vacancies here
+      ];
+
+      setResults(mockResults);
+      haptics.success();
+
+      if (mockResults.length === 0) {
+        showToast('info', 'Вакансии не найдены. Попробуйте изменить параметры поиска');
+      } else {
+        showToast('success', `Найдено ${mockResults.length} вакансий`);
+      }
+    } catch (error) {
+      haptics.error();
+      showToast('error', 'Ошибка поиска');
+    } finally {
+      setSearching(false);
+    }
+  };
+
+  const handleApplyFilters = (newFilters: FilterValues) => {
+    haptics.medium();
+    setFilters(newFilters);
+    showToast('success', 'Фильтры применены');
+    handleSearch();
+  };
+
+  const handleClearSearch = () => {
+    haptics.light();
+    setSearchQuery('');
+    setResults([]);
   };
 
   return (
@@ -51,46 +108,102 @@ export function SearchScreen() {
           <Text style={styles.subtitle}>Найди работу мечты</Text>
         </View>
 
-        {/* Search Input */}
-        <GlassCard style={styles.searchCard}>
-          <View style={styles.searchInputContainer}>
-            <Icon name="magnify" size={24} color={colors.liquidSilver} />
-            <TextInput
-              style={styles.searchInput}
-              placeholder="Должность, компания..."
-              placeholderTextColor={colors.liquidSilver}
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-              returnKeyType="search"
-              onSubmitEditing={handleSearch}
-            />
-            {searchQuery.length > 0 && (
-              <TouchableOpacity onPress={() => setSearchQuery('')}>
-                <Icon name="close-circle" size={20} color={colors.liquidSilver} />
-              </TouchableOpacity>
-            )}
-          </View>
-        </GlassCard>
+        {/* Search Bar */}
+        <Animated.View entering={FadeInDown.duration(400)}>
+          <GlassCard style={styles.searchCard} variant="medium">
+            <View style={styles.searchInputContainer}>
+              <Icon name="magnify" size={24} color={colors.chromeSilver} />
+              <TextInput
+                style={styles.searchInput}
+                placeholder="Должность, компания, навыки..."
+                placeholderTextColor={colors.graphiteSilver}
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+                returnKeyType="search"
+                onSubmitEditing={handleSearch}
+                editable={!searching}
+              />
+              {searchQuery.length > 0 && (
+                <TouchableOpacity onPress={handleClearSearch}>
+                  <Icon name="close-circle" size={20} color={colors.chromeSilver} />
+                </TouchableOpacity>
+              )}
+            </View>
+          </GlassCard>
+        </Animated.View>
 
-        {/* Filter Toggle */}
-        <TouchableOpacity
-          style={styles.filterToggle}
-          onPress={() => setShowFilters(!showFilters)}
-        >
-          <Icon
-            name={showFilters ? 'filter-minus' : 'filter-plus'}
-            size={20}
-            color={colors.platinumSilver}
-          />
-          <Text style={styles.filterToggleText}>
-            {showFilters ? 'Скрыть фильтры' : 'Показать фильтры'}
-          </Text>
-        </TouchableOpacity>
+        {/* Filter Button */}
+        <Animated.View entering={FadeInDown.delay(100).duration(400)}>
+          <PressableScale>
+            <TouchableOpacity
+              style={styles.filterButton}
+              onPress={() => {
+                haptics.light();
+                setShowFilterModal(true);
+              }}
+              disabled={searching}
+            >
+              <LinearGradient
+                colors={activeFiltersCount > 0 ? metalGradients.platinum : [colors.carbonGray, colors.carbonGray]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.filterGradient}
+              >
+                <Icon
+                  name="filter-variant"
+                  size={20}
+                  color={activeFiltersCount > 0 ? colors.graphiteBlack : colors.chromeSilver}
+                />
+                <Text style={[styles.filterButtonText, activeFiltersCount > 0 && styles.filterButtonTextActive]}>
+                  Фильтры
+                </Text>
+                {activeFiltersCount > 0 && (
+                  <View style={styles.filterBadge}>
+                    <Text style={styles.filterBadgeText}>{activeFiltersCount}</Text>
+                  </View>
+                )}
+              </LinearGradient>
+            </TouchableOpacity>
+          </PressableScale>
+        </Animated.View>
 
-        {/* Filters */}
-        {showFilters && (
-          <Animated.View entering={FadeInDown.duration(300)}>
-            <GlassCard style={styles.filtersCard}>
+        {/* Search Button */}
+        <Animated.View entering={FadeInDown.delay(200).duration(400)}>
+          <TouchableOpacity
+            style={styles.searchButtonLarge}
+            onPress={handleSearch}
+            disabled={searching}
+            activeOpacity={0.8}
+          >
+            <LinearGradient
+              colors={metalGradients.platinum}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.searchGradient}
+            >
+              {searching ? (
+                <ShimmerLoader width={100} height={20} />
+              ) : (
+                <>
+                  <Icon name="magnify" size={20} color={colors.graphiteBlack} />
+                  <Text style={styles.searchButtonText}>НАЙТИ</Text>
+                </>
+              )}
+            </LinearGradient>
+          </TouchableOpacity>
+        </Animated.View>
+
+        {/* Searching State */}
+        {searching && (
+          <Animated.View entering={FadeInDown.duration(400)} style={styles.searchingState}>
+            <ShimmerLoader width="100%" height={120} style={{ marginBottom: sizes.md }} />
+            <ShimmerLoader width="100%" height={120} style={{ marginBottom: sizes.md }} />
+            <ShimmerLoader width="100%" height={120} />
+          </Animated.View>
+        )}
+
+        {/* Results or Empty State */}
+        {!searching && (
               <Text style={styles.filterSectionTitle}>Зарплата</Text>
               <View style={styles.salaryInputs}>
                 <View style={styles.salaryInputWrapper}>
