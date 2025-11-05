@@ -1,0 +1,281 @@
+/**
+ * 360° РАБОТА - Yandex Cloud Video Provider
+ * https://cloud.yandex.ru/services/cloud-video
+ */
+
+import AWS from 'aws-sdk';
+import axios from 'axios';
+import { videoConfig } from '../../config/video.config';
+import { IVideoProvider } from './VideoService';
+
+interface TranscodingJob {
+  id: string;
+  status: string;
+  output?: {
+    keyPrefix: string;
+  };
+  metadata?: {
+    duration?: number;
+  };
+  error?: string;
+}
+
+export class YandexVideoProvider implements IVideoProvider {
+  private s3: AWS.S3;
+  private bucket: string;
+  private yandexApiUrl = 'https://video.api.cloud.yandex.net/video/v1';
+
+  constructor() {
+    const { accessKeyId, secretAccessKey, bucket, region } = videoConfig.yandex;
+
+    if (!accessKeyId || !secretAccessKey) {
+      throw new Error('Yandex Cloud credentials are required');
+    }
+
+    this.bucket = bucket;
+
+    // Инициализация S3 клиента для Yandex Object Storage
+    this.s3 = new AWS.S3({
+      endpoint: 'https://storage.yandexcloud.net',
+      accessKeyId,
+      secretAccessKey,
+      region,
+      s3ForcePathStyle: true,
+      signatureVersion: 'v4',
+    });
+
+    console.log('✅ Yandex Cloud Video provider initialized');
+  }
+
+  /**
+   * Загрузить видео в Yandex Cloud
+   */
+  async uploadVideo(params: {
+    file: Buffer;
+    fileName: string;
+    metadata: {
+      type: 'vacancy' | 'resume';
+      userId: string;
+      title: string;
+      description?: string;
+    };
+  }) {
+    try {
+      // 1. Загрузить оригинальное видео в Object Storage
+      const objectKey = `originals/${params.metadata.type}/${params.metadata.userId}/${Date.now()}-${params.fileName}`;
+
+      console.log(`📹 Yandex: Uploading to Object Storage: ${objectKey}`);
+
+      const uploadResult = await this.s3
+        .upload({
+          Bucket: this.bucket,
+          Key: objectKey,
+          Body: params.file,
+          ContentType: 'video/mp4',
+          Metadata: {
+            type: params.metadata.type,
+            userId: params.metadata.userId,
+            title: params.metadata.title,
+            uploadedAt: new Date().toISOString(),
+          },
+        })
+        .promise();
+
+      console.log(`✅ Yandex: Uploaded to ${uploadResult.Location}`);
+
+      // 2. Запустить транскодинг
+      const outputPrefix = `transcoded/${params.metadata.type}/${params.metadata.userId}/${Date.now()}`;
+      const transcodingJob = await this.startTranscoding({
+        inputUrl: uploadResult.Location,
+        outputPrefix,
+      });
+
+      console.log(`🎬 Yandex: Transcoding started, job ID: ${transcodingJob.id}`);
+
+      // 3. Дождаться завершения транскодинга
+      const result = await this.waitForTranscoding(transcodingJob.id);
+
+      return {
+        videoId: transcodingJob.id,
+        playerUrl: result.hlsUrl, // Можно обернуть в custom player
+        hlsUrl: result.hlsUrl,
+        thumbnailUrl: result.thumbnailUrl,
+        duration: result.duration,
+      };
+    } catch (error: any) {
+      console.error('❌ Yandex upload error:', error);
+      throw new Error(`Yandex Cloud upload failed: ${error.message}`);
+    }
+  }
+
+  /**
+   * Запустить транскодинг через Yandex Video API
+   */
+  private async startTranscoding(params: {
+    inputUrl: string;
+    outputPrefix: string;
+  }): Promise<TranscodingJob> {
+    try {
+      const response = await axios.post(
+        `${this.yandexApiUrl}/jobs`,
+        {
+          input: {
+            url: params.inputUrl,
+          },
+          output: {
+            bucket: this.bucket,
+            keyPrefix: params.outputPrefix,
+          },
+          settings: {
+            // HLS профили для adaptive streaming
+            profiles: [
+              {
+                name: 'fullhd',
+                resolution: '1920x1080',
+                bitrate: 5000,
+                codec: 'h264',
+              },
+              {
+                name: 'hd',
+                resolution: '1280x720',
+                bitrate: 2500,
+                codec: 'h264',
+              },
+              {
+                name: 'sd',
+                resolution: '854x480',
+                bitrate: 1000,
+                codec: 'h264',
+              },
+            ],
+            generateThumbnail: true,
+            thumbnailTime: 1, // Секунда для превью
+          },
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${videoConfig.yandex.iamToken}`,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+
+      return {
+        id: response.data.id,
+        status: response.data.status,
+      };
+    } catch (error: any) {
+      console.error('❌ Yandex transcoding start error:', error);
+      throw new Error(`Failed to start transcoding: ${error.message}`);
+    }
+  }
+
+  /**
+   * Дождаться завершения транскодинга
+   */
+  private async waitForTranscoding(
+    jobId: string,
+    maxRetries = 60
+  ): Promise<{
+    hlsUrl: string;
+    thumbnailUrl: string;
+    duration?: number;
+  }> {
+    for (let i = 0; i < maxRetries; i++) {
+      const status = await this.getJobStatus(jobId);
+
+      if (status.status === 'COMPLETED') {
+        // Получить ссылки на результаты
+        const hlsUrl = `https://storage.yandexcloud.net/${this.bucket}/${status.output?.keyPrefix}/master.m3u8`;
+        const thumbnailUrl = `https://storage.yandexcloud.net/${this.bucket}/${status.output?.keyPrefix}/thumbnail.jpg`;
+
+        return {
+          hlsUrl,
+          thumbnailUrl,
+          duration: status.metadata?.duration,
+        };
+      }
+
+      if (status.status === 'FAILED') {
+        throw new Error(`Transcoding failed: ${status.error}`);
+      }
+
+      console.log(`⏳ Yandex: Transcoding in progress (${i + 1}/${maxRetries})...`);
+
+      // Подождать 10 секунд перед следующей проверкой
+      await new Promise((resolve) => setTimeout(resolve, 10000));
+    }
+
+    throw new Error('Transcoding timeout (10 minutes)');
+  }
+
+  /**
+   * Получить статус транскодинга
+   */
+  private async getJobStatus(jobId: string): Promise<TranscodingJob> {
+    try {
+      const response = await axios.get(`${this.yandexApiUrl}/jobs/${jobId}`, {
+        headers: {
+          Authorization: `Bearer ${videoConfig.yandex.iamToken}`,
+        },
+      });
+
+      return response.data;
+    } catch (error: any) {
+      console.error('❌ Yandex job status error:', error);
+      throw new Error(`Failed to get job status: ${error.message}`);
+    }
+  }
+
+  /**
+   * Удалить видео из Yandex Cloud
+   */
+  async deleteVideo(videoId: string) {
+    try {
+      // Удалить job
+      await axios.delete(`${this.yandexApiUrl}/jobs/${videoId}`, {
+        headers: {
+          Authorization: `Bearer ${videoConfig.yandex.iamToken}`,
+        },
+      });
+
+      console.log(`✅ Yandex: Video ${videoId} deleted`);
+    } catch (error: any) {
+      console.error('❌ Yandex delete error:', error);
+      throw new Error(`Yandex Cloud delete failed: ${error.message}`);
+    }
+  }
+
+  /**
+   * Получить статистику (Yandex Cloud Video не предоставляет встроенную аналитику)
+   */
+  async getVideoStats(videoId: string) {
+    // Yandex Cloud Video не предоставляет аналитику просмотров
+    // Можно интегрировать с Yandex Metrica
+    return {
+      views: 0,
+      duration: 0,
+      completion: 0,
+    };
+  }
+
+  /**
+   * Получить информацию о видео
+   */
+  async getVideoInfo(videoId: string) {
+    try {
+      const job = await this.getJobStatus(videoId);
+
+      return {
+        videoId: job.id,
+        title: 'Yandex Cloud Video',
+        status: job.status === 'COMPLETED' ? 'ready' : 'processing',
+        playerUrl: `https://storage.yandexcloud.net/${this.bucket}/${job.output?.keyPrefix}/master.m3u8`,
+        thumbnailUrl: `https://storage.yandexcloud.net/${this.bucket}/${job.output?.keyPrefix}/thumbnail.jpg`,
+      };
+    } catch (error: any) {
+      console.error('❌ Yandex getInfo error:', error);
+      throw new Error(`Yandex Cloud getInfo failed: ${error.message}`);
+    }
+  }
+}
