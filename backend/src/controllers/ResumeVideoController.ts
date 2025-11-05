@@ -1,0 +1,318 @@
+/**
+ * 360° РАБОТА - Resume Video Controller
+ * Управление видеорезюме (только соискатели)
+ */
+
+import { Request, Response } from 'express';
+import { videoService } from '../services/video/VideoService';
+import { db } from '../config/database';
+import { Video, VideoStatus } from '../types';
+
+export class ResumeVideoController {
+  /**
+   * Загрузить видеорезюме
+   * POST /api/v1/resumes/video
+   */
+  static async uploadVideo(req: Request, res: Response) {
+    try {
+      const { title, description } = req.body;
+      const userId = req.user!.userId;
+      const role = req.user!.role;
+
+      // Проверка роли
+      if (role !== 'jobseeker') {
+        return res.status(403).json({ error: 'Only job seekers can upload resume videos' });
+      }
+
+      // Проверка файла
+      if (!req.file) {
+        return res.status(400).json({ error: 'Video file is required' });
+      }
+
+      // Получить информацию о пользователе
+      const user = await db.one(
+        'SELECT id, name, profession FROM users WHERE id = $1',
+        [userId]
+      );
+
+      console.log(`📹 Uploading resume video for user ${userId}...`);
+
+      // Проверить, есть ли уже видеорезюме
+      const existingVideo = await db.oneOrNone<Video>(
+        'SELECT * FROM videos WHERE user_id = $1 AND type = $2 AND vacancy_id IS NULL',
+        [userId, 'resume']
+      );
+
+      if (existingVideo) {
+        // Удалить старое видео из провайдера
+        try {
+          await videoService.deleteVideo(existingVideo.video_id);
+        } catch (error) {
+          console.warn('Failed to delete old video from provider:', error);
+        }
+
+        // Удалить старую запись из БД
+        await db.none('DELETE FROM videos WHERE id = $1', [existingVideo.id]);
+      }
+
+      // Загрузить новое видео через videoService
+      const uploadResult = await videoService.uploadVideo({
+        file: req.file.buffer,
+        fileName: req.file.originalname,
+        metadata: {
+          type: 'resume',
+          userId,
+          title: title || `Видеорезюме ${user.name}`,
+          description: description || `${user.profession} - ${user.name}`,
+        },
+      });
+
+      // Сохранить информацию о видео в БД
+      const video = await db.one<Video>(
+        `INSERT INTO videos (
+          video_id, type, user_id, title, description,
+          player_url, hls_url, thumbnail_url, duration,
+          status, views, provider, created_at, updated_at
+        )
+        VALUES ($1, 'resume', $2, $3, $4, $5, $6, $7, $8, 'ready', 0, $9, NOW(), NOW())
+        RETURNING *`,
+        [
+          uploadResult.videoId,
+          userId,
+          title || `Видеорезюме ${user.name}`,
+          description,
+          uploadResult.playerUrl,
+          uploadResult.hlsUrl,
+          uploadResult.thumbnailUrl,
+          uploadResult.duration,
+          videoService.getProviderType(),
+        ]
+      );
+
+      // Обновить пользователя с URL видеорезюме
+      await db.none(
+        'UPDATE users SET resume_video_url = $1, updated_at = NOW() WHERE id = $2',
+        [uploadResult.playerUrl, userId]
+      );
+
+      console.log(`✅ Resume video uploaded successfully: ${video.id}`);
+
+      return res.status(201).json({
+        success: true,
+        video,
+      });
+    } catch (error: any) {
+      console.error('Upload resume video error:', error);
+      return res.status(500).json({
+        error: 'Failed to upload video',
+        message: error.message,
+      });
+    }
+  }
+
+  /**
+   * Получить своё видеорезюме
+   * GET /api/v1/resumes/video/me
+   */
+  static async getMyVideo(req: Request, res: Response) {
+    try {
+      const userId = req.user!.userId;
+      const role = req.user!.role;
+
+      if (role !== 'jobseeker') {
+        return res.status(403).json({ error: 'Only job seekers can access resume videos' });
+      }
+
+      const video = await db.oneOrNone<Video>(
+        'SELECT * FROM videos WHERE user_id = $1 AND type = $2 AND vacancy_id IS NULL',
+        [userId, 'resume']
+      );
+
+      if (!video) {
+        return res.status(404).json({ error: 'Resume video not found' });
+      }
+
+      return res.json({ video });
+    } catch (error: any) {
+      console.error('Get my resume video error:', error);
+      return res.status(500).json({ error: 'Failed to get video' });
+    }
+  }
+
+  /**
+   * Получить видеорезюме соискателя (для работодателей)
+   * GET /api/v1/resumes/video/:userId
+   */
+  static async getUserVideo(req: Request, res: Response) {
+    try {
+      const { userId } = req.params;
+      const requestingUserId = req.user!.userId;
+      const role = req.user!.role;
+
+      // Только работодатели или сам пользователь могут просматривать видеорезюме
+      if (role !== 'employer' && requestingUserId !== userId) {
+        return res.status(403).json({ error: 'Access denied' });
+      }
+
+      const video = await db.oneOrNone<Video>(
+        'SELECT * FROM videos WHERE user_id = $1 AND type = $2 AND vacancy_id IS NULL',
+        [userId, 'resume']
+      );
+
+      if (!video) {
+        return res.status(404).json({ error: 'Resume video not found' });
+      }
+
+      // Инкрементировать счетчик просмотров
+      await db.none('UPDATE videos SET views = views + 1 WHERE id = $1', [video.id]);
+
+      // Получить информацию о пользователе
+      const user = await db.one(
+        'SELECT id, name, profession, city, avatar_url FROM users WHERE id = $1',
+        [userId]
+      );
+
+      return res.json({
+        video,
+        user,
+      });
+    } catch (error: any) {
+      console.error('Get user resume video error:', error);
+      return res.status(500).json({ error: 'Failed to get video' });
+    }
+  }
+
+  /**
+   * Удалить своё видеорезюме
+   * DELETE /api/v1/resumes/video
+   */
+  static async deleteVideo(req: Request, res: Response) {
+    try {
+      const userId = req.user!.userId;
+      const role = req.user!.role;
+
+      if (role !== 'jobseeker') {
+        return res.status(403).json({ error: 'Only job seekers can delete resume videos' });
+      }
+
+      // Найти видео
+      const video = await db.oneOrNone<Video>(
+        'SELECT * FROM videos WHERE user_id = $1 AND type = $2 AND vacancy_id IS NULL',
+        [userId, 'resume']
+      );
+
+      if (!video) {
+        return res.status(404).json({ error: 'Resume video not found' });
+      }
+
+      console.log(`🗑️  Deleting resume video: ${video.id}`);
+
+      // Удалить из провайдера
+      await videoService.deleteVideo(video.video_id);
+
+      // Удалить из БД
+      await db.none('DELETE FROM videos WHERE id = $1', [video.id]);
+
+      // Очистить поле в пользователе
+      await db.none(
+        'UPDATE users SET resume_video_url = NULL, updated_at = NOW() WHERE id = $1',
+        [userId]
+      );
+
+      console.log(`✅ Resume video deleted: ${video.id}`);
+
+      return res.json({ success: true, message: 'Video deleted successfully' });
+    } catch (error: any) {
+      console.error('Delete resume video error:', error);
+      return res.status(500).json({
+        error: 'Failed to delete video',
+        message: error.message,
+      });
+    }
+  }
+
+  /**
+   * Получить статистику видеорезюме
+   * GET /api/v1/resumes/video/stats
+   */
+  static async getVideoStats(req: Request, res: Response) {
+    try {
+      const userId = req.user!.userId;
+      const role = req.user!.role;
+
+      if (role !== 'jobseeker') {
+        return res.status(403).json({ error: 'Only job seekers can access resume video stats' });
+      }
+
+      // Найти видео
+      const video = await db.oneOrNone<Video>(
+        'SELECT * FROM videos WHERE user_id = $1 AND type = $2 AND vacancy_id IS NULL',
+        [userId, 'resume']
+      );
+
+      if (!video) {
+        return res.status(404).json({ error: 'Resume video not found' });
+      }
+
+      // Получить статистику от провайдера
+      const providerStats = await videoService.getVideoStats(video.video_id);
+
+      return res.json({
+        videoId: video.id,
+        views: video.views, // Наши просмотры из БД
+        providerViews: providerStats.views, // Просмотры от провайдера
+        duration: video.duration || providerStats.duration,
+        completion: providerStats.completion,
+        createdAt: video.created_at,
+      });
+    } catch (error: any) {
+      console.error('Get resume video stats error:', error);
+      return res.status(500).json({ error: 'Failed to get video stats' });
+    }
+  }
+
+  /**
+   * Обновить метаданные видеорезюме
+   * PATCH /api/v1/resumes/video
+   */
+  static async updateVideoMetadata(req: Request, res: Response) {
+    try {
+      const { title, description } = req.body;
+      const userId = req.user!.userId;
+      const role = req.user!.role;
+
+      if (role !== 'jobseeker') {
+        return res.status(403).json({ error: 'Only job seekers can update resume videos' });
+      }
+
+      // Найти видео
+      const video = await db.oneOrNone<Video>(
+        'SELECT * FROM videos WHERE user_id = $1 AND type = $2 AND vacancy_id IS NULL',
+        [userId, 'resume']
+      );
+
+      if (!video) {
+        return res.status(404).json({ error: 'Resume video not found' });
+      }
+
+      // Обновить метаданные
+      const updatedVideo = await db.one<Video>(
+        `UPDATE videos
+         SET title = COALESCE($1, title),
+             description = COALESCE($2, description),
+             updated_at = NOW()
+         WHERE id = $3
+         RETURNING *`,
+        [title, description, video.id]
+      );
+
+      return res.json({
+        success: true,
+        video: updatedVideo,
+      });
+    } catch (error: any) {
+      console.error('Update resume video metadata error:', error);
+      return res.status(500).json({ error: 'Failed to update video metadata' });
+    }
+  }
+}

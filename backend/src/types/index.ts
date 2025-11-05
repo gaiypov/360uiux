@@ -313,6 +313,49 @@ export interface JWTPayload {
 }
 
 // ===================================
+// VIDEO TYPES
+// ===================================
+
+export type VideoType = 'vacancy' | 'resume';
+export type VideoStatus = 'uploading' | 'processing' | 'ready' | 'failed';
+
+export interface Video {
+  id: string;
+  video_id: string; // ID от провайдера (api.video или Yandex)
+  type: VideoType;
+  user_id: string;
+  vacancy_id?: string; // Для видео вакансий
+  title: string;
+  description?: string;
+  player_url: string;
+  hls_url: string;
+  thumbnail_url: string;
+  duration?: number;
+  status: VideoStatus;
+  views: number;
+  provider: 'api.video' | 'yandex'; // Какой провайдер использовался
+  created_at: Date;
+  updated_at: Date;
+}
+
+export interface UploadVideoRequest {
+  title: string;
+  description?: string;
+  vacancy_id?: string; // Для employer видео вакансий
+}
+
+export interface UploadVideoResponse {
+  video: Video;
+  uploadUrl?: string; // Для клиента, если нужен прямой upload
+}
+
+export interface VideoStatsResponse {
+  views: number;
+  duration: number;
+  completion: number;
+}
+
+// ===================================
 // EXPRESS REQUEST EXTENSION
 // ===================================
 
@@ -320,6 +363,8 @@ declare global {
   namespace Express {
     interface Request {
       user?: JWTPayload;
+      file?: Express.Multer.File;
+      files?: Express.Multer.File[];
     }
   }
 }
