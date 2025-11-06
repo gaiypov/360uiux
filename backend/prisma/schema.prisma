@@ -1,0 +1,423 @@
+// 360° РАБОТА - Prisma Schema
+// Architecture v3: Private Resume Videos with 2-view limit
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  JOBSEEKER
+  EMPLOYER
+  MODERATOR
+}
+
+enum VideoStatus {
+  UPLOADING
+  TRANSCODING
+  AUTO_MODERATION
+  PENDING_MODERATION
+  APPROVED
+  REJECTED
+  FLAGGED
+  BLOCKED
+}
+
+enum VideoType {
+  VACANCY
+  RESUME
+}
+
+enum ApplicationStatus {
+  NEW
+  VIEWED
+  INTERVIEW
+  REJECTED
+  ACCEPTED
+  ARCHIVED
+}
+
+model User {
+  id            String   @id @default(uuid())
+  phone         String   @unique
+  role          UserRole @default(JOBSEEKER)
+
+  // Common fields
+  name          String?
+  email         String?
+  avatarUrl     String?
+
+  // Jobseeker fields
+  profession    String?
+  city          String?
+  salaryExpected Int?
+  resumeVideoUrl String?
+
+  // Employer fields
+  companyName   String?
+  inn           String?
+  kpp           String?
+  legalAddress  String?
+  actualAddress String?
+  verified      Boolean  @default(false)
+  rating        Float?
+
+  // Billing
+  balance       Int      @default(0)
+
+  // Relations
+  vacancies     Vacancy[]
+  resumes       Resume[]
+  applications  Application[]
+  sentMessages  ChatMessage[] @relation("sender")
+  videos        Video[]
+
+  refreshToken  String?
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([phone])
+  @@index([role])
+}
+
+model Video {
+  id                String       @id @default(uuid())
+  type              VideoType
+  userId            String
+  user              User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  vacancyId         String?      @unique
+
+  // api.video IDs
+  videoId           String       // api.video ID
+  playerUrl         String
+  hlsUrl            String
+  thumbnailUrl      String?
+  duration          Int?
+
+  title             String
+  description       String?
+
+  // Architecture v3: Privacy & Protection
+  isPublic          Boolean      @default(false)
+  downloadProtected Boolean      @default(false)
+
+  // Status
+  status            VideoStatus  @default(UPLOADING)
+  views             Int          @default(0)
+  provider          String       @default("api.video")
+
+  // Moderation
+  moderationStatus  String       @default("pending")
+  moderatedBy       String?
+  moderatedAt       DateTime?
+  aiCheckPassed     Boolean      @default(false)
+  aiCheckResults    Json?
+  rejectionReason   String?
+  complaintsCount   Int          @default(0)
+  priorityModeration Boolean     @default(false)
+
+  // Relations
+  vacancy           Vacancy?
+  resume            Resume?
+  videoViews        ResumeVideoView[]
+  chatMessages      ChatMessage[]
+  complaints        VideoComplaint[]
+  moderationLogs    ModerationLog[]
+
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+
+  @@index([type])
+  @@index([isPublic])
+  @@index([status])
+  @@index([userId])
+}
+
+// Architecture v3: Resume Video View Tracking
+model ResumeVideoView {
+  id                String       @id @default(uuid())
+
+  videoId           String
+  video             Video        @relation(fields: [videoId], references: [id], onDelete: Cascade)
+
+  applicationId     String
+  application       Application  @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  employerId        String
+
+  viewCount         Int          @default(0)
+  maxViews          Int          @default(2)
+
+  firstViewedAt     DateTime?
+  lastViewedAt      DateTime?
+
+  autoDeleteAfterViews Boolean   @default(true)
+  deletedAt         DateTime?
+
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+
+  @@unique([videoId, applicationId, employerId])
+  @@index([videoId])
+  @@index([applicationId])
+  @@index([employerId])
+}
+
+model Vacancy {
+  id              String    @id @default(uuid())
+
+  employerId      String
+  employer        User      @relation(fields: [employerId], references: [id], onDelete: Cascade)
+
+  title           String
+  profession      String
+  city            String
+  metro           String?
+
+  salaryMin       Int?
+  salaryMax       Int?
+  currency        String    @default("RUB")
+
+  schedule        String?   // full_time, part_time, remote, etc.
+  requiresExperience Boolean @default(false)
+
+  description     String?
+  benefits        String[]  @default([])
+  requirements    String[]  @default([])
+  tags            String[]  @default([])
+
+  videoId         String?   @unique
+  video           Video?    @relation(fields: [videoId], references: [id])
+  thumbnailUrl    String?
+
+  status          String    @default("draft")
+  views           Int       @default(0)
+  applicationsCount Int     @default(0)
+
+  isTop           Boolean   @default(false)
+  topUntil        DateTime?
+
+  applications    Application[]
+  favorites       Favorite[]
+
+  publishedAt     DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([employerId])
+  @@index([status])
+  @@index([profession])
+  @@index([city])
+  @@index([isTop])
+}
+
+model Resume {
+  id              String    @id @default(uuid())
+
+  jobseekerId     String
+  jobseeker       User      @relation(fields: [jobseekerId], references: [id], onDelete: Cascade)
+
+  title           String?
+  profession      String?
+  city            String?
+
+  experience      Int?      // years
+  salaryExpectation Int?
+  description     String?
+  skills          String[]  @default([])
+
+  // Architecture v3: Private Resume Video
+  videoId         String?   @unique
+  video           Video?    @relation(fields: [videoId], references: [id])
+  videoStatus     String?   // 'none' | 'ready' | 'approved'
+
+  status          String    @default("draft")
+
+  applications    Application[]
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([jobseekerId])
+  @@index([profession])
+}
+
+model Application {
+  id              String    @id @default(uuid())
+
+  vacancyId       String
+  vacancy         Vacancy   @relation(fields: [vacancyId], references: [id], onDelete: Cascade)
+
+  jobseekerId     String
+  jobseeker       User      @relation(fields: [jobseekerId], references: [id], onDelete: Cascade)
+
+  resumeId        String?
+  resume          Resume?   @relation(fields: [resumeId], references: [id])
+
+  // Architecture v3: Private Resume Video attached to application
+  resumeVideoId   String?
+
+  message         String?
+  status          ApplicationStatus @default(NEW)
+
+  // Employer side
+  employerStatus  String?   // 'new' | 'viewed' | 'interview' | 'rejected'
+  employerNotes   String?
+
+  // Architecture v3: Chat
+  chatRoomId      String?   @unique
+  chatMessages    ChatMessage[]
+
+  videoViews      ResumeVideoView[]
+
+  viewedAt        DateTime?
+  respondedAt     DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@unique([vacancyId, jobseekerId])
+  @@index([vacancyId])
+  @@index([jobseekerId])
+  @@index([status])
+}
+
+// Architecture v3: Chat Messages
+model ChatMessage {
+  id              String    @id @default(uuid())
+
+  applicationId   String
+  application     Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  senderId        String
+  sender          User      @relation("sender", fields: [senderId], references: [id], onDelete: Cascade)
+  senderType      String    // 'jobseeker' | 'employer' | 'system'
+
+  messageType     String    // 'text' | 'video' | 'system'
+  content         String?
+
+  videoId         String?
+  video           Video?    @relation(fields: [videoId], references: [id])
+
+  isRead          Boolean   @default(false)
+  readAt          DateTime?
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([applicationId])
+  @@index([senderId])
+  @@index([createdAt])
+}
+
+model Favorite {
+  id              String    @id @default(uuid())
+
+  userId          String
+  vacancyId       String
+  vacancy         Vacancy   @relation(fields: [vacancyId], references: [id], onDelete: Cascade)
+
+  createdAt       DateTime  @default(now())
+
+  @@unique([userId, vacancyId])
+  @@index([userId])
+}
+
+model VideoComplaint {
+  id              String    @id @default(uuid())
+
+  videoId         String
+  video           Video     @relation(fields: [videoId], references: [id], onDelete: Cascade)
+
+  userId          String
+  reason          String    // inappropriate_content, misleading_info, spam, etc.
+  description     String?
+
+  status          String    @default("pending")
+  reviewedBy      String?
+  reviewedAt      DateTime?
+  moderatorComment String?
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([videoId])
+  @@index([status])
+}
+
+model ModerationLog {
+  id              String    @id @default(uuid())
+
+  videoId         String
+  video           Video     @relation(fields: [videoId], references: [id], onDelete: Cascade)
+
+  action          String    // ai_check_started, approved, rejected, etc.
+  performedBy     String?   // null for AI
+  details         Json?
+  comment         String?
+
+  createdAt       DateTime  @default(now())
+
+  @@index([videoId])
+  @@index([createdAt])
+}
+
+model Wallet {
+  id              String    @id @default(uuid())
+  employerId      String    @unique
+  balance         Int       @default(0)
+  currency        String    @default("RUB")
+
+  transactions    Transaction[]
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+}
+
+model Transaction {
+  id              String    @id @default(uuid())
+
+  walletId        String
+  wallet          Wallet    @relation(fields: [walletId], references: [id], onDelete: Cascade)
+
+  type            String    // deposit, withdrawal, payment, refund
+  amount          Int
+  currency        String    @default("RUB")
+  status          String    @default("pending")
+
+  paymentSystem   String?   // tinkoff, alfabank, internal
+  paymentId       String?
+  cardType        String?
+
+  description     String?
+  metadata        Json?
+
+  createdAt       DateTime  @default(now())
+  completedAt     DateTime?
+
+  @@index([walletId])
+  @@index([status])
+}
+
+model Notification {
+  id              String    @id @default(uuid())
+
+  userId          String
+  type            String
+  title           String
+  message         String?
+  data            Json?
+
+  isRead          Boolean   @default(false)
+  readAt          DateTime?
+
+  createdAt       DateTime  @default(now())
+
+  @@index([userId])
+  @@index([isRead])
+}
