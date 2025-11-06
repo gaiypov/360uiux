@@ -193,6 +193,32 @@ export interface Application {
   status: ApplicationStatus;
   viewed_at?: Date;
   responded_at?: Date;
+
+  // Architecture v3: Private resume video & chat
+  resume_video_id?: string; // UUID ссылка на videos.id
+  chat_room_id?: string; // UUID для чата
+  employer_status?: string; // new, viewed, interview, rejected, etc.
+  employer_notes?: string; // Заметки работодателя
+
+  created_at: Date;
+  updated_at: Date;
+}
+
+// ===================================
+// RESUMES
+// ===================================
+
+export interface Resume {
+  id: string;
+  jobseeker_id: string;
+  title?: string;
+  profession?: string;
+  city?: string;
+  salary_expected?: number;
+  description?: string;
+  skills?: string[];
+  video_id?: string; // Architecture v3: Reference to videos table
+  video_status?: string; // none, uploaded, approved, rejected
   created_at: Date;
   updated_at: Date;
 }
@@ -226,6 +252,27 @@ export interface Message {
   is_read: boolean;
   read_at?: Date;
   created_at: Date;
+}
+
+// ===================================
+// CHAT MESSAGES (Architecture v3)
+// ===================================
+
+export type ChatSenderType = 'jobseeker' | 'employer' | 'system';
+export type ChatMessageType = 'text' | 'video' | 'system';
+
+export interface ChatMessage {
+  id: string;
+  application_id: string; // Привязка к отклику
+  sender_id: string;
+  sender_type: ChatSenderType;
+  message_type: ChatMessageType;
+  content?: string;
+  video_id?: string; // Для video messages
+  is_read: boolean;
+  read_at?: Date;
+  created_at: Date;
+  updated_at: Date;
 }
 
 // ===================================
@@ -345,6 +392,10 @@ export interface Video {
   views: number;
   provider: 'api.video' | 'yandex'; // Какой провайдер использовался
 
+  // Privacy & Protection (Architecture v3)
+  is_public: boolean; // true для вакансий, false для резюме
+  download_protected: boolean; // true для резюме
+
   // Moderation fields
   moderation_status: ModerationStatus;
   moderated_by?: string; // User ID модератора
@@ -357,6 +408,38 @@ export interface Video {
 
   created_at: Date;
   updated_at: Date;
+}
+
+// ===================================
+// RESUME VIDEO VIEWS (Architecture v3)
+// Отслеживание просмотров видео-резюме работодателями
+// ===================================
+
+export interface ResumeVideoView {
+  id: string;
+  video_id: string;
+  application_id: string;
+  employer_id: string;
+  view_count: number;
+  max_views: number; // По умолчанию 2
+  first_viewed_at?: Date;
+  last_viewed_at?: Date;
+  auto_delete_after_views: boolean;
+  deleted_at?: Date;
+  created_at: Date;
+  updated_at: Date;
+}
+
+export interface ViewLimitCheckResponse {
+  can_view: boolean;
+  views_left: number;
+  total_views: number;
+}
+
+export interface SecureVideoUrlResponse {
+  url: string;
+  expires_at: Date;
+  views_remaining: number;
 }
 
 // ===================================
