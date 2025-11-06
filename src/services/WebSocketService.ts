@@ -37,6 +37,20 @@ interface MessageReadData {
   readAt: string;
 }
 
+interface VideoViewData {
+  videoId: string;
+  conversationId: string;
+  viewsRemaining: number;
+  viewedAt: string;
+}
+
+interface VideoDeletedData {
+  videoId: string;
+  conversationId: string;
+  messageId: string;
+  deletedAt: string;
+}
+
 type EventCallback = (...args: any[]) => void;
 
 export class WebSocketService {
@@ -172,6 +186,17 @@ export class WebSocketService {
       console.log('🔄 Conversation updated:', data);
       this.emit('conversation:updated', data);
     });
+
+    // Video events
+    this.socket.on('video:viewed', (data: VideoViewData) => {
+      console.log('👁️ Video viewed:', data);
+      this.emit('video:viewed', data);
+    });
+
+    this.socket.on('video:deleted', (data: VideoDeletedData) => {
+      console.log('🗑️ Video deleted:', data);
+      this.emit('video:deleted', data);
+    });
   }
 
   /**
@@ -272,6 +297,38 @@ export class WebSocketService {
     this.socket.emit('conversation:leave', {
       conversationId,
       userId: this.userId,
+    });
+  }
+
+  /**
+   * Track video view
+   */
+  trackVideoView(videoId: string, conversationId: string, messageId: string): void {
+    if (!this.socket || !this.isConnected) return;
+
+    console.log('👁️ Tracking video view:', videoId);
+    this.socket.emit('video:track', {
+      videoId,
+      conversationId,
+      messageId,
+      userId: this.userId,
+      timestamp: new Date().toISOString(),
+    });
+  }
+
+  /**
+   * Notify video deletion
+   */
+  notifyVideoDeleted(videoId: string, conversationId: string, messageId: string): void {
+    if (!this.socket || !this.isConnected) return;
+
+    console.log('🗑️ Notifying video deleted:', videoId);
+    this.socket.emit('video:delete', {
+      videoId,
+      conversationId,
+      messageId,
+      userId: this.userId,
+      timestamp: new Date().toISOString(),
     });
   }
 

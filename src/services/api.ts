@@ -360,6 +360,23 @@ class APIService {
   }
 
   // ===================================
+  // VIDEO RESUME API (Architecture v3)
+  // ===================================
+
+  async trackResumeVideoView(videoId: string, data?: {
+    applicationId?: string;
+    conversationId?: string;
+  }): Promise<{ viewsRemaining: number; autoDeleted: boolean }> {
+    const response = await this.client.post(`/videos/${videoId}/track-view`, data);
+    return response.data;
+  }
+
+  async getVideoViewsRemaining(videoId: string): Promise<{ viewsRemaining: number }> {
+    const response = await this.client.get(`/videos/${videoId}/views`);
+    return response.data;
+  }
+
+  // ===================================
   // Helper Methods
   // ===================================
 

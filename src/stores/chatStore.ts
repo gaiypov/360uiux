@@ -71,6 +71,10 @@ interface ChatState {
   disconnectWebSocket: () => void;
   setTypingIndicator: (conversationId: string, isTyping: boolean, userName?: string) => void;
   sendTypingIndicator: (conversationId: string, isTyping: boolean) => void;
+
+  // Video actions
+  updateVideoViewsRemaining: (videoId: string, viewsRemaining: number) => void;
+  markVideoAsDeleted: (videoId: string, messageId: string) => void;
 }
 
 export const useChatStore = create<ChatState>()(
@@ -122,6 +126,17 @@ export const useChatStore = create<ChatState>()(
 
           wsService.on('connection:success', () => {
             set({ isConnected: true });
+          });
+
+          // Video events
+          wsService.on('video:viewed', (data: any) => {
+            console.log('👁️ Video viewed event:', data);
+            get().updateVideoViewsRemaining(data.videoId, data.viewsRemaining);
+          });
+
+          wsService.on('video:deleted', (data: any) => {
+            console.log('🗑️ Video deleted event:', data);
+            get().markVideoAsDeleted(data.videoId, data.messageId);
           });
 
           console.log('✅ Chat store connected to WebSocket');
@@ -319,6 +334,34 @@ export const useChatStore = create<ChatState>()(
 
       getTotalUnreadCount: () => {
         return get().conversations.reduce((total, conv) => total + conv.unreadCount, 0);
+      },
+
+      // Video: Update views remaining for a video message
+      updateVideoViewsRemaining: (videoId: string, viewsRemaining: number) => {
+        set((state) => ({
+          conversations: state.conversations.map((conv) => ({
+            ...conv,
+            messages: conv.messages.map((msg) =>
+              msg.videoId === videoId
+                ? { ...msg, viewsRemaining }
+                : msg
+            ),
+          })),
+        }));
+      },
+
+      // Video: Mark video as deleted
+      markVideoAsDeleted: (videoId: string, messageId: string) => {
+        set((state) => ({
+          conversations: state.conversations.map((conv) => ({
+            ...conv,
+            messages: conv.messages.map((msg) =>
+              msg.videoId === videoId || msg.id === messageId
+                ? { ...msg, viewsRemaining: 0 }
+                : msg
+            ),
+          })),
+        }));
       },
     }),
     {

@@ -32,6 +32,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import LinearGradient from 'react-native-linear-gradient';
 import { GlassCard } from '@/components/ui';
+import { ResumeVideoPlayer } from '@/components/video';
 import { colors, metalGradients, typography, sizes } from '@/constants';
 import { useChatStore, type Message, type MessageStatus } from '@/stores/chatStore';
 import { haptics } from '@/utils/haptics';
@@ -67,6 +68,8 @@ export function ChatScreen({ route, navigation }: ChatScreenProps) {
     setActiveConversation,
     sendTypingIndicator,
     isConnected,
+    updateVideoViewsRemaining,
+    markVideoAsDeleted,
   } = useChatStore();
 
   const [inputText, setInputText] = useState('');
@@ -264,32 +267,34 @@ export function ChatScreen({ route, navigation }: ChatScreenProps) {
               item.isOwn ? styles.ownMessageContainer : styles.theirMessageContainer,
             ]}
           >
-            <GlassCard variant="medium" style={styles.videoMessage} noPadding>
-              <View style={styles.videoMessageContent}>
-                <View style={styles.videoMessageHeader}>
-                  <Icon name="video" size={20} color={colors.platinumSilver} />
-                  <Text style={styles.videoMessageTitle}>Видео-резюме</Text>
-                </View>
-
-                {/* TODO: Replace with ResumeVideoPlayer component */}
-                <View style={styles.videoPlaceholder}>
-                  <Icon name="play-circle" size={64} color={colors.platinumSilver} />
-                  <Text style={styles.videoPlaceholderText}>📹 Видео-резюме</Text>
-                  {item.viewsRemaining !== undefined && (
-                    <Text style={styles.viewLimitText}>
-                      👁️ Осталось {item.viewsRemaining} просмотра
-                    </Text>
-                  )}
-                </View>
-
-                <View style={styles.videoMessageFooter}>
-                  <Icon name="shield-lock" size={14} color={colors.chromeSilver} />
-                  <Text style={styles.videoFooterText}>
-                    Приватное • Макс. 2 просмотра
-                  </Text>
-                </View>
+            <View style={styles.videoMessageContainer}>
+              <View style={styles.videoMessageHeader}>
+                <Icon name="video" size={20} color={colors.platinumSilver} />
+                <Text style={styles.videoMessageTitle}>Видео-резюме</Text>
+                <Text style={styles.videoMessageTime}>{formatTime(item.timestamp)}</Text>
               </View>
-            </GlassCard>
+
+              {/* Resume Video Player */}
+              <ResumeVideoPlayer
+                videoId={item.videoId || ''}
+                videoUrl={item.videoUrl || ''}
+                viewsRemaining={item.viewsRemaining || 2}
+                conversationId={conversationId}
+                messageId={item.id}
+                onViewCountUpdate={(newCount) => {
+                  // Update message in chat store
+                  if (item.videoId) {
+                    updateVideoViewsRemaining(item.videoId, newCount);
+                  }
+                }}
+                onVideoDeleted={() => {
+                  // Handle video deletion in chat store
+                  if (item.videoId) {
+                    markVideoAsDeleted(item.videoId, item.id);
+                  }
+                }}
+              />
+            </View>
           </Animated.View>
         </View>
       );
