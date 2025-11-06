@@ -81,6 +81,9 @@ interface ChatState {
   updateBadgeCount: () => Promise<void>;
 }
 
+// Badge update tracking to prevent race conditions
+let badgeUpdatePending = false;
+
 export const useChatStore = create<ChatState>()(
   persist(
     (set, get) => ({
@@ -385,9 +388,23 @@ export const useChatStore = create<ChatState>()(
 
       // Notification: Update badge count
       updateBadgeCount: async () => {
-        const totalUnread = get().getTotalUnreadCount();
-        await notificationService.setBadgeCount(totalUnread);
-        console.log('📱 Badge count updated:', totalUnread);
+        // Prevent race conditions - skip if update already pending
+        if (badgeUpdatePending) {
+          console.log('📱 Badge update already pending, skipping...');
+          return;
+        }
+
+        badgeUpdatePending = true;
+
+        try {
+          const totalUnread = get().getTotalUnreadCount();
+          await notificationService.setBadgeCount(totalUnread);
+          console.log('📱 Badge count updated:', totalUnread);
+        } catch (error) {
+          console.error('❌ Error updating badge count:', error);
+        } finally {
+          badgeUpdatePending = false;
+        }
       },
     }),
     {

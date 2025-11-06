@@ -53,6 +53,7 @@ export function ResumeVideoPlayer({
   onVideoDeleted,
 }: ResumeVideoPlayerProps) {
   const videoRef = useRef<Video>(null);
+  const deleteTimerRef = useRef<NodeJS.Timeout | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [hasStartedPlaying, setHasStartedPlaying] = useState(false);
@@ -64,9 +65,19 @@ export function ResumeVideoPlayer({
   // Animation values
   const playButtonScale = useSharedValue(1);
 
+  // Sync props with state
+  useEffect(() => {
+    setViewsRemaining(initialViewsRemaining);
+  }, [initialViewsRemaining]);
+
   // Cleanup on unmount
   useEffect(() => {
     return () => {
+      // Clear any pending delete timer
+      if (deleteTimerRef.current) {
+        clearTimeout(deleteTimerRef.current);
+      }
+
       // Pause video and cleanup on unmount
       if (isPlaying) {
         setIsPlaying(false);
@@ -130,8 +141,15 @@ export function ResumeVideoPlayer({
 
       // Architecture v3: Auto-delete after reaching 0 views
       if (newViewsRemaining <= 0 || result.autoDeleted) {
-        setTimeout(() => {
+        // Clear any existing timer
+        if (deleteTimerRef.current) {
+          clearTimeout(deleteTimerRef.current);
+        }
+
+        // Set new timer
+        deleteTimerRef.current = setTimeout(() => {
           handleAutoDelete();
+          deleteTimerRef.current = null;
         }, 2000); // Give 2 seconds to finish watching
       }
 
@@ -300,7 +318,7 @@ export function ResumeVideoPlayer({
               <View
                 style={[
                   styles.progressFill,
-                  { width: `${(currentTime / duration) * 100}%` },
+                  { width: duration > 0 ? `${(currentTime / duration) * 100}%` : '0%' },
                 ]}
               />
             </View>

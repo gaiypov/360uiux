@@ -441,6 +441,8 @@ export class NotificationService {
             conversationId,
             employerName: senderName || 'Работодатель',
           });
+        } else if (!this.navigationCallback) {
+          console.warn('⚠️ Navigation callback not set. Call setNavigationCallback() during app initialization.');
         }
         // Cancel notification after opening
         if (detail.notification.id) {
@@ -496,6 +498,23 @@ export class NotificationService {
     try {
       console.log('💬 Quick reply:', conversationId, message);
 
+      // Check WebSocket connection
+      if (!wsService.isSocketConnected()) {
+        console.error('❌ WebSocket not connected, cannot send quick reply');
+        await notifee.displayNotification({
+          title: 'Ошибка отправки',
+          body: 'Нет соединения с сервером',
+          android: {
+            channelId: CHANNELS.SYSTEM,
+            importance: AndroidImportance.DEFAULT,
+            smallIcon: 'ic_notification',
+            color: '#ef4444',
+            timeout: 3000,
+          },
+        });
+        return;
+      }
+
       // Send message via WebSocket
       wsService.sendMessage(conversationId, message);
 
@@ -515,6 +534,17 @@ export class NotificationService {
       console.log('✅ Quick reply sent');
     } catch (error) {
       console.error('❌ Error sending quick reply:', error);
+      await notifee.displayNotification({
+        title: 'Ошибка отправки',
+        body: 'Не удалось отправить сообщение',
+        android: {
+          channelId: CHANNELS.SYSTEM,
+          importance: AndroidImportance.DEFAULT,
+          smallIcon: 'ic_notification',
+          color: '#ef4444',
+          timeout: 3000,
+        },
+      });
     }
   }
 
@@ -524,6 +554,23 @@ export class NotificationService {
   private async handleMarkAsRead(conversationId: string): Promise<void> {
     try {
       console.log('✅ Marking conversation as read:', conversationId);
+
+      // Check WebSocket connection
+      if (!wsService.isSocketConnected()) {
+        console.error('❌ WebSocket not connected, cannot mark as read');
+        await notifee.displayNotification({
+          title: 'Ошибка',
+          body: 'Нет соединения с сервером',
+          android: {
+            channelId: CHANNELS.SYSTEM,
+            importance: AndroidImportance.DEFAULT,
+            smallIcon: 'ic_notification',
+            color: '#ef4444',
+            timeout: 3000,
+          },
+        });
+        return;
+      }
 
       // Mark as read via WebSocket
       wsService.markConversationAsRead(conversationId);
