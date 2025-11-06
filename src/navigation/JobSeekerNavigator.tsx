@@ -13,6 +13,7 @@ import { colors, sizes } from '@/constants';
 import { VacancyFeedScreen } from '@/screens/jobseeker/VacancyFeedScreen';
 import { SearchScreen } from '@/screens/jobseeker/SearchScreen';
 import { ApplicationsScreen } from '@/screens/jobseeker/ApplicationsScreen';
+import { ApplicationScreen } from '@/screens/jobseeker/ApplicationScreen';
 import { ProfileScreen } from '@/screens/jobseeker/ProfileScreen';
 import { FavoritesScreen } from '@/screens/jobseeker/FavoritesScreen';
 import { VacancyDetailScreen } from '@/screens/jobseeker/VacancyDetailScreen';
@@ -136,6 +137,7 @@ export function JobSeekerNavigator() {
       <Stack.Screen name="Tabs" component={JobSeekerTabs} />
       <Stack.Screen name="VacancyDetail" component={VacancyDetailScreen} />
       <Stack.Screen name="CompanyDetail" component={CompanyDetailScreen} />
+      <Stack.Screen name="Application" component={ApplicationScreen} />
       <Stack.Screen name="Favorites" component={FavoritesScreen} />
       <Stack.Screen name="Profile" component={ProfileScreen} />
       <Stack.Screen name="CreateResume" component={CreateResumeScreen} />

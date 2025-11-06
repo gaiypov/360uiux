@@ -7,12 +7,16 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+export type MessageType = 'text' | 'video' | 'system';
+
 export interface Message {
   id: string;
+  type: MessageType; // Architecture v3: text | video | system
   text: string;
   timestamp: Date;
   isOwn: boolean;
   read: boolean;
+  videoId?: string; // Architecture v3: For video messages
   attachments?: Array<{
     id: string;
     type: 'image' | 'file';
@@ -39,7 +43,13 @@ interface ChatState {
   // Actions
   createConversation: (conversation: Omit<Conversation, 'messages' | 'unreadCount'>) => void;
   getConversation: (conversationId: string) => Conversation | undefined;
-  sendMessage: (conversationId: string, text: string, attachments?: Message['attachments']) => void;
+  sendMessage: (
+    conversationId: string,
+    text: string,
+    type?: MessageType,
+    videoId?: string,
+    attachments?: Message['attachments']
+  ) => void;
   receiveMessage: (conversationId: string, message: Omit<Message, 'id' | 'isOwn' | 'read'>) => void;
   markConversationAsRead: (conversationId: string) => void;
   deleteConversation: (conversationId: string) => void;
@@ -76,13 +86,15 @@ export const useChatStore = create<ChatState>()(
         return get().conversations.find((c) => c.id === conversationId);
       },
 
-      sendMessage: (conversationId, text, attachments) => {
+      sendMessage: (conversationId, text, type = 'text', videoId, attachments) => {
         const newMessage: Message = {
           id: Date.now().toString() + Math.random().toString(36).substring(7),
+          type, // Architecture v3
           text,
           timestamp: new Date(),
           isOwn: true,
           read: true,
+          videoId, // Architecture v3
           attachments,
         };
 
