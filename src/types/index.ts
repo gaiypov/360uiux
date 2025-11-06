@@ -14,6 +14,7 @@ export interface Vacancy {
   videoUrl: string;
   benefits: string[];
   applications: number;
+  commentsCount?: number; // Architecture v3: TikTok-style comments
   createdAt: string;
   description?: string;
   requirements?: string[];

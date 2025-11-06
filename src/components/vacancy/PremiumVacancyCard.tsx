@@ -31,7 +31,12 @@ interface PremiumVacancyCardProps {
   onApply?: () => void;
   onCompanyPress?: () => void;
   onLike?: () => void;
+  onComment?: () => void;
+  onFavorite?: () => void;
   onShare?: () => void;
+  onSoundPress?: () => void;
+  isLiked?: boolean;
+  isFavorited?: boolean;
 }
 
 const PremiumVacancyCardComponent = ({
@@ -40,7 +45,12 @@ const PremiumVacancyCardComponent = ({
   onApply,
   onCompanyPress,
   onLike,
+  onComment,
+  onFavorite,
   onShare,
+  onSoundPress,
+  isLiked = false,
+  isFavorited = false,
 }: PremiumVacancyCardProps) => {
   const videoRef = useRef<Video>(null);
   const scale = useSharedValue(1);
@@ -146,30 +156,54 @@ const PremiumVacancyCardComponent = ({
         </BlurView>
       </View>
 
-      {/* Боковая панель действий */}
+      {/* TikTok-style Side Actions (6 buttons) */}
       <View style={styles.sideActions}>
-        <TouchableOpacity
-          style={styles.actionButton}
-          onPress={onCompanyPress}
-          activeOpacity={0.7}
-        >
-          <View style={styles.actionIconContainer}>
-            <Icon name="office-building" size={28} color={colors.softWhite} />
-          </View>
-          <Text style={styles.actionLabel}>Компания</Text>
-        </TouchableOpacity>
-
+        {/* 1. Like */}
         <TouchableOpacity
           style={styles.actionButton}
           onPress={onLike}
           activeOpacity={0.7}
         >
           <View style={styles.actionIconContainer}>
-            <Icon name="heart-outline" size={28} color={colors.softWhite} />
+            <Icon
+              name={isLiked ? 'heart' : 'heart-outline'}
+              size={32}
+              color={isLiked ? '#FF006E' : colors.softWhite}
+            />
           </View>
           <Text style={styles.actionLabel}>{vacancy.applications}</Text>
         </TouchableOpacity>
 
+        {/* 2. Comment */}
+        <TouchableOpacity
+          style={styles.actionButton}
+          onPress={onComment}
+          activeOpacity={0.7}
+        >
+          <View style={styles.actionIconContainer}>
+            <Icon name="comment-outline" size={30} color={colors.softWhite} />
+          </View>
+          <Text style={styles.actionLabel}>
+            {vacancy.commentsCount || 0}
+          </Text>
+        </TouchableOpacity>
+
+        {/* 3. Favorite/Bookmark */}
+        <TouchableOpacity
+          style={styles.actionButton}
+          onPress={onFavorite}
+          activeOpacity={0.7}
+        >
+          <View style={styles.actionIconContainer}>
+            <Icon
+              name={isFavorited ? 'bookmark' : 'bookmark-outline'}
+              size={30}
+              color={isFavorited ? colors.platinumSilver : colors.softWhite}
+            />
+          </View>
+        </TouchableOpacity>
+
+        {/* 4. Share */}
         <TouchableOpacity
           style={styles.actionButton}
           onPress={onShare}
@@ -177,6 +211,35 @@ const PremiumVacancyCardComponent = ({
         >
           <View style={styles.actionIconContainer}>
             <Icon name="share-variant" size={28} color={colors.softWhite} />
+          </View>
+        </TouchableOpacity>
+
+        {/* 5. Sound/Music */}
+        <TouchableOpacity
+          style={styles.actionButton}
+          onPress={onSoundPress}
+          activeOpacity={0.7}
+        >
+          <View style={[styles.actionIconContainer, styles.soundIcon]}>
+            <Icon name="music-note" size={24} color={colors.softWhite} />
+          </View>
+        </TouchableOpacity>
+
+        {/* 6. Company Avatar */}
+        <TouchableOpacity
+          style={styles.actionButton}
+          onPress={onCompanyPress}
+          activeOpacity={0.7}
+        >
+          <View style={[styles.actionIconContainer, styles.avatarContainer]}>
+            <LinearGradient
+              colors={metalGradients.platinum}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.avatarGradient}
+            >
+              <Icon name="office-building" size={24} color={colors.graphiteBlack} />
+            </LinearGradient>
           </View>
         </TouchableOpacity>
       </View>
@@ -338,26 +401,52 @@ const styles = StyleSheet.create({
   sideActions: {
     position: 'absolute',
     right: sizes.md,
-    bottom: 240,
-    gap: sizes.xl,
+    bottom: 180,
+    gap: sizes.lg,
+    paddingVertical: sizes.md,
   },
   actionButton: {
     alignItems: 'center',
   },
   actionIconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: glassVariants.strong.background,
-    borderWidth: 1,
-    borderColor: glassVariants.strong.border,
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 6,
+    marginBottom: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 3,
   },
   actionLabel: {
     ...typography.caption,
-    color: colors.liquidSilver,
+    fontSize: 12,
+    color: colors.softWhite,
+    fontWeight: '600',
+    textShadowColor: 'rgba(0, 0, 0, 0.75)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
+  },
+  soundIcon: {
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+  },
+  avatarContainer: {
+    padding: 0,
+    overflow: 'hidden',
+    backgroundColor: 'transparent',
+  },
+  avatarGradient: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: colors.softWhite,
   },
   ctaContainer: {
     position: 'absolute',

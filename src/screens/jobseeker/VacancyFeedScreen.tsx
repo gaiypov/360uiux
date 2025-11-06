@@ -1,22 +1,119 @@
 /**
  * 360° РАБОТА - ULTRA EDITION
  * Vacancy Feed Screen (TikTok-style vertical swipe)
+ * Architecture v3: Guest view tracking with 20-video limit
  */
 
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { View, StyleSheet, Dimensions, StatusBar, FlatList } from 'react-native';
 import { GestureDetector, Gesture } from 'react-native-gesture-handler';
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 import { colors, metalGradients } from "@/constants";
 import { PremiumVacancyCard } from '@/components/vacancy';
 import { useVacancyFeed } from '@/hooks/useVacancyFeed';
+import { useAuthStore } from '@/stores/authStore';
+import {
+  incrementGuestView,
+  hasReachedViewLimit,
+  getRemainingViews,
+} from '@/utils/guestViewCounter';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
-export function VacancyFeedScreen() {
+export function VacancyFeedScreen({ navigation }: any) {
   const flatListRef = useRef<FlatList>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
   const { vacancies, fetchMore } = useVacancyFeed();
+  const { user } = useAuthStore();
+  const [likedVacancies, setLikedVacancies] = useState<Set<string>>(new Set());
+  const [favoritedVacancies, setFavoritedVacancies] = useState<Set<string>>(new Set());
+  const [remainingViews, setRemainingViews] = useState<number>(20);
+
+  // Check view limit on mount
+  useEffect(() => {
+    const checkViewLimit = async () => {
+      if (!user) {
+        const limitReached = await hasReachedViewLimit();
+        if (limitReached) {
+          navigation.replace('RegistrationRequired');
+          return;
+        }
+        const remaining = await getRemainingViews();
+        setRemainingViews(remaining);
+      }
+    };
+    checkViewLimit();
+  }, [user, navigation]);
+
+  // Track view when vacancy changes
+  useEffect(() => {
+    const trackView = async () => {
+      if (!user && vacancies[currentIndex]) {
+        try {
+          const viewData = await incrementGuestView(vacancies[currentIndex].id);
+          setRemainingViews(20 - viewData.count);
+
+          // Check if limit reached
+          if (viewData.count >= 20) {
+            setTimeout(() => {
+              navigation.replace('RegistrationRequired');
+            }, 1000);
+          }
+        } catch (error) {
+          console.error('Error tracking view:', error);
+        }
+      }
+    };
+    trackView();
+  }, [currentIndex, user, vacancies, navigation]);
+
+  const handleLike = (vacancyId: string) => {
+    if (!user) {
+      navigation.navigate('RegistrationRequired');
+      return;
+    }
+    setLikedVacancies((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(vacancyId)) {
+        newSet.delete(vacancyId);
+      } else {
+        newSet.add(vacancyId);
+      }
+      return newSet;
+    });
+  };
+
+  const handleFavorite = (vacancyId: string) => {
+    if (!user) {
+      navigation.navigate('RegistrationRequired');
+      return;
+    }
+    setFavoritedVacancies((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(vacancyId)) {
+        newSet.delete(vacancyId);
+      } else {
+        newSet.add(vacancyId);
+      }
+      return newSet;
+    });
+  };
+
+  const handleComment = (vacancyId: string) => {
+    if (!user) {
+      navigation.navigate('RegistrationRequired');
+      return;
+    }
+    console.log('Comment on', vacancyId);
+  };
+
+  const handleApply = (vacancyId: string) => {
+    if (!user) {
+      navigation.navigate('RegistrationRequired');
+      return;
+    }
+    console.log('Apply to', vacancyId);
+  };
 
   const gesture = Gesture.Pan().onEnd((event) => {
     const threshold = 500;
@@ -71,10 +168,15 @@ export function VacancyFeedScreen() {
                 <PremiumVacancyCard
                   vacancy={item}
                   isActive={index === currentIndex}
-                  onApply={() => console.log('Apply to', item.id)}
+                  isLiked={likedVacancies.has(item.id)}
+                  isFavorited={favoritedVacancies.has(item.id)}
+                  onApply={() => handleApply(item.id)}
                   onCompanyPress={() => console.log('Company', item.employer.id)}
-                  onLike={() => console.log('Like', item.id)}
+                  onLike={() => handleLike(item.id)}
+                  onComment={() => handleComment(item.id)}
+                  onFavorite={() => handleFavorite(item.id)}
                   onShare={() => console.log('Share', item.id)}
+                  onSoundPress={() => console.log('Sound', item.id)}
                 />
               </Animated.View>
             )}
