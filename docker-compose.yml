@@ -1,0 +1,115 @@
+# 360° РАБОТА - Docker Compose
+# Full stack: Backend + PostgreSQL + Redis
+
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: 360rabota-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+      POSTGRES_DB: ${DB_NAME:-360rabota}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backend/migrations:/docker-entrypoint-initdb.d
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - 360rabota-network
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: 360rabota-redis
+    restart: unless-stopped
+    command: redis-server --requirepass ${REDIS_PASSWORD:-redis_password}
+    volumes:
+      - redis_data:/data
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - 360rabota-network
+
+  # Backend API
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: 360rabota-backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      NODE_ENV: ${NODE_ENV:-production}
+      PORT: ${PORT:-5000}
+
+      # Database
+      DATABASE_URL: postgresql://${DB_USER:-postgres}:${DB_PASSWORD:-postgres}@postgres:5432/${DB_NAME:-360rabota}
+
+      # Redis
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-redis_password}
+
+      # JWT
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-7d}
+
+      # OneSignal
+      ONESIGNAL_APP_ID: ${ONESIGNAL_APP_ID}
+      ONESIGNAL_REST_API_KEY: ${ONESIGNAL_REST_API_KEY}
+
+      # Yandex Cloud
+      YANDEX_ACCESS_KEY_ID: ${YANDEX_ACCESS_KEY_ID}
+      YANDEX_SECRET_ACCESS_KEY: ${YANDEX_SECRET_ACCESS_KEY}
+      YANDEX_BUCKET: ${YANDEX_BUCKET}
+      YANDEX_REGION: ${YANDEX_REGION:-ru-central1}
+
+      # SMS
+      SMS_API_KEY: ${SMS_API_KEY}
+
+      # Payment
+      TINKOFF_TERMINAL_KEY: ${TINKOFF_TERMINAL_KEY}
+      TINKOFF_SECRET_KEY: ${TINKOFF_SECRET_KEY}
+      ALFABANK_USERNAME: ${ALFABANK_USERNAME}
+      ALFABANK_PASSWORD: ${ALFABANK_PASSWORD}
+    ports:
+      - "${PORT:-5000}:5000"
+    volumes:
+      - /tmp/360rabota-video-processing:/tmp/360rabota-video-processing
+    networks:
+      - 360rabota-network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+
+networks:
+  360rabota-network:
+    driver: bridge

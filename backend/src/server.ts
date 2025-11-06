@@ -23,6 +23,7 @@ import userRoutes from './routes/user.routes';
 import videoRoutes from './routes/video.routes';
 import moderationRoutes from './routes/moderation.routes';
 import analyticsRoutes from './routes/analytics.routes';
+import healthRoutes from './routes/health.routes';
 
 // Initialize Express
 const app: Express = express();
@@ -63,14 +64,8 @@ app.use((req: Request, res: Response, next: NextFunction) => {
 // ROUTES
 // ===================================
 
-// Health check
-app.get('/health', (req: Request, res: Response) => {
-  res.json({
-    status: 'ok',
-    timestamp: new Date().toISOString(),
-    uptime: process.uptime(),
-  });
-});
+// Health check routes (before API routes for easy monitoring)
+app.use('/health', healthRoutes);
 
 // API v1 routes
 app.use('/api/v1/auth', authRoutes);
