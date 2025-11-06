@@ -3,7 +3,7 @@
  * Architecture v3: Private videos with 2-view limit
  */
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -63,6 +63,16 @@ export function ResumeVideoPlayer({
 
   // Animation values
   const playButtonScale = useSharedValue(1);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      // Pause video and cleanup on unmount
+      if (isPlaying) {
+        setIsPlaying(false);
+      }
+    };
+  }, [isPlaying]);
 
   // Check if video is available to watch
   const canWatch = viewsRemaining > 0 && !isDeleted;
