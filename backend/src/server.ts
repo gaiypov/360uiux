@@ -21,6 +21,7 @@ import userRoutes from './routes/user.routes';
 import videoRoutes from './routes/video.routes';
 import moderationRoutes from './routes/moderation.routes';
 import analyticsRoutes from './routes/analytics.routes';
+import uploadRoutes from './routes/upload.routes';
 
 // Initialize Express
 const app: Express = express();
@@ -71,11 +72,12 @@ app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/billing', billingRoutes);
 app.use('/api/v1/vacancies', vacancyRoutes);
 app.use('/api/v1/applications', applicationRoutes);
-app.use('/api/v1/chats', chatRoutes);
+app.use('/api/v1/chat', chatRoutes); // Chat routes
 app.use('/api/v1/users', userRoutes);
 app.use('/api/v1', videoRoutes); // Video routes
 app.use('/api/v1/moderation', moderationRoutes); // Moderation routes
 app.use('/api/v1/analytics', analyticsRoutes); // Analytics routes
+app.use('/api/v1/uploads', uploadRoutes); // Upload routes (voice, images)
 
 // 404 handler
 app.use((req: Request, res: Response) => {

@@ -40,12 +40,21 @@ export class ChatController {
   /**
    * Отправить сообщение
    * POST /api/chat/:applicationId/messages
-   * Body: { messageType: 'text' | 'video', content?: string, videoId?: string }
+   * Body: { messageType: 'text' | 'video' | 'voice' | 'image', content?: string, videoId?: string, audioUri?: string, audioDuration?: number, imageUri?: string, imageWidth?: number, imageHeight?: number }
    */
   static async sendMessage(req: Request, res: Response) {
     try {
       const { applicationId } = req.params;
-      const { messageType, content, videoId } = req.body;
+      const {
+        messageType,
+        content,
+        videoId,
+        audioUri,
+        audioDuration,
+        imageUri,
+        imageWidth,
+        imageHeight,
+      } = req.body;
       const userId = req.user!.userId;
       const userRole = req.user!.role;
 
@@ -62,6 +71,14 @@ export class ChatController {
         return res.status(400).json({ error: 'Video ID is required for video messages' });
       }
 
+      if (messageType === 'voice' && !audioUri) {
+        return res.status(400).json({ error: 'Audio URI is required for voice messages' });
+      }
+
+      if (messageType === 'image' && !imageUri) {
+        return res.status(400).json({ error: 'Image URI is required for image messages' });
+      }
+
       // Определить тип отправителя
       const senderType = userRole === 'jobseeker' ? 'jobseeker' : 'employer';
 
@@ -73,6 +90,11 @@ export class ChatController {
         messageType,
         content,
         videoId,
+        audioUri,
+        audioDuration,
+        imageUri,
+        imageWidth,
+        imageHeight,
       });
 
       return res.status(201).json({
@@ -192,6 +214,78 @@ export class ChatController {
 
       return res.status(500).json({
         error: 'Failed to delete message',
+        message: error.message,
+      });
+    }
+  }
+
+  // ===================================
+  // ARCHITECTURE V3: VIDEO MESSAGE TRACKING
+  // ===================================
+
+  /**
+   * Отследить просмотр видео в чате
+   * POST /api/chat/messages/:messageId/track-view
+   * Architecture v3: 2-view limit with auto-delete
+   */
+  static async trackVideoView(req: Request, res: Response) {
+    try {
+      const { messageId } = req.params;
+      const userId = req.user!.userId;
+
+      const result = await chatService.trackVideoView(messageId, userId);
+
+      return res.json({
+        success: result.success,
+        viewsRemaining: result.views_remaining,
+        autoDeleted: result.views_remaining === 0,
+      });
+    } catch (error: any) {
+      console.error('Track video view error:', error);
+
+      if (error.message.includes('not found')) {
+        return res.status(404).json({ error: 'Video message not found' });
+      }
+
+      if (error.message.includes('limit exceeded')) {
+        return res.status(403).json({
+          error: 'View limit exceeded',
+          viewsRemaining: 0,
+          autoDeleted: true,
+        });
+      }
+
+      return res.status(500).json({
+        error: 'Failed to track video view',
+        message: error.message,
+      });
+    }
+  }
+
+  /**
+   * Получить количество оставшихся просмотров видео
+   * GET /api/chat/messages/:messageId/views
+   */
+  static async getVideoViews(req: Request, res: Response) {
+    try {
+      const { messageId } = req.params;
+      const userId = req.user!.userId;
+
+      const viewsRemaining = await chatService.getVideoViews(messageId, userId);
+
+      return res.json({
+        success: true,
+        viewsRemaining,
+      });
+    } catch (error: any) {
+      console.error('Get video views error:', error);
+
+      if (error.message.includes('not found')) {
+        return res.status(404).json({ error: 'Video message not found' });
+      }
+
+      return res.status(500).json({
+        error: 'Failed to get video views',
         message: error.message,
       });
     }

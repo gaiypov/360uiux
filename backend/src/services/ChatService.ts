@@ -6,7 +6,7 @@
 import { db } from '../config/database';
 
 export type ChatSenderType = 'jobseeker' | 'employer' | 'system';
-export type ChatMessageType = 'text' | 'video' | 'system';
+export type ChatMessageType = 'text' | 'video' | 'voice' | 'image' | 'system';
 
 interface CreateMessageParams {
   applicationId: string;
@@ -15,6 +15,11 @@ interface CreateMessageParams {
   messageType: ChatMessageType;
   content?: string;
   videoId?: string;
+  audioUri?: string;
+  audioDuration?: number;
+  imageUri?: string;
+  imageWidth?: number;
+  imageHeight?: number;
 }
 
 interface ChatMessage {
@@ -48,14 +53,24 @@ export class ChatService {
         throw new Error('Video ID is required for video messages');
       }
 
+      if (params.messageType === 'voice' && !params.audioUri) {
+        throw new Error('Audio URI is required for voice messages');
+      }
+
+      if (params.messageType === 'image' && !params.imageUri) {
+        throw new Error('Image URI is required for image messages');
+      }
+
       // Создать сообщение
       const message = await db.one<ChatMessage>(
         `INSERT INTO chat_messages (
           application_id, sender_id, sender_type,
           message_type, content, video_id,
+          audio_uri, audio_duration,
+          image_uri, image_width, image_height,
           is_read, created_at, updated_at
         )
-        VALUES ($1, $2, $3, $4, $5, $6, false, NOW(), NOW())
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, false, NOW(), NOW())
         RETURNING *`,
         [
           params.applicationId,
@@ -64,6 +79,11 @@ export class ChatService {
           params.messageType,
           params.content || null,
           params.videoId || null,
+          params.audioUri || null,
+          params.audioDuration || null,
+          params.imageUri || null,
+          params.imageWidth || null,
+          params.imageHeight || null,
         ]
       );
 
@@ -335,6 +355,69 @@ export class ChatService {
   private sendWebSocketNotification(applicationId: string, message: ChatMessage) {
     // TODO: Implement WebSocket
     console.log(`🔔 WebSocket notification for application ${applicationId}`);
+  }
+
+  // ===================================
+  // ARCHITECTURE V3: VIDEO MESSAGE TRACKING
+  // ===================================
+
+  /**
+   * Отследить просмотр видео в сообщении чата
+   * Architecture v3: 2-view limit with auto-delete
+   */
+  async trackVideoView(messageId: string, userId: string): Promise<{ success: boolean; views_remaining: number }> {
+    try {
+      console.log(`🎥 Tracking video view for message ${messageId} by user ${userId}`);
+
+      // Вызвать функцию track_message_video_view
+      const result = await db.one<{ success: boolean; views_remaining: number }>(
+        'SELECT * FROM track_message_video_view($1, $2)',
+        [messageId, userId]
+      );
+
+      if (!result.success) {
+        if (result.views_remaining === 0) {
+          throw new Error('View limit exceeded');
+        }
+        throw new Error('Failed to track video view');
+      }
+
+      console.log(`✅ Video view tracked. Views remaining: ${result.views_remaining}`);
+
+      return result;
+    } catch (error: any) {
+      console.error('❌ Error tracking video view:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Получить количество оставшихся просмотров для видео в сообщении
+   */
+  async getVideoViews(messageId: string, userId: string): Promise<number> {
+    try {
+      // Получить сообщение
+      const message = await db.oneOrNone<ChatMessage & { video_views_remaining?: number }>(
+        `SELECT * FROM chat_messages
+         WHERE id = $1 AND message_type = 'video'`,
+        [messageId]
+      );
+
+      if (!message) {
+        throw new Error('Video message not found');
+      }
+
+      // Если пользователь автор, возвращаем текущее количество просмотров
+      if (message.sender_id === userId) {
+        return message.video_views_remaining || 2;
+      }
+
+      // Для других пользователей возвращаем оставшиеся просмотры
+      return message.video_views_remaining || 2;
+    } catch (error: any) {
+      console.error('❌ Error getting video views:', error);
+      throw error;
+    }
   }
 }
 

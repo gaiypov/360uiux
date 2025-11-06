@@ -423,4 +423,182 @@ export class ApplicationController {
       });
     }
   }
+
+  // ===================================
+  // ARCHITECTURE V3: ENHANCED APPLICATION MANAGEMENT
+  // ===================================
+
+  /**
+   * Получить отклики по статусу (для работодателя)
+   * GET /api/v1/applications?status=pending|viewed|interview|rejected|hired|cancelled
+   * Architecture v3: Enhanced with timeline tracking
+   */
+  static async getApplicationsByStatus(req: Request, res: Response) {
+    try {
+      const { status } = req.query;
+      const employerId = req.user!.userId;
+      const role = req.user!.role;
+
+      if (role !== 'employer') {
+        return res.status(403).json({ error: 'Only employers can access this endpoint' });
+      }
+
+      // Валидация статуса
+      const validStatuses = ['pending', 'viewed', 'interview', 'rejected', 'hired', 'cancelled'];
+      if (status && !validStatuses.includes(status as string)) {
+        return res.status(400).json({
+          error: 'Invalid status',
+          message: `Status must be one of: ${validStatuses.join(', ')}`,
+        });
+      }
+
+      // Построить запрос
+      let query = `
+        SELECT
+          a.*,
+          u.name as jobseeker_name,
+          u.profession as jobseeker_profession,
+          u.city as jobseeker_city,
+          u.avatar_url,
+          v.title as vacancy_title,
+          v.id as vacancy_id,
+          (
+            SELECT COUNT(*)
+            FROM chat_messages cm
+            WHERE cm.application_id = a.id
+            AND cm.sender_type = 'jobseeker'
+            AND cm.is_read = false
+          ) as unread_count
+        FROM applications a
+        JOIN users u ON u.id = a.jobseeker_id
+        JOIN vacancies v ON v.id = a.vacancy_id
+        WHERE v.employer_id = $1
+      `;
+
+      const params: any[] = [employerId];
+
+      if (status) {
+        query += ' AND a.status = $2';
+        params.push(status);
+      }
+
+      query += ' ORDER BY a.last_message_at DESC NULLS LAST, a.created_at DESC';
+
+      const applications = await db.manyOrNone(query, params);
+
+      return res.json({
+        success: true,
+        applications: applications || [],
+        count: applications?.length || 0,
+        status: status || 'all',
+      });
+    } catch (error: any) {
+      console.error('Get applications by status error:', error);
+      return res.status(500).json({
+        error: 'Failed to get applications',
+        message: error.message,
+      });
+    }
+  }
+
+  /**
+   * Обновить статус отклика (расширенный)
+   * PATCH /api/v1/applications/:id/status
+   * Body: { status: 'pending' | 'viewed' | 'interview' | 'rejected' | 'hired' | 'cancelled', rejectionReason?: string }
+   * Architecture v3: With timeline tracking
+   */
+  static async updateApplicationStatus(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+      const { status, rejectionReason } = req.body;
+      const employerId = req.user!.userId;
+      const role = req.user!.role;
+
+      if (role !== 'employer') {
+        return res.status(403).json({ error: 'Only employers can update application status' });
+      }
+
+      // Валидация статуса
+      const validStatuses = ['pending', 'viewed', 'interview', 'rejected', 'hired', 'cancelled'];
+      if (!status || !validStatuses.includes(status)) {
+        return res.status(400).json({
+          error: 'Invalid status',
+          message: `Status must be one of: ${validStatuses.join(', ')}`,
+        });
+      }
+
+      // Проверить что отклик на вакансию работодателя
+      const application = await db.oneOrNone(
+        `SELECT a.*, v.employer_id
+         FROM applications a
+         JOIN vacancies v ON v.id = a.vacancy_id
+         WHERE a.id = $1`,
+        [id]
+      );
+
+      if (!application) {
+        return res.status(404).json({ error: 'Application not found' });
+      }
+
+      if (application.employer_id !== employerId) {
+        return res.status(403).json({ error: 'Access denied' });
+      }
+
+      // Обновить статус с временными метками
+      const updated = await db.one(
+        `UPDATE applications
+         SET status = $1,
+             viewed_at = CASE WHEN $1 = 'viewed' THEN COALESCE(viewed_at, NOW()) ELSE viewed_at END,
+             interview_scheduled_at = CASE WHEN $1 = 'interview' THEN NOW() ELSE interview_scheduled_at END,
+             rejected_at = CASE WHEN $1 = 'rejected' THEN NOW() ELSE rejected_at END,
+             hired_at = CASE WHEN $1 = 'hired' THEN NOW() ELSE hired_at END,
+             cancelled_at = CASE WHEN $1 = 'cancelled' THEN NOW() ELSE cancelled_at END,
+             rejection_reason = $2,
+             updated_at = NOW()
+         WHERE id = $3
+         RETURNING *`,
+        [status, status === 'rejected' ? rejectionReason : null, id]
+      );
+
+      // Создать системное сообщение
+      let systemMessage = '';
+      switch (status) {
+        case 'viewed':
+          systemMessage = 'Работодатель просмотрел ваш отклик';
+          break;
+        case 'interview':
+          systemMessage = 'Работодатель приглашает вас на собеседование';
+          break;
+        case 'rejected':
+          systemMessage = rejectionReason
+            ? `Отклик отклонен. Причина: ${rejectionReason}`
+            : 'Работодатель отклонил ваш отклик';
+          break;
+        case 'hired':
+          systemMessage = 'Поздравляем! Вы приняты на работу!';
+          break;
+        case 'cancelled':
+          systemMessage = 'Отклик отменен работодателем';
+          break;
+      }
+
+      if (systemMessage) {
+        await chatService.createSystemMessage(id, systemMessage);
+      }
+
+      console.log(`✅ Application status updated: ${id} -> ${status}`);
+
+      return res.json({
+        success: true,
+        application: updated,
+        message: 'Application status updated successfully',
+      });
+    } catch (error: any) {
+      console.error('Update application status error:', error);
+      return res.status(500).json({
+        error: 'Failed to update application status',
+        message: error.message,
+      });
+    }
+  }
 }
