@@ -7,6 +7,7 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { wsService } from '../services/WebSocketService';
+import { notificationService } from '../services/NotificationService';
 
 export type MessageType = 'text' | 'video' | 'system';
 export type MessageStatus = 'sending' | 'sent' | 'delivered' | 'read' | 'failed';
@@ -75,6 +76,9 @@ interface ChatState {
   // Video actions
   updateVideoViewsRemaining: (videoId: string, viewsRemaining: number) => void;
   markVideoAsDeleted: (videoId: string, messageId: string) => void;
+
+  // Notification actions
+  updateBadgeCount: () => Promise<void>;
 }
 
 export const useChatStore = create<ChatState>()(
@@ -89,6 +93,12 @@ export const useChatStore = create<ChatState>()(
         try {
           await wsService.connect(userId);
           set({ isConnected: true });
+
+          // Initialize notification service
+          await notificationService.initialize();
+
+          // Update badge count
+          await get().updateBadgeCount();
 
           // Setup WebSocket event listeners
           wsService.on('message:received', (data: any) => {
@@ -288,6 +298,9 @@ export const useChatStore = create<ChatState>()(
             ),
           };
         });
+
+        // Update badge count
+        get().updateBadgeCount();
       },
 
       markConversationAsRead: (conversationId) => {
@@ -302,6 +315,12 @@ export const useChatStore = create<ChatState>()(
               : conv
           ),
         }));
+
+        // Update badge count
+        get().updateBadgeCount();
+
+        // Clear notification for this conversation
+        notificationService.cancelNotification(conversationId);
       },
 
       deleteConversation: (conversationId) => {
@@ -362,6 +381,13 @@ export const useChatStore = create<ChatState>()(
             ),
           })),
         }));
+      },
+
+      // Notification: Update badge count
+      updateBadgeCount: async () => {
+        const totalUnread = get().getTotalUnreadCount();
+        await notificationService.setBadgeCount(totalUnread);
+        console.log('📱 Badge count updated:', totalUnread);
       },
     }),
     {
