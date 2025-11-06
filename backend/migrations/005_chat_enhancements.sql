@@ -1,27 +1,29 @@
--- 360° РАБОТА - Chat Enhancements: Voice, Images, Reactions
+-- 360° РАБОТА - Chat Enhancements: Video, Message reactions
 -- Created: 2025-11-06
--- FEATURES: Voice messages, Image attachments, Message reactions, Application statuses, Messenger integration
+-- UPDATED: 2025-11-06 - REMOVED voice and image support (only text and video)
+-- FEATURES: Video messages with 2-view limit, Message reactions, Application statuses, Messenger integration
 
 -- ===================================
 -- UPDATE CHAT_MESSAGES TABLE
--- Add support for voice and image messages
+-- Add support for video messages with 2-view limit
+-- REMOVED: voice and image messages (architecture change)
 -- ===================================
 
--- Обновляем CHECK constraint для новых типов сообщений
+-- Обновляем CHECK constraint для типов сообщений: только text и video
 ALTER TABLE chat_messages DROP CONSTRAINT IF EXISTS chat_messages_message_type_check;
 ALTER TABLE chat_messages ADD CONSTRAINT chat_messages_message_type_check
-  CHECK (message_type IN ('text', 'video', 'voice', 'image', 'system'));
+  CHECK (message_type IN ('text', 'video', 'system'));
 
--- Добавляем поля для voice messages
-ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS audio_uri TEXT;
-ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS audio_duration INTEGER; -- в секундах
-ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS audio_waveform JSONB; -- для визуализации
+-- REMOVED: voice messages support (architecture change)
+-- ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS audio_uri TEXT;
+-- ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS audio_duration INTEGER;
+-- ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS audio_waveform JSONB;
 
--- Добавляем поля для image messages
-ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS image_uri TEXT;
-ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS image_width INTEGER;
-ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS image_height INTEGER;
-ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS image_thumbnail_uri TEXT;
+-- REMOVED: image messages support (architecture change)
+-- ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS image_uri TEXT;
+-- ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS image_width INTEGER;
+-- ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS image_height INTEGER;
+-- ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS image_thumbnail_uri TEXT;
 
 -- Добавляем поля для video messages (расширение существующих)
 ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS video_views_remaining INTEGER DEFAULT 2;
@@ -29,8 +31,9 @@ ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS video_deleted_at TIMESTAMP;
 
 -- Индексы для быстрого поиска
 CREATE INDEX IF NOT EXISTS idx_chat_messages_type ON chat_messages(message_type);
-CREATE INDEX IF NOT EXISTS idx_chat_messages_audio ON chat_messages(audio_uri) WHERE audio_uri IS NOT NULL;
-CREATE INDEX IF NOT EXISTS idx_chat_messages_image ON chat_messages(image_uri) WHERE image_uri IS NOT NULL;
+-- REMOVED: voice and image indexes (architecture change)
+-- CREATE INDEX IF NOT EXISTS idx_chat_messages_audio ON chat_messages(audio_uri) WHERE audio_uri IS NOT NULL;
+-- CREATE INDEX IF NOT EXISTS idx_chat_messages_image ON chat_messages(image_uri) WHERE image_uri IS NOT NULL;
 
 -- ===================================
 -- MESSAGE REACTIONS TABLE (NEW!)
@@ -391,14 +394,14 @@ CREATE INDEX IF NOT EXISTS idx_applications_employer_status
 -- КОММЕНТАРИИ
 -- ===================================
 
-COMMENT ON COLUMN chat_messages.audio_uri IS 'URL записи голосового сообщения';
-COMMENT ON COLUMN chat_messages.audio_duration IS 'Длительность аудио в секундах';
-COMMENT ON COLUMN chat_messages.audio_waveform IS 'Данные waveform для визуализации (массив амплитуд)';
-
-COMMENT ON COLUMN chat_messages.image_uri IS 'URL изображения';
-COMMENT ON COLUMN chat_messages.image_width IS 'Ширина изображения в пикселях';
-COMMENT ON COLUMN chat_messages.image_height IS 'Высота изображения в пикселях';
-COMMENT ON COLUMN chat_messages.image_thumbnail_uri IS 'URL thumbnail для быстрой загрузки';
+-- REMOVED: voice and image column comments (architecture change)
+-- COMMENT ON COLUMN chat_messages.audio_uri IS 'URL записи голосового сообщения';
+-- COMMENT ON COLUMN chat_messages.audio_duration IS 'Длительность аудио в секундах';
+-- COMMENT ON COLUMN chat_messages.audio_waveform IS 'Данные waveform для визуализации (массив амплитуд)';
+-- COMMENT ON COLUMN chat_messages.image_uri IS 'URL изображения';
+-- COMMENT ON COLUMN chat_messages.image_width IS 'Ширина изображения в пикселях';
+-- COMMENT ON COLUMN chat_messages.image_height IS 'Высота изображения в пикселях';
+-- COMMENT ON COLUMN chat_messages.image_thumbnail_uri IS 'URL thumbnail для быстрой загрузки';
 
 COMMENT ON COLUMN chat_messages.video_views_remaining IS 'Осталось просмотров для видео (макс 2)';
 COMMENT ON COLUMN chat_messages.video_deleted_at IS 'Когда видео было автоматически удалено';
@@ -409,8 +412,9 @@ COMMENT ON COLUMN applications.unread_messages_count IS 'Количество н
 -- ===================================
 -- МИГРАЦИЯ ЗАВЕРШЕНА!
 -- ===================================
--- ✅ Voice messages (audio_uri, audio_duration, waveform)
--- ✅ Image attachments (image_uri, width, height, thumbnail)
+-- ❌ REMOVED: Voice messages (architecture change)
+-- ❌ REMOVED: Image attachments (architecture change)
+-- ✅ Video messages with 2-view limit (text and video only)
 -- ✅ Message reactions (отдельная таблица)
 -- ✅ Application statuses (pending, viewed, interview, rejected, hired, cancelled)
 -- ✅ Application timeline (viewed_at, interview_scheduled_at, etc)

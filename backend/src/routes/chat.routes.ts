@@ -31,7 +31,8 @@ router.get('/:applicationId/messages', authMiddleware, ChatController.getMessage
  * @route   POST /api/v1/chat/:applicationId/messages
  * @desc    Отправить сообщение
  * @access  Private (Участники отклика)
- * @body    { messageType: 'text' | 'video' | 'voice' | 'image', content?: string, videoId?: string, audioUri?: string, imageUri?: string }
+ * @body    { messageType: 'text' | 'video', content?: string, videoId?: string }
+ * @note    Voice and image messages removed from architecture (only text and video supported)
  */
 router.post('/:applicationId/messages', authMiddleware, ChatController.sendMessage);
 

@@ -40,7 +40,7 @@ export class ChatController {
   /**
    * Отправить сообщение
    * POST /api/chat/:applicationId/messages
-   * Body: { messageType: 'text' | 'video' | 'voice' | 'image', content?: string, videoId?: string, audioUri?: string, audioDuration?: number, imageUri?: string, imageWidth?: number, imageHeight?: number }
+   * Body: { messageType: 'text' | 'video', content?: string, videoId?: string }
    */
   static async sendMessage(req: Request, res: Response) {
     try {
@@ -49,11 +49,6 @@ export class ChatController {
         messageType,
         content,
         videoId,
-        audioUri,
-        audioDuration,
-        imageUri,
-        imageWidth,
-        imageHeight,
       } = req.body;
       const userId = req.user!.userId;
       const userRole = req.user!.role;
@@ -71,14 +66,6 @@ export class ChatController {
         return res.status(400).json({ error: 'Video ID is required for video messages' });
       }
 
-      if (messageType === 'voice' && !audioUri) {
-        return res.status(400).json({ error: 'Audio URI is required for voice messages' });
-      }
-
-      if (messageType === 'image' && !imageUri) {
-        return res.status(400).json({ error: 'Image URI is required for image messages' });
-      }
-
       // Определить тип отправителя
       const senderType = userRole === 'jobseeker' ? 'jobseeker' : 'employer';
 
@@ -90,11 +77,6 @@ export class ChatController {
         messageType,
         content,
         videoId,
-        audioUri,
-        audioDuration,
-        imageUri,
-        imageWidth,
-        imageHeight,
       });
 
       return res.status(201).json({

@@ -7,7 +7,7 @@ import { db } from '../config/database';
 import { webSocketService } from './WebSocketService';
 
 export type ChatSenderType = 'jobseeker' | 'employer' | 'system';
-export type ChatMessageType = 'text' | 'video' | 'voice' | 'image' | 'system';
+export type ChatMessageType = 'text' | 'video' | 'system';
 
 interface CreateMessageParams {
   applicationId: string;
@@ -16,11 +16,6 @@ interface CreateMessageParams {
   messageType: ChatMessageType;
   content?: string;
   videoId?: string;
-  audioUri?: string;
-  audioDuration?: number;
-  imageUri?: string;
-  imageWidth?: number;
-  imageHeight?: number;
 }
 
 interface ChatMessage {
@@ -54,24 +49,14 @@ export class ChatService {
         throw new Error('Video ID is required for video messages');
       }
 
-      if (params.messageType === 'voice' && !params.audioUri) {
-        throw new Error('Audio URI is required for voice messages');
-      }
-
-      if (params.messageType === 'image' && !params.imageUri) {
-        throw new Error('Image URI is required for image messages');
-      }
-
       // Создать сообщение
       const message = await db.one<ChatMessage>(
         `INSERT INTO chat_messages (
           application_id, sender_id, sender_type,
           message_type, content, video_id,
-          audio_uri, audio_duration,
-          image_uri, image_width, image_height,
           is_read, created_at, updated_at
         )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, false, NOW(), NOW())
+        VALUES ($1, $2, $3, $4, $5, $6, false, NOW(), NOW())
         RETURNING *`,
         [
           params.applicationId,
@@ -80,11 +65,6 @@ export class ChatService {
           params.messageType,
           params.content || null,
           params.videoId || null,
-          params.audioUri || null,
-          params.audioDuration || null,
-          params.imageUri || null,
-          params.imageWidth || null,
-          params.imageHeight || null,
         ]
       );
 

@@ -5,16 +5,17 @@
 Run the following command in the root directory:
 
 ```bash
-npm install socket.io-client react-native-image-picker react-native-audio-recorder-player react-native-fs react-native-permissions
+npm install socket.io-client react-native-image-picker react-native-video react-native-permissions
 ```
 
 ### What each package does:
 
 1. **socket.io-client** - WebSocket client for real-time events
-2. **react-native-image-picker** - Image/camera picker
-3. **react-native-audio-recorder-player** - Record and play audio
-4. **react-native-fs** - File system access (for audio files)
-5. **react-native-permissions** - Handle iOS/Android permissions
+2. **react-native-image-picker** - Camera/video picker for recording videos
+3. **react-native-video** - Video playback for video messages
+4. **react-native-permissions** - Handle iOS/Android permissions
+
+**Note:** Voice messages and image attachments have been removed from the architecture. Chat now only supports text and video messages (jobseeker sends video with 2-view limit).
 
 ## iOS Setup (if targeting iOS)
 
@@ -30,9 +31,9 @@ Add permissions to `ios/YourApp/Info.plist`:
 <key>NSCameraUsageDescription</key>
 <string>We need access to your camera to record video messages</string>
 <key>NSPhotoLibraryUsageDescription</key>
-<string>We need access to your photo library to send images</string>
+<string>We need access to your photo library to select videos</string>
 <key>NSMicrophoneUsageDescription</key>
-<string>We need access to your microphone to record audio messages</string>
+<string>We need access to your microphone to record video with audio</string>
 ```
 
 ## Android Setup
@@ -92,11 +93,8 @@ npm run ios
 - Check CORS settings in backend
 - Try using IP address instead of localhost on Android
 
-### Camera/Image Picker not working
+### Camera/Video Picker not working
 - Make sure permissions are granted
 - Run `pod install` after adding permissions (iOS)
 - Rebuild the app after adding permissions (Android)
-
-### Audio recording not working
-- Check microphone permissions
 - Test on real device (may not work in simulator)
