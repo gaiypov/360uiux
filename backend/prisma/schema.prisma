@@ -205,6 +205,8 @@ model Vacancy {
 
   applications    Application[]
   favorites       Favorite[]
+  vacancyLikes    VacancyLike[]
+  vacancyComments VacancyComment[]
 
   publishedAt     DateTime?
   createdAt       DateTime  @default(now())
@@ -326,6 +328,65 @@ model Favorite {
 
   @@unique([userId, vacancyId])
   @@index([userId])
+}
+
+model VacancyLike {
+  id              String    @id @default(uuid())
+
+  userId          String
+  vacancyId       String
+  vacancy         Vacancy   @relation(fields: [vacancyId], references: [id], onDelete: Cascade)
+
+  createdAt       DateTime  @default(now())
+
+  @@unique([userId, vacancyId])
+  @@index([userId])
+  @@index([vacancyId])
+}
+
+model VacancyComment {
+  id              String    @id @default(uuid())
+
+  vacancyId       String
+  vacancy         Vacancy   @relation(fields: [vacancyId], references: [id], onDelete: Cascade)
+
+  userId          String
+  userName        String?   // Cached for performance
+  userAvatar      String?   // Cached for performance
+
+  text            String
+  likesCount      Int       @default(0)
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([vacancyId])
+  @@index([userId])
+  @@index([createdAt])
+}
+
+model GuestAnalytics {
+  id                String    @id @default(uuid())
+
+  sessionId         String?   @unique
+  viewsCount        Int
+  viewedVacancies   String[]  @default([])
+
+  firstViewAt       DateTime
+  lastViewAt        DateTime
+
+  convertedToUser   Boolean   @default(false)
+  userId            String?
+
+  deviceInfo        Json?     // device type, OS, browser
+  locationInfo      Json?     // city, country (from IP)
+
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  @@index([sessionId])
+  @@index([convertedToUser])
+  @@index([createdAt])
 }
 
 model VideoComplaint {
