@@ -5,6 +5,7 @@
 
 import { db } from '../config/database';
 import { webSocketService } from './WebSocketService';
+import { notificationService } from './NotificationService';
 
 export type ChatSenderType = 'jobseeker' | 'employer' | 'system';
 export type ChatMessageType = 'text' | 'video' | 'system';
@@ -70,6 +71,9 @@ export class ChatService {
 
       // WebSocket уведомление
       await this.sendWebSocketNotification(params.applicationId, message);
+
+      // Push уведомление
+      await this.sendPushNotification(params, message);
 
       console.log(`✅ Message created: ${message.id}`);
 
@@ -509,6 +513,70 @@ export class ChatService {
     } catch (error: any) {
       console.error('❌ Error getting video views:', error);
       throw error;
+    }
+  }
+
+  /**
+   * Отправить push уведомление о новом сообщении
+   */
+  private async sendPushNotification(
+    params: CreateMessageParams,
+    message: ChatMessage
+  ): Promise<void> {
+    try {
+      // Получить информацию об отклике для уведомления
+      const application = await db.oneOrNone(
+        `SELECT
+          a.id,
+          a.jobseeker_id,
+          v.employer_id,
+          v.title as vacancy_title,
+          u_jobseeker.name as jobseeker_name,
+          u_employer.name as employer_name
+        FROM applications a
+        JOIN vacancies v ON v.id = a.vacancy_id
+        JOIN users u_jobseeker ON u_jobseeker.id = a.jobseeker_id
+        JOIN users u_employer ON u_employer.id = v.employer_id
+        WHERE a.id = $1`,
+        [params.applicationId]
+      );
+
+      if (!application) {
+        console.warn('⚠️  Application not found for push notification');
+        return;
+      }
+
+      // Определить получателя (кому отправить уведомление)
+      const recipientId =
+        params.senderType === 'jobseeker'
+          ? application.employer_id
+          : application.jobseeker_id;
+
+      const senderName =
+        params.senderType === 'jobseeker'
+          ? application.jobseeker_name
+          : application.employer_name;
+
+      // Определить preview сообщения
+      let messagePreview = '';
+      if (params.messageType === 'text') {
+        messagePreview = params.content || 'Новое сообщение';
+      } else if (params.messageType === 'video') {
+        messagePreview = '📹 Отправил видео';
+      }
+
+      // Отправить push уведомление
+      await notificationService.notifyNewMessage({
+        recipientId,
+        senderName,
+        messagePreview,
+        applicationId: params.applicationId,
+      });
+
+      console.log(`✅ Push notification sent to ${recipientId}`);
+    } catch (error: any) {
+      // Не бросаем ошибку, чтобы не блокировать создание сообщения
+      console.error('❌ Error sending push notification:', error);
     }
   }
 }
