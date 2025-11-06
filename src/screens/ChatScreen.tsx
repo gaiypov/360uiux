@@ -137,6 +137,69 @@ export function ChatScreen({ route, navigation }: ChatScreenProps) {
     const showDate = index === 0 ||
       formatDate(item.timestamp) !== formatDate(messages[index - 1].timestamp);
 
+    // Architecture v3: System messages
+    if (item.type === 'system') {
+      return (
+        <View key={item.id}>
+          {showDate && (
+            <View style={styles.dateSeparator}>
+              <View style={styles.dateLine} />
+              <Text style={styles.dateText}>{formatDate(item.timestamp)}</Text>
+              <View style={styles.dateLine} />
+            </View>
+          )}
+          <View style={styles.systemMessageContainer}>
+            <Text style={styles.systemMessageText}>{item.text}</Text>
+          </View>
+        </View>
+      );
+    }
+
+    // Architecture v3: Video messages (resume videos)
+    if (item.type === 'video') {
+      return (
+        <View key={item.id}>
+          {showDate && (
+            <View style={styles.dateSeparator}>
+              <View style={styles.dateLine} />
+              <Text style={styles.dateText}>{formatDate(item.timestamp)}</Text>
+              <View style={styles.dateLine} />
+            </View>
+          )}
+          <Animated.View
+            entering={item.isOwn ? FadeInRight.duration(300) : FadeInLeft.duration(300)}
+            style={[
+              styles.messageContainer,
+              item.isOwn ? styles.ownMessageContainer : styles.theirMessageContainer,
+            ]}
+          >
+            <GlassCard variant="medium" style={styles.videoMessage} noPadding>
+              <View style={styles.videoMessageContent}>
+                <View style={styles.videoMessageHeader}>
+                  <Icon name="video" size={20} color={colors.platinumSilver} />
+                  <Text style={styles.videoMessageTitle}>Видео-резюме</Text>
+                </View>
+
+                {/* TODO: Replace with ResumeVideoPlayer component */}
+                <View style={styles.videoPlaceholder}>
+                  <Icon name="play-circle" size={64} color={colors.platinumSilver} />
+                  <Text style={styles.videoPlaceholderText}>📹 Видео-резюме</Text>
+                  <Text style={styles.viewLimitText}>👁️ Осталось 2 просмотра</Text>
+                </View>
+
+                <View style={styles.videoMessageFooter}>
+                  <Icon name="shield-lock" size={14} color={colors.chromeSilver} />
+                  <Text style={styles.videoFooterText}>
+                    Приватное • Макс. 2 просмотра
+                  </Text>
+                </View>
+              </View>
+            </GlassCard>
+          </Animated.View>
+        </View>
+      );
+    }
+
     return (
       <View>
         {showDate && (
@@ -423,5 +486,64 @@ const styles = StyleSheet.create({
     height: 40,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  // Architecture v3: System message styles
+  systemMessageContainer: {
+    alignItems: 'center',
+    paddingVertical: sizes.md,
+  },
+  systemMessageText: {
+    ...typography.caption,
+    color: colors.graphiteSilver,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    paddingHorizontal: sizes.md,
+    paddingVertical: sizes.sm,
+    borderRadius: sizes.radiusMedium,
+    textAlign: 'center',
+  },
+  // Architecture v3: Video message styles
+  videoMessage: {
+    width: '100%',
+  },
+  videoMessageContent: {
+    padding: sizes.md,
+  },
+  videoMessageHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: sizes.sm,
+    marginBottom: sizes.md,
+  },
+  videoMessageTitle: {
+    ...typography.bodyMedium,
+    color: colors.softWhite,
+    fontWeight: '600',
+  },
+  videoPlaceholder: {
+    aspectRatio: 16 / 9,
+    backgroundColor: 'rgba(0,0,0,0.3)',
+    borderRadius: sizes.radiusMedium,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: sizes.md,
+  },
+  videoPlaceholderText: {
+    ...typography.body,
+    color: colors.platinumSilver,
+    marginTop: sizes.sm,
+  },
+  viewLimitText: {
+    ...typography.caption,
+    color: colors.chromeSilver,
+    marginTop: sizes.xs,
+  },
+  videoMessageFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: sizes.xs,
+  },
+  videoFooterText: {
+    ...typography.caption,
+    color: colors.chromeSilver,
   },
 });
