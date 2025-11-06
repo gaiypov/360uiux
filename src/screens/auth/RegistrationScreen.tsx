@@ -1,6 +1,7 @@
 /**
  * 360° РАБОТА - ULTRA EDITION
- * Registration Screen
+ * Registration Screen - Simplified 2-step flow
+ * Architecture v3: TikTok-style registration (name + age only)
  */
 
 import React, { useState } from 'react';
@@ -35,33 +36,25 @@ interface Props {
   navigation: any;
 }
 
-type UserRole = 'jobseeker' | 'employer';
-
 export function RegistrationScreen({ route, navigation }: Props) {
   const { phone, formattedPhone } = route.params;
   const { showToast } = useToastStore();
   const { login } = useAuthStore();
 
-  const [role, setRole] = useState<UserRole | null>(null);
   const [loading, setLoading] = useState(false);
 
-  // Job Seeker fields
+  // Simplified fields
   const [name, setName] = useState('');
-  const [profession, setProfession] = useState('');
-  const [city, setCity] = useState('');
-
-  // Employer fields
-  const [email, setEmail] = useState('');
-  const [companyName, setCompanyName] = useState('');
-  const [inn, setInn] = useState('');
-  const [legalAddress, setLegalAddress] = useState('');
+  const [age, setAge] = useState('');
+  const [acceptTerms, setAcceptTerms] = useState(false);
+  const [acceptPrivacy, setAcceptPrivacy] = useState(false);
 
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   /**
-   * Валидация для соискателя
+   * Валидация
    */
-  const validateJobSeeker = (): boolean => {
+  const validate = (): boolean => {
     const newErrors: Record<string, string> = {};
 
     if (!name.trim()) {
@@ -70,38 +63,16 @@ export function RegistrationScreen({ route, navigation }: Props) {
       newErrors.name = 'Имя слишком короткое';
     }
 
-    if (!profession.trim()) {
-      newErrors.profession = 'Укажите профессию';
+    if (age && (parseInt(age) < 14 || parseInt(age) > 100)) {
+      newErrors.age = 'Укажите корректный возраст';
     }
 
-    if (!city.trim()) {
-      newErrors.city = 'Укажите город';
+    if (!acceptTerms) {
+      newErrors.terms = 'Примите условия использования';
     }
 
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  /**
-   * Валидация для работодателя
-   */
-  const validateEmployer = (): boolean => {
-    const newErrors: Record<string, string> = {};
-
-    if (!email.trim()) {
-      newErrors.email = 'Введите email';
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      newErrors.email = 'Неверный формат email';
-    }
-
-    if (!companyName.trim()) {
-      newErrors.companyName = 'Введите название компании';
-    }
-
-    if (!inn.trim()) {
-      newErrors.inn = 'Введите ИНН';
-    } else if (!/^\d{10}$|^\d{12}$/.test(inn)) {
-      newErrors.inn = 'ИНН должен содержать 10 или 12 цифр';
+    if (!acceptPrivacy) {
+      newErrors.privacy = 'Примите политику конфиденциальности';
     }
 
     setErrors(newErrors);
@@ -109,10 +80,10 @@ export function RegistrationScreen({ route, navigation }: Props) {
   };
 
   /**
-   * Регистрация соискателя
+   * Регистрация
    */
-  const handleRegisterJobSeeker = async () => {
-    if (!validateJobSeeker()) {
+  const handleRegister = async () => {
+    if (!validate()) {
       haptics.error();
       return;
     }
@@ -121,11 +92,11 @@ export function RegistrationScreen({ route, navigation }: Props) {
       setLoading(true);
       haptics.light();
 
+      // По умолчанию все новые пользователи - соискатели (jobseeker)
       const response = await api.registerJobSeeker({
         phone,
         name: name.trim(),
-        profession: profession.trim(),
-        city: city.trim(),
+        age: age ? parseInt(age) : undefined,
       });
 
       // Сохраняем пользователя
@@ -133,10 +104,10 @@ export function RegistrationScreen({ route, navigation }: Props) {
       haptics.success();
       showToast('success', 'Добро пожаловать!');
 
-      // Переходим в приложение
-      navigation.replace('Main');
+      // Переходим на экран приветствия
+      navigation.replace('WelcomeBack', { name: name.trim() });
     } catch (error: any) {
-      console.error('Register jobseeker error:', error);
+      console.error('Register error:', error);
       haptics.error();
       showToast('error', error.response?.data?.message || 'Ошибка регистрации');
     } finally {
@@ -145,320 +116,33 @@ export function RegistrationScreen({ route, navigation }: Props) {
   };
 
   /**
-   * Регистрация работодателя
+   * Checkbox компонент
    */
-  const handleRegisterEmployer = async () => {
-    if (!validateEmployer()) {
-      haptics.error();
-      return;
-    }
-
-    try {
-      setLoading(true);
-      haptics.light();
-
-      const response = await api.registerEmployer({
-        phone,
-        email: email.trim().toLowerCase(),
-        company_name: companyName.trim(),
-        inn: inn.trim(),
-        legal_address: legalAddress.trim() || undefined,
-      });
-
-      // Сохраняем пользователя
-      login(response.user);
-      haptics.success();
-      showToast('success', 'Компания зарегистрирована!');
-
-      // Переходим в приложение
-      navigation.replace('Main');
-    } catch (error: any) {
-      console.error('Register employer error:', error);
-      haptics.error();
-      showToast('error', error.response?.data?.message || 'Ошибка регистрации');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  /**
-   * Обработка регистрации
-   */
-  const handleRegister = () => {
-    if (role === 'jobseeker') {
-      handleRegisterJobSeeker();
-    } else if (role === 'employer') {
-      handleRegisterEmployer();
-    }
-  };
-
-  /**
-   * Выбор роли
-   */
-  const renderRoleSelection = () => (
-    <Animated.View entering={FadeInUp.delay(200).duration(600)} style={styles.roleContainer}>
-      <Text style={styles.subtitle}>Выберите тип аккаунта</Text>
-
-      <TouchableOpacity
-        style={styles.roleCard}
-        onPress={() => {
-          setRole('jobseeker');
-          haptics.light();
-        }}
-        activeOpacity={0.8}
-      >
-        <GlassCard variant="medium" style={styles.roleCardInner}>
-          <MetalIcon name="briefcase-account" variant="platinum" size="medium" />
-          <Text style={styles.roleTitle}>Ищу работу</Text>
-          <Text style={styles.roleDescription}>
-            Найдите работу мечты{'\n'}в вашем городе
-          </Text>
-        </GlassCard>
-      </TouchableOpacity>
-
-      <TouchableOpacity
-        style={styles.roleCard}
-        onPress={() => {
-          setRole('employer');
-          haptics.light();
-        }}
-        activeOpacity={0.8}
-      >
-        <GlassCard variant="medium" style={styles.roleCardInner}>
-          <MetalIcon name="domain" variant="steel" size="medium" />
-          <Text style={styles.roleTitle}>Ищу сотрудников</Text>
-          <Text style={styles.roleDescription}>
-            Найдите лучших кандидатов{'\n'}для вашей компании
-          </Text>
-        </GlassCard>
-      </TouchableOpacity>
-    </Animated.View>
-  );
-
-  /**
-   * Форма соискателя
-   */
-  const renderJobSeekerForm = () => (
-    <Animated.View entering={FadeInUp.delay(200).duration(600)}>
-      <GlassCard variant="medium" style={styles.formCard}>
-        <View style={styles.formHeader}>
-          <TouchableOpacity
-            onPress={() => {
-              setRole(null);
-              setErrors({});
-              haptics.light();
-            }}
-            style={styles.backButton}
-          >
-            <Icon name="arrow-left" size={20} color={colors.chromeSilver} />
-          </TouchableOpacity>
-          <Text style={styles.formTitle}>Регистрация соискателя</Text>
-        </View>
-
-        {/* Имя */}
-        <View style={styles.inputContainer}>
-          <Text style={styles.label}>Ваше имя</Text>
-          <TextInput
-            style={[styles.input, errors.name && styles.inputError]}
-            value={name}
-            onChangeText={(text) => {
-              setName(text);
-              if (errors.name) setErrors({ ...errors, name: '' });
-            }}
-            placeholder="Иван Иванов"
-            placeholderTextColor={colors.stoneGray}
-            editable={!loading}
-            {...getTextSelectionProps(colors.platinumSilver)}
-          />
-          {errors.name && <Text style={styles.errorText}>{errors.name}</Text>}
-        </View>
-
-        {/* Профессия */}
-        <View style={styles.inputContainer}>
-          <Text style={styles.label}>Профессия</Text>
-          <TextInput
-            style={[styles.input, errors.profession && styles.inputError]}
-            value={profession}
-            onChangeText={(text) => {
-              setProfession(text);
-              if (errors.profession) setErrors({ ...errors, profession: '' });
-            }}
-            placeholder="Например, Менеджер"
-            placeholderTextColor={colors.stoneGray}
-            editable={!loading}
-            {...getTextSelectionProps(colors.platinumSilver)}
-          />
-          {errors.profession && <Text style={styles.errorText}>{errors.profession}</Text>}
-        </View>
-
-        {/* Город */}
-        <View style={styles.inputContainer}>
-          <Text style={styles.label}>Город</Text>
-          <TextInput
-            style={[styles.input, errors.city && styles.inputError]}
-            value={city}
-            onChangeText={(text) => {
-              setCity(text);
-              if (errors.city) setErrors({ ...errors, city: '' });
-            }}
-            placeholder="Москва"
-            placeholderTextColor={colors.stoneGray}
-            editable={!loading}
-            {...getTextSelectionProps(colors.platinumSilver)}
-          />
-          {errors.city && <Text style={styles.errorText}>{errors.city}</Text>}
-        </View>
-
-        {/* Submit Button */}
-        <TouchableOpacity
-          style={styles.submitButton}
-          onPress={handleRegister}
-          disabled={loading}
-          activeOpacity={0.8}
-        >
-          <LinearGradient
-            colors={metalGradients.platinum}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={styles.submitGradient}
-          >
-            {loading ? (
-              <LoadingSpinner size="small" variant="spinner" color={colors.graphiteBlack} />
-            ) : (
-              <>
-                <Icon name="check" size={20} color={colors.graphiteBlack} />
-                <Text style={styles.submitText}>ЗАРЕГИСТРИРОВАТЬСЯ</Text>
-              </>
-            )}
-          </LinearGradient>
-        </TouchableOpacity>
-      </GlassCard>
-    </Animated.View>
-  );
-
-  /**
-   * Форма работодателя
-   */
-  const renderEmployerForm = () => (
-    <Animated.View entering={FadeInUp.delay(200).duration(600)}>
-      <GlassCard variant="medium" style={styles.formCard}>
-        <View style={styles.formHeader}>
-          <TouchableOpacity
-            onPress={() => {
-              setRole(null);
-              setErrors({});
-              haptics.light();
-            }}
-            style={styles.backButton}
-          >
-            <Icon name="arrow-left" size={20} color={colors.chromeSilver} />
-          </TouchableOpacity>
-          <Text style={styles.formTitle}>Регистрация компании</Text>
-        </View>
-
-        {/* Email */}
-        <View style={styles.inputContainer}>
-          <Text style={styles.label}>Email</Text>
-          <TextInput
-            style={[styles.input, errors.email && styles.inputError]}
-            value={email}
-            onChangeText={(text) => {
-              setEmail(text);
-              if (errors.email) setErrors({ ...errors, email: '' });
-            }}
-            placeholder="company@example.com"
-            placeholderTextColor={colors.stoneGray}
-            keyboardType="email-address"
-            autoCapitalize="none"
-            editable={!loading}
-            {...getTextSelectionProps(colors.platinumSilver)}
-          />
-          {errors.email && <Text style={styles.errorText}>{errors.email}</Text>}
-        </View>
-
-        {/* Название компании */}
-        <View style={styles.inputContainer}>
-          <Text style={styles.label}>Название компании</Text>
-          <TextInput
-            style={[styles.input, errors.companyName && styles.inputError]}
-            value={companyName}
-            onChangeText={(text) => {
-              setCompanyName(text);
-              if (errors.companyName) setErrors({ ...errors, companyName: '' });
-            }}
-            placeholder='ООО "Рога и Копыта"'
-            placeholderTextColor={colors.stoneGray}
-            editable={!loading}
-            {...getTextSelectionProps(colors.platinumSilver)}
-          />
-          {errors.companyName && <Text style={styles.errorText}>{errors.companyName}</Text>}
-        </View>
-
-        {/* ИНН */}
-        <View style={styles.inputContainer}>
-          <Text style={styles.label}>ИНН</Text>
-          <TextInput
-            style={[styles.input, errors.inn && styles.inputError]}
-            value={inn}
-            onChangeText={(text) => {
-              const cleaned = text.replace(/\D/g, '').slice(0, 12);
-              setInn(cleaned);
-              if (errors.inn) setErrors({ ...errors, inn: '' });
-            }}
-            placeholder="1234567890"
-            placeholderTextColor={colors.stoneGray}
-            keyboardType="number-pad"
-            maxLength={12}
-            editable={!loading}
-            {...getTextSelectionProps(colors.platinumSilver)}
-          />
-          {errors.inn && <Text style={styles.errorText}>{errors.inn}</Text>}
-          <Text style={styles.hint}>10 или 12 цифр</Text>
-        </View>
-
-        {/* Юридический адрес (optional) */}
-        <View style={styles.inputContainer}>
-          <Text style={styles.label}>
-            Юридический адрес <Text style={styles.optional}>(необязательно)</Text>
-          </Text>
-          <TextInput
-            style={styles.input}
-            value={legalAddress}
-            onChangeText={setLegalAddress}
-            placeholder="г. Москва, ул. Примерная, д. 1"
-            placeholderTextColor={colors.stoneGray}
-            editable={!loading}
-            multiline
-            numberOfLines={2}
-            {...getTextSelectionProps(colors.platinumSilver)}
-          />
-        </View>
-
-        {/* Submit Button */}
-        <TouchableOpacity
-          style={styles.submitButton}
-          onPress={handleRegister}
-          disabled={loading}
-          activeOpacity={0.8}
-        >
-          <LinearGradient
-            colors={metalGradients.steel}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={styles.submitGradient}
-          >
-            {loading ? (
-              <LoadingSpinner size="small" variant="spinner" color={colors.graphiteBlack} />
-            ) : (
-              <>
-                <Icon name="check" size={20} color={colors.graphiteBlack} />
-                <Text style={styles.submitText}>ЗАРЕГИСТРИРОВАТЬ КОМПАНИЮ</Text>
-              </>
-            )}
-          </LinearGradient>
-        </TouchableOpacity>
-      </GlassCard>
-    </Animated.View>
+  const renderCheckbox = (
+    value: boolean,
+    onPress: () => void,
+    label: string,
+    linkText?: string,
+    error?: string
+  ) => (
+    <TouchableOpacity
+      style={styles.checkboxContainer}
+      onPress={() => {
+        onPress();
+        haptics.light();
+      }}
+      activeOpacity={0.7}
+      disabled={loading}
+    >
+      <View style={[styles.checkbox, value && styles.checkboxActive]}>
+        {value && <Icon name="check" size={16} color={colors.graphiteBlack} />}
+      </View>
+      <Text style={styles.checkboxLabel}>
+        {label}{' '}
+        {linkText && <Text style={styles.checkboxLink}>{linkText}</Text>}
+      </Text>
+      {error && <Text style={styles.checkboxError}>{error}</Text>}
+    </TouchableOpacity>
   );
 
   return (
@@ -475,26 +159,131 @@ export function RegistrationScreen({ route, navigation }: Props) {
       >
         {/* Header */}
         <Animated.View entering={FadeInDown.duration(600)} style={styles.header}>
-          {!role && (
-            <TouchableOpacity
-              onPress={() => navigation.goBack()}
-              style={styles.headerBackButton}
-            >
-              <Icon name="arrow-left" size={24} color={colors.softWhite} />
-            </TouchableOpacity>
-          )}
-
           <MetalIcon name="account-plus" variant="platinum" size="large" glow />
-          <Text style={styles.title}>Регистрация</Text>
-          <Text style={styles.headerSubtitle}>
-            Номер телефона: <Text style={styles.phone}>{formattedPhone}</Text>
+          <Text style={styles.title}>Расскажите о себе</Text>
+          <Text style={styles.subtitle}>
+            Осталось совсем чуть-чуть!
           </Text>
         </Animated.View>
 
-        {/* Content */}
-        {!role && renderRoleSelection()}
-        {role === 'jobseeker' && renderJobSeekerForm()}
-        {role === 'employer' && renderEmployerForm()}
+        {/* Form */}
+        <Animated.View entering={FadeInUp.delay(200).duration(600)}>
+          <GlassCard variant="medium" style={styles.formCard}>
+            {/* Name Input */}
+            <View style={styles.inputContainer}>
+              <Text style={styles.label}>
+                Ваше имя <Text style={styles.required}>*</Text>
+              </Text>
+              <View style={[styles.inputWrapper, errors.name && styles.inputError]}>
+                <Icon name="account" size={20} color={colors.chromeSilver} />
+                <TextInput
+                  style={styles.input}
+                  value={name}
+                  onChangeText={(text) => {
+                    setName(text);
+                    if (errors.name) setErrors({ ...errors, name: '' });
+                  }}
+                  placeholder="Введите ваше имя"
+                  placeholderTextColor={colors.graphiteSilver}
+                  editable={!loading}
+                  autoFocus
+                  {...getTextSelectionProps(colors.platinumSilver)}
+                />
+              </View>
+              {errors.name && <Text style={styles.errorText}>{errors.name}</Text>}
+            </View>
+
+            {/* Age Input (optional) */}
+            <View style={styles.inputContainer}>
+              <Text style={styles.label}>
+                Возраст <Text style={styles.optional}>(рекомендуется)</Text>
+              </Text>
+              <View style={[styles.inputWrapper, errors.age && styles.inputError]}>
+                <Icon name="cake-variant" size={20} color={colors.chromeSilver} />
+                <TextInput
+                  style={styles.input}
+                  value={age}
+                  onChangeText={(text) => {
+                    const cleaned = text.replace(/\D/g, '').slice(0, 2);
+                    setAge(cleaned);
+                    if (errors.age) setErrors({ ...errors, age: '' });
+                  }}
+                  placeholder="Ваш возраст"
+                  placeholderTextColor={colors.graphiteSilver}
+                  keyboardType="number-pad"
+                  maxLength={2}
+                  editable={!loading}
+                  {...getTextSelectionProps(colors.platinumSilver)}
+                />
+              </View>
+              {errors.age && <Text style={styles.errorText}>{errors.age}</Text>}
+              <Text style={styles.hint}>
+                Работодатели предпочитают кандидатов с указанным возрастом
+              </Text>
+            </View>
+
+            {/* Divider */}
+            <View style={styles.divider} />
+
+            {/* Checkboxes */}
+            <View style={styles.checkboxesContainer}>
+              {renderCheckbox(
+                acceptTerms,
+                () => setAcceptTerms(!acceptTerms),
+                'Я принимаю',
+                'условия использования',
+                errors.terms
+              )}
+              {renderCheckbox(
+                acceptPrivacy,
+                () => setAcceptPrivacy(!acceptPrivacy),
+                'Я принимаю',
+                'политику конфиденциальности',
+                errors.privacy
+              )}
+            </View>
+
+            {/* Submit Button */}
+            <TouchableOpacity
+              style={styles.submitButton}
+              onPress={handleRegister}
+              disabled={loading || !name.trim()}
+              activeOpacity={0.8}
+            >
+              <LinearGradient
+                colors={metalGradients.platinum}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.submitGradient}
+              >
+                {loading ? (
+                  <LoadingSpinner size="small" variant="spinner" color={colors.graphiteBlack} />
+                ) : (
+                  <>
+                    <Text style={styles.submitText}>НАЧАТЬ!</Text>
+                    <Icon name="arrow-right" size={24} color={colors.graphiteBlack} />
+                  </>
+                )}
+              </LinearGradient>
+            </TouchableOpacity>
+          </GlassCard>
+        </Animated.View>
+
+        {/* Phone info */}
+        <Animated.View entering={FadeInUp.delay(400).duration(600)} style={styles.footer}>
+          <Text style={styles.footerText}>
+            Номер телефона: <Text style={styles.footerPhone}>{formattedPhone}</Text>
+          </Text>
+          <TouchableOpacity
+            onPress={() => {
+              haptics.light();
+              navigation.goBack();
+            }}
+            disabled={loading}
+          >
+            <Text style={styles.footerLink}>Изменить</Text>
+          </TouchableOpacity>
+        </Animated.View>
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -507,6 +296,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     flexGrow: 1,
+    justifyContent: 'center',
     paddingHorizontal: sizes.xl,
     paddingVertical: sizes.xxl,
   },
@@ -514,68 +304,23 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: sizes.xxl,
   },
-  headerBackButton: {
-    position: 'absolute',
-    left: 0,
-    top: 0,
-  },
   title: {
     ...typography.h1,
+    fontSize: 32,
     color: colors.softWhite,
     marginTop: sizes.lg,
+    fontWeight: '800',
+    letterSpacing: -0.5,
   },
-  headerSubtitle: {
+  subtitle: {
     ...typography.body,
+    fontSize: 16,
     color: colors.chromeSilver,
     marginTop: sizes.sm,
     textAlign: 'center',
   },
-  phone: {
-    ...typography.bodyMedium,
-    color: colors.platinumSilver,
-  },
-  subtitle: {
-    ...typography.h3,
-    color: colors.softWhite,
-    textAlign: 'center',
-    marginBottom: sizes.xl,
-  },
-  roleContainer: {
-    gap: sizes.lg,
-  },
-  roleCard: {
-    marginBottom: sizes.md,
-  },
-  roleCardInner: {
-    alignItems: 'center',
-    paddingVertical: sizes.xl,
-  },
-  roleTitle: {
-    ...typography.h2,
-    color: colors.softWhite,
-    marginTop: sizes.md,
-    marginBottom: sizes.xs,
-  },
-  roleDescription: {
-    ...typography.body,
-    color: colors.chromeSilver,
-    textAlign: 'center',
-    lineHeight: 20,
-  },
   formCard: {
-    marginBottom: sizes.lg,
-  },
-  formHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: sizes.xl,
-  },
-  backButton: {
-    marginRight: sizes.sm,
-  },
-  formTitle: {
-    ...typography.h2,
-    color: colors.softWhite,
+    paddingVertical: sizes.lg,
   },
   inputContainer: {
     marginBottom: sizes.lg,
@@ -584,50 +329,134 @@ const styles = StyleSheet.create({
     ...typography.bodyMedium,
     color: colors.platinumSilver,
     marginBottom: sizes.sm,
+    fontSize: 15,
+  },
+  required: {
+    color: colors.error,
   },
   optional: {
     ...typography.caption,
     color: colors.chromeSilver,
+    fontWeight: '400',
   },
-  input: {
-    ...typography.body,
-    color: colors.softWhite,
+  inputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: colors.slateGray,
     borderRadius: sizes.radiusMedium,
-    paddingHorizontal: sizes.lg,
-    paddingVertical: sizes.md,
+    paddingHorizontal: sizes.md,
     borderWidth: 2,
     borderColor: 'transparent',
   },
   inputError: {
     borderColor: colors.error,
   },
+  input: {
+    ...typography.body,
+    flex: 1,
+    color: colors.softWhite,
+    paddingVertical: sizes.md,
+    marginLeft: sizes.sm,
+    fontSize: 16,
+  },
   errorText: {
     ...typography.micro,
     color: colors.error,
     marginTop: sizes.xs,
+    marginLeft: sizes.sm,
   },
   hint: {
     ...typography.caption,
     color: colors.chromeSilver,
     marginTop: sizes.xs,
+    marginLeft: sizes.sm,
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: colors.glassBorder,
+    marginVertical: sizes.lg,
+  },
+  checkboxesContainer: {
+    gap: sizes.md,
+    marginBottom: sizes.lg,
+  },
+  checkboxContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: sizes.sm,
+  },
+  checkbox: {
+    width: 24,
+    height: 24,
+    borderRadius: 6,
+    borderWidth: 2,
+    borderColor: colors.chromeSilver,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'transparent',
+  },
+  checkboxActive: {
+    backgroundColor: colors.platinumSilver,
+    borderColor: colors.platinumSilver,
+  },
+  checkboxLabel: {
+    ...typography.body,
+    color: colors.softWhite,
+    fontSize: 14,
+    flex: 1,
+  },
+  checkboxLink: {
+    color: colors.platinumSilver,
+    textDecorationLine: 'underline',
+  },
+  checkboxError: {
+    ...typography.micro,
+    color: colors.error,
+    marginTop: sizes.xs,
   },
   submitButton: {
     borderRadius: sizes.radiusLarge,
     overflow: 'hidden',
-    marginTop: sizes.md,
+    shadowColor: colors.platinumSilver,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.3,
+    shadowRadius: 16,
+    elevation: 12,
   },
   submitGradient: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: sizes.md + 2,
+    paddingVertical: sizes.lg,
     gap: sizes.sm,
   },
   submitText: {
     ...typography.h3,
     color: colors.graphiteBlack,
     fontWeight: '700',
-    letterSpacing: 1.5,
+    fontSize: 18,
+    letterSpacing: 2,
+  },
+  footer: {
+    alignItems: 'center',
+    marginTop: sizes.xl,
+    gap: sizes.sm,
+  },
+  footerText: {
+    ...typography.body,
+    color: colors.chromeSilver,
+    fontSize: 14,
+  },
+  footerPhone: {
+    ...typography.bodyMedium,
+    color: colors.platinumSilver,
+  },
+  footerLink: {
+    ...typography.bodyMedium,
+    color: colors.platinumSilver,
+    textDecorationLine: 'underline',
+    fontSize: 14,
   },
 });
