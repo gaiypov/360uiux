@@ -4,6 +4,7 @@
  */
 
 import { db } from '../config/database';
+import { webSocketService } from './WebSocketService';
 
 export type ChatSenderType = 'jobseeker' | 'employer' | 'system';
 export type ChatMessageType = 'text' | 'video' | 'voice' | 'image' | 'system';
@@ -87,8 +88,8 @@ export class ChatService {
         ]
       );
 
-      // TODO: WebSocket уведомление
-      // this.sendWebSocketNotification(params.applicationId, message);
+      // WebSocket уведомление
+      await this.sendWebSocketNotification(params.applicationId, message);
 
       console.log(`✅ Message created: ${message.id}`);
 
@@ -330,19 +331,53 @@ export class ChatService {
   /**
    * Удалить сообщение (только свои)
    */
-  async deleteMessage(messageId: string, userId: string): Promise<void> {
+  async deleteMessage(
+    messageId: string,
+    userId: string,
+    deleteForAll: boolean = false
+  ): Promise<void> {
     try {
-      const result = await db.result(
-        `DELETE FROM chat_messages
-         WHERE id = $1 AND sender_id = $2`,
+      // Получить сообщение перед удалением
+      const message = await db.oneOrNone<ChatMessage>(
+        'SELECT * FROM chat_messages WHERE id = $1 AND sender_id = $2',
         [messageId, userId]
       );
 
-      if (result.rowCount === 0) {
+      if (!message) {
         throw new Error('Message not found or access denied');
       }
 
-      console.log(`🗑️ Message deleted: ${messageId}`);
+      // Проверить можно ли удалить для всех (в течение 5 минут)
+      if (deleteForAll) {
+        const messageAge = Date.now() - new Date(message.created_at).getTime();
+        const fiveMinutes = 5 * 60 * 1000;
+
+        if (messageAge > fiveMinutes) {
+          throw new Error('Cannot delete for all: message is older than 5 minutes');
+        }
+      }
+
+      // Удалить сообщение
+      const result = await db.result(
+        `DELETE FROM chat_messages WHERE id = $1`,
+        [messageId]
+      );
+
+      if (result.rowCount === 0) {
+        throw new Error('Failed to delete message');
+      }
+
+      // Отправить WebSocket событие
+      webSocketService.emitMessageDeleted(message.application_id, {
+        messageId: messageId,
+        applicationId: message.application_id,
+        deletedBy: userId,
+        deletedForAll: deleteForAll,
+      });
+
+      console.log(
+        `🗑️ Message deleted: ${messageId} (deleteForAll: ${deleteForAll})`
+      );
     } catch (error: any) {
       console.error('❌ Error deleting message:', error);
       throw error;
@@ -350,11 +385,54 @@ export class ChatService {
   }
 
   /**
-   * WebSocket notification (TODO)
+   * WebSocket notification
    */
-  private sendWebSocketNotification(applicationId: string, message: ChatMessage) {
-    // TODO: Implement WebSocket
-    console.log(`🔔 WebSocket notification for application ${applicationId}`);
+  private async sendWebSocketNotification(applicationId: string, message: ChatMessage) {
+    try {
+      // Получить информацию о чате (application)
+      const application = await db.oneOrNone(
+        `SELECT a.*, v.employer_id, j.name as jobseeker_name, j.avatar_url as jobseeker_avatar
+         FROM applications a
+         JOIN vacancies v ON v.id = a.vacancy_id
+         LEFT JOIN users j ON j.id = a.jobseeker_id
+         WHERE a.id = $1`,
+        [applicationId]
+      );
+
+      if (!application) {
+        console.warn(`⚠️ Application not found: ${applicationId}`);
+        return;
+      }
+
+      // Определить получателя (кто НЕ отправитель)
+      const recipientId =
+        message.sender_type === 'jobseeker'
+          ? application.employer_id
+          : application.jobseeker_id;
+
+      // Получить информацию об отправителе
+      const sender = await db.oneOrNone(
+        'SELECT id, name, avatar_url FROM users WHERE id = $1',
+        [message.sender_id]
+      );
+
+      // Отправить WebSocket событие
+      webSocketService.emitMessageNew(applicationId, recipientId, {
+        messageId: message.id,
+        applicationId: message.application_id,
+        senderId: message.sender_id,
+        senderName: sender?.name || 'Unknown',
+        senderAvatar: sender?.avatar_url,
+        messageType: message.message_type,
+        content: message.content,
+        createdAt: message.created_at.toISOString(),
+      });
+
+      console.log(`🔔 WebSocket notification sent for application ${applicationId}`);
+    } catch (error: any) {
+      console.error('❌ Error sending WebSocket notification:', error);
+      // Не бросаем ошибку, чтобы не прервать создание сообщения
+    }
   }
 
   // ===================================
@@ -383,6 +461,40 @@ export class ChatService {
       }
 
       console.log(`✅ Video view tracked. Views remaining: ${result.views_remaining}`);
+
+      // Получить информацию о сообщении для WebSocket
+      const message = await db.oneOrNone<ChatMessage>(
+        'SELECT * FROM chat_messages WHERE id = $1',
+        [messageId]
+      );
+
+      if (message) {
+        // Получить информацию о зрителе
+        const viewer = await db.oneOrNone(
+          'SELECT id, name, avatar_url FROM users WHERE id = $1',
+          [userId]
+        );
+
+        // Отправить WebSocket событие отправителю видео
+        webSocketService.emitVideoViewed(message.sender_id, {
+          videoId: message.video_id || messageId,
+          messageId: messageId,
+          userId: userId,
+          userName: viewer?.name || 'Unknown',
+          userAvatar: viewer?.avatar_url,
+          viewedAt: new Date().toISOString(),
+          viewsRemaining: result.views_remaining,
+        });
+
+        // Если видео удалено (0 просмотров осталось), отправить событие удаления
+        if (result.views_remaining === 0) {
+          webSocketService.emitVideoDeleted(message.application_id, {
+            videoId: message.video_id || messageId,
+            messageId: messageId,
+            deletedAt: new Date().toISOString(),
+          });
+        }
+      }
 
       return result;
     } catch (error: any) {

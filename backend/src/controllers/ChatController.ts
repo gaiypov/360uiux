@@ -193,23 +193,32 @@ export class ChatController {
   /**
    * Удалить сообщение
    * DELETE /api/chat/messages/:messageId
+   * Query: deleteForAll=true|false
    */
   static async deleteMessage(req: Request, res: Response) {
     try {
       const { messageId } = req.params;
+      const { deleteForAll } = req.query;
       const userId = req.user!.userId;
 
-      await chatService.deleteMessage(messageId, userId);
+      const deleteForAllBoolean = deleteForAll === 'true';
+
+      await chatService.deleteMessage(messageId, userId, deleteForAllBoolean);
 
       return res.json({
         success: true,
         message: 'Message deleted successfully',
+        deletedForAll: deleteForAllBoolean,
       });
     } catch (error: any) {
       console.error('Delete message error:', error);
 
-      if (error.message.includes('not found') || error.message.includes('Access denied')) {
-        return res.status(404).json({ error: error.message });
+      if (
+        error.message.includes('not found') ||
+        error.message.includes('Access denied') ||
+        error.message.includes('Cannot delete for all')
+      ) {
+        return res.status(400).json({ error: error.message });
       }
 
       return res.status(500).json({

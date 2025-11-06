@@ -6,6 +6,7 @@
 import { Request, Response } from 'express';
 import { db } from '../config/database';
 import { chatService } from '../services/ChatService';
+import { webSocketService } from '../services/WebSocketService';
 import { v4 as uuidv4 } from 'uuid';
 
 export class ApplicationController {
@@ -125,6 +126,15 @@ export class ApplicationController {
         'UPDATE vacancies SET applications_count = applications_count + 1 WHERE id = $1',
         [vacancyId]
       );
+
+      // Отправить WebSocket событие работодателю о новом отклике
+      webSocketService.emitApplicationNew(vacancy.employer_id, {
+        applicationId: application.id,
+        vacancyId: vacancyId,
+        vacancyTitle: vacancy.title,
+        jobseekerId: jobseekerId,
+        createdAt: application.created_at,
+      });
 
       console.log(`✅ Application created: ${application.id}`);
 
@@ -585,6 +595,16 @@ export class ApplicationController {
       if (systemMessage) {
         await chatService.createSystemMessage(id, systemMessage);
       }
+
+      // Отправить WebSocket событие соискателю
+      webSocketService.emitApplicationStatusChanged(application.jobseeker_id, {
+        applicationId: id,
+        newStatus: status,
+        previousStatus: application.status,
+        changedBy: employerId,
+        changedAt: new Date().toISOString(),
+        message: systemMessage,
+      });
 
       console.log(`✅ Application status updated: ${id} -> ${status}`);
 

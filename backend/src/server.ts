@@ -3,10 +3,12 @@
  */
 
 import express, { Express, Request, Response, NextFunction } from 'express';
+import { createServer } from 'http';
 import cors from 'cors';
 import helmet from 'helmet';
 import dotenv from 'dotenv';
 import { testConnection } from './config/database';
+import { webSocketService } from './services/WebSocketService';
 
 // Load environment variables
 dotenv.config();
@@ -25,7 +27,11 @@ import uploadRoutes from './routes/upload.routes';
 
 // Initialize Express
 const app: Express = express();
+const httpServer = createServer(app);
 const PORT = process.env.PORT || 5000;
+
+// Initialize WebSocket
+webSocketService.initialize(httpServer);
 
 // ===================================
 // MIDDLEWARE
@@ -112,11 +118,12 @@ async function startServer() {
     }
 
     // Start listening
-    app.listen(PORT, () => {
+    httpServer.listen(PORT, () => {
       console.log('\n' + '='.repeat(50));
       console.log('🚀 360° РАБОТА - Backend Server');
       console.log('='.repeat(50));
       console.log(`📡 Server running on: http://localhost:${PORT}`);
+      console.log(`🔌 WebSocket server initialized`);
       console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
       console.log(`📊 Database: Connected`);
       console.log('='.repeat(50) + '\n');
