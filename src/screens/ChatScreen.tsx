@@ -1,6 +1,6 @@
 /**
  * 360° РАБОТА - ULTRA EDITION
- * Chat Screen - Messenger with Employer
+ * Chat Screen - Enhanced with Real-time Features
  */
 
 import React, { useState, useRef, useEffect } from 'react';
@@ -14,13 +14,26 @@ import {
   KeyboardAvoidingView,
   Platform,
   StatusBar,
+  ActivityIndicator,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import Animated, { FadeInLeft, FadeInRight, FadeInDown } from 'react-native-reanimated';
+import Animated, {
+  FadeInLeft,
+  FadeInRight,
+  FadeInDown,
+  FadeIn,
+  FadeOut,
+  useSharedValue,
+  useAnimatedStyle,
+  withRepeat,
+  withTiming,
+  withSequence,
+  Easing,
+} from 'react-native-reanimated';
 import LinearGradient from 'react-native-linear-gradient';
 import { GlassCard } from '@/components/ui';
 import { colors, metalGradients, typography, sizes } from '@/constants';
-import { useChatStore, type Message } from '@/stores/chatStore';
+import { useChatStore, type Message, type MessageStatus } from '@/stores/chatStore';
 import { haptics } from '@/utils/haptics';
 
 interface ChatScreenProps {
@@ -52,10 +65,14 @@ export function ChatScreen({ route, navigation }: ChatScreenProps) {
     getConversation,
     sendMessage: sendMessageToStore,
     setActiveConversation,
+    sendTypingIndicator,
+    isConnected,
   } = useChatStore();
 
   const [inputText, setInputText] = useState('');
+  const [isTyping, setIsTyping] = useState(false);
   const flatListRef = useRef<FlatList>(null);
+  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Get or create conversation
   const conversationId = routeConversationId || `${employerId}-${vacancyId}`;
@@ -78,7 +95,8 @@ export function ChatScreen({ route, navigation }: ChatScreenProps) {
         if (conv && conv.messages.length === 0) {
           sendMessageToStore(
             conversationId,
-            'Добрый день! Мы рассмотрели ваше резюме и хотели бы пригласить вас на собеседование.'
+            'Добрый день! Мы рассмотрели ваше резюме и хотели бы пригласить вас на собеседование.',
+            'text'
           );
         }
       }, 500);
@@ -94,22 +112,67 @@ export function ChatScreen({ route, navigation }: ChatScreenProps) {
 
     return () => {
       setActiveConversation(null);
+      // Stop typing indicator on unmount
+      if (isTyping) {
+        sendTypingIndicator(conversationId, false);
+      }
     };
   }, [conversationId]);
 
   const messages = conversation?.messages || [];
+  const otherUserTyping = conversation?.isTyping || false;
+  const typingUserName = conversation?.typingUserName;
+
+  // Handle typing indicator
+  const handleTextChange = (text: string) => {
+    setInputText(text);
+
+    // Send typing indicator
+    if (text.length > 0 && !isTyping) {
+      setIsTyping(true);
+      sendTypingIndicator(conversationId, true);
+    } else if (text.length === 0 && isTyping) {
+      setIsTyping(false);
+      sendTypingIndicator(conversationId, false);
+    }
+
+    // Clear existing timeout
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+    }
+
+    // Set timeout to stop typing after 3 seconds of inactivity
+    typingTimeoutRef.current = setTimeout(() => {
+      if (isTyping) {
+        setIsTyping(false);
+        sendTypingIndicator(conversationId, false);
+      }
+    }, 3000);
+  };
 
   const sendMessage = () => {
     if (!inputText.trim()) return;
 
     haptics.light();
-    sendMessageToStore(conversationId, inputText.trim());
+
+    // Stop typing indicator
+    if (isTyping) {
+      setIsTyping(false);
+      sendTypingIndicator(conversationId, false);
+    }
+
+    sendMessageToStore(conversationId, inputText.trim(), 'text');
     setInputText('');
 
     // Scroll to bottom
     setTimeout(() => {
       flatListRef.current?.scrollToEnd({ animated: true });
     }, 100);
+  };
+
+  const retryMessage = (messageId: string, text: string) => {
+    haptics.medium();
+    sendMessageToStore(conversationId, text, 'text');
   };
 
   const formatTime = (date: Date) => {
@@ -133,8 +196,36 @@ export function ChatScreen({ route, navigation }: ChatScreenProps) {
     }
   };
 
+  // Message status icon component
+  const MessageStatusIcon = ({ status }: { status?: MessageStatus }) => {
+    if (!status || status === 'sending') {
+      return <ActivityIndicator size="small" color={colors.carbonGray} />;
+    }
+
+    if (status === 'failed') {
+      return (
+        <Icon name="alert-circle" size={14} color={colors.error} />
+      );
+    }
+
+    if (status === 'sent') {
+      return <Icon name="check" size={14} color={colors.carbonGray} />;
+    }
+
+    if (status === 'delivered') {
+      return <Icon name="check-all" size={14} color={colors.carbonGray} />;
+    }
+
+    if (status === 'read') {
+      return <Icon name="check-all" size={14} color={colors.primary} />;
+    }
+
+    return null;
+  };
+
   const renderMessage = ({ item, index }: { item: Message; index: number }) => {
-    const showDate = index === 0 ||
+    const showDate =
+      index === 0 ||
       formatDate(item.timestamp) !== formatDate(messages[index - 1].timestamp);
 
     // Architecture v3: System messages
@@ -184,7 +275,11 @@ export function ChatScreen({ route, navigation }: ChatScreenProps) {
                 <View style={styles.videoPlaceholder}>
                   <Icon name="play-circle" size={64} color={colors.platinumSilver} />
                   <Text style={styles.videoPlaceholderText}>📹 Видео-резюме</Text>
-                  <Text style={styles.viewLimitText}>👁️ Осталось 2 просмотра</Text>
+                  {item.viewsRemaining !== undefined && (
+                    <Text style={styles.viewLimitText}>
+                      👁️ Осталось {item.viewsRemaining} просмотра
+                    </Text>
+                  )}
                 </View>
 
                 <View style={styles.videoMessageFooter}>
@@ -217,20 +312,35 @@ export function ChatScreen({ route, navigation }: ChatScreenProps) {
           ]}
         >
           {item.isOwn ? (
-            <LinearGradient
-              colors={metalGradients.platinum}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.ownMessage}
-            >
-              <Text style={styles.ownMessageText}>{item.text}</Text>
-              <View style={styles.messageFooter}>
-                <Text style={styles.ownMessageTime}>{formatTime(item.timestamp)}</Text>
-                {item.read && (
-                  <Icon name="check-all" size={14} color={colors.graphiteBlack} />
-                )}
-              </View>
-            </LinearGradient>
+            <>
+              <LinearGradient
+                colors={metalGradients.platinum}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.ownMessage}
+              >
+                <Text style={styles.ownMessageText}>{item.text}</Text>
+                <View style={styles.messageFooter}>
+                  <Text style={styles.ownMessageTime}>{formatTime(item.timestamp)}</Text>
+                  <MessageStatusIcon status={item.status} />
+                </View>
+              </LinearGradient>
+              {/* Failed message retry button */}
+              {item.status === 'failed' && (
+                <Animated.View
+                  entering={FadeIn.duration(200)}
+                  style={styles.retryContainer}
+                >
+                  <TouchableOpacity
+                    style={styles.retryButton}
+                    onPress={() => retryMessage(item.id, item.text)}
+                  >
+                    <Icon name="refresh" size={16} color={colors.error} />
+                    <Text style={styles.retryText}>Повторить</Text>
+                  </TouchableOpacity>
+                </Animated.View>
+              )}
+            </>
           ) : (
             <GlassCard variant="medium" style={styles.theirMessage} noPadding>
               <View style={styles.theirMessageContent}>
@@ -251,6 +361,18 @@ export function ChatScreen({ route, navigation }: ChatScreenProps) {
       keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
     >
       <StatusBar barStyle="light-content" backgroundColor={colors.primaryBlack} />
+
+      {/* Connection Status Bar */}
+      {!isConnected && (
+        <Animated.View
+          entering={FadeInDown.duration(300)}
+          exiting={FadeOut.duration(300)}
+          style={styles.connectionBar}
+        >
+          <Icon name="wifi-off" size={16} color={colors.softWhite} />
+          <Text style={styles.connectionText}>Подключение...</Text>
+        </Animated.View>
+      )}
 
       {/* Header */}
       <Animated.View entering={FadeInDown.duration(400)}>
@@ -289,10 +411,15 @@ export function ChatScreen({ route, navigation }: ChatScreenProps) {
         ref={flatListRef}
         data={messages}
         renderItem={renderMessage}
-        keyExtractor={item => item.id}
+        keyExtractor={(item) => item.id}
         contentContainerStyle={styles.messagesList}
         showsVerticalScrollIndicator={false}
         onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
+        ListFooterComponent={
+          otherUserTyping ? (
+            <TypingIndicator userName={typingUserName || employerName} />
+          ) : null
+        }
       />
 
       {/* Input Area */}
@@ -308,7 +435,7 @@ export function ChatScreen({ route, navigation }: ChatScreenProps) {
               placeholder="Написать сообщение..."
               placeholderTextColor={colors.graphiteSilver}
               value={inputText}
-              onChangeText={setInputText}
+              onChangeText={handleTextChange}
               multiline
               maxLength={1000}
             />
@@ -322,7 +449,11 @@ export function ChatScreen({ route, navigation }: ChatScreenProps) {
               disabled={!inputText.trim()}
             >
               <LinearGradient
-                colors={inputText.trim() ? metalGradients.platinum : [colors.steelGray, colors.steelGray]}
+                colors={
+                  inputText.trim()
+                    ? metalGradients.platinum
+                    : [colors.steelGray, colors.steelGray]
+                }
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={styles.sendButtonGradient}
@@ -330,7 +461,9 @@ export function ChatScreen({ route, navigation }: ChatScreenProps) {
                 <Icon
                   name="send"
                   size={20}
-                  color={inputText.trim() ? colors.graphiteBlack : colors.darkChrome}
+                  color={
+                    inputText.trim() ? colors.graphiteBlack : colors.darkChrome
+                  }
                 />
               </LinearGradient>
             </TouchableOpacity>
@@ -341,10 +474,94 @@ export function ChatScreen({ route, navigation }: ChatScreenProps) {
   );
 }
 
+// Typing Indicator Component
+function TypingIndicator({ userName }: { userName: string }) {
+  // Animated dots
+  const dot1Scale = useSharedValue(1);
+  const dot2Scale = useSharedValue(1);
+  const dot3Scale = useSharedValue(1);
+
+  useEffect(() => {
+    // Animate dots
+    dot1Scale.value = withRepeat(
+      withSequence(
+        withTiming(1.5, { duration: 400, easing: Easing.inOut(Easing.ease) }),
+        withTiming(1, { duration: 400, easing: Easing.inOut(Easing.ease) })
+      ),
+      -1,
+      false
+    );
+
+    dot2Scale.value = withRepeat(
+      withSequence(
+        withTiming(1, { duration: 200 }),
+        withTiming(1.5, { duration: 400, easing: Easing.inOut(Easing.ease) }),
+        withTiming(1, { duration: 400, easing: Easing.inOut(Easing.ease) })
+      ),
+      -1,
+      false
+    );
+
+    dot3Scale.value = withRepeat(
+      withSequence(
+        withTiming(1, { duration: 400 }),
+        withTiming(1.5, { duration: 400, easing: Easing.inOut(Easing.ease) }),
+        withTiming(1, { duration: 400, easing: Easing.inOut(Easing.ease) })
+      ),
+      -1,
+      false
+    );
+  }, []);
+
+  const dot1Style = useAnimatedStyle(() => ({
+    transform: [{ scale: dot1Scale.value }],
+  }));
+
+  const dot2Style = useAnimatedStyle(() => ({
+    transform: [{ scale: dot2Scale.value }],
+  }));
+
+  const dot3Style = useAnimatedStyle(() => ({
+    transform: [{ scale: dot3Scale.value }],
+  }));
+
+  return (
+    <Animated.View
+      entering={FadeInLeft.duration(200)}
+      exiting={FadeOut.duration(200)}
+      style={styles.typingContainer}
+    >
+      <GlassCard variant="medium" style={styles.typingBubble} noPadding>
+        <View style={styles.typingContent}>
+          <Text style={styles.typingText}>{userName} печатает</Text>
+          <View style={styles.typingDots}>
+            <Animated.View style={[styles.typingDot, dot1Style]} />
+            <Animated.View style={[styles.typingDot, dot2Style]} />
+            <Animated.View style={[styles.typingDot, dot3Style]} />
+          </View>
+        </View>
+      </GlassCard>
+    </Animated.View>
+  );
+}
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.primaryBlack,
+  },
+  connectionBar: {
+    backgroundColor: colors.error,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: sizes.xs,
+    gap: sizes.xs,
+  },
+  connectionText: {
+    ...typography.caption,
+    color: colors.softWhite,
+    fontWeight: '600',
   },
   header: {
     marginHorizontal: sizes.md,
@@ -436,6 +653,24 @@ const styles = StyleSheet.create({
     ...typography.micro,
     color: colors.carbonGray,
   },
+  retryContainer: {
+    marginTop: sizes.xs,
+    alignItems: 'flex-end',
+  },
+  retryButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: sizes.xs,
+    paddingHorizontal: sizes.sm,
+    paddingVertical: sizes.xs,
+    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+    borderRadius: sizes.radiusSmall,
+  },
+  retryText: {
+    ...typography.caption,
+    color: colors.error,
+    fontWeight: '600',
+  },
   theirMessage: {
     borderRadius: sizes.radiusLarge,
   },
@@ -450,6 +685,35 @@ const styles = StyleSheet.create({
   theirMessageTime: {
     ...typography.micro,
     color: colors.graphiteSilver,
+  },
+  // Typing indicator styles
+  typingContainer: {
+    marginBottom: sizes.sm,
+    maxWidth: '80%',
+    alignSelf: 'flex-start',
+  },
+  typingBubble: {
+    borderRadius: sizes.radiusLarge,
+  },
+  typingContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: sizes.md,
+    gap: sizes.sm,
+  },
+  typingText: {
+    ...typography.caption,
+    color: colors.chromeSilver,
+  },
+  typingDots: {
+    flexDirection: 'row',
+    gap: 4,
+  },
+  typingDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: colors.primary,
   },
   inputContainer: {
     marginHorizontal: sizes.md,
