@@ -24,6 +24,7 @@ const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 interface OnboardingScreenProps {
   navigation: any;
+  onGetStarted?: () => void;
 }
 
 const slides = [
@@ -68,9 +69,17 @@ const slides = [
   },
 ];
 
-export function OnboardingScreen({ navigation }: OnboardingScreenProps) {
+export function OnboardingScreen({ navigation, onGetStarted }: OnboardingScreenProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const flatListRef = useRef<FlatList>(null);
+
+  const handleComplete = () => {
+    if (onGetStarted) {
+      onGetStarted();
+    } else {
+      navigation.replace('Main');
+    }
+  };
 
   const handleNext = () => {
     if (currentIndex < slides.length - 1) {
@@ -79,12 +88,12 @@ export function OnboardingScreen({ navigation }: OnboardingScreenProps) {
       setCurrentIndex(nextIndex);
     } else {
       // Последний слайд - переход на главную БЕЗ регистрации
-      navigation.replace('Main');
+      handleComplete();
     }
   };
 
   const handleSkip = () => {
-    navigation.replace('Main');
+    handleComplete();
   };
 
   const renderSlide = ({ item }: { item: typeof slides[0] }) => {
