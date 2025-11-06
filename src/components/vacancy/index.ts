@@ -4,3 +4,4 @@
  */
 
 export { PremiumVacancyCard } from './PremiumVacancyCard';
+export { CommentsModal } from './CommentsModal';

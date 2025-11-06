@@ -1,7 +1,7 @@
 /**
  * 360° РАБОТА - ULTRA EDITION
  * Vacancy Feed Screen (TikTok-style vertical swipe)
- * Architecture v3: Guest view tracking with 20-video limit
+ * Architecture v3: Guest view tracking with 20-video limit + API integration
  */
 
 import React, { useRef, useState, useEffect } from 'react';
@@ -9,9 +9,12 @@ import { View, StyleSheet, Dimensions, StatusBar, FlatList } from 'react-native'
 import { GestureDetector, Gesture } from 'react-native-gesture-handler';
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 import { colors, metalGradients } from "@/constants";
-import { PremiumVacancyCard } from '@/components/vacancy';
+import { PremiumVacancyCard, CommentsModal } from '@/components/vacancy';
 import { useVacancyFeed } from '@/hooks/useVacancyFeed';
 import { useAuthStore } from '@/stores/authStore';
+import { useToastStore } from '@/stores/toastStore';
+import { api } from '@/services/api';
+import { haptics } from '@/utils/haptics';
 import {
   incrementGuestView,
   hasReachedViewLimit,
@@ -25,9 +28,14 @@ export function VacancyFeedScreen({ navigation }: any) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const { vacancies, fetchMore } = useVacancyFeed();
   const { user } = useAuthStore();
+  const { showToast } = useToastStore();
+
   const [likedVacancies, setLikedVacancies] = useState<Set<string>>(new Set());
   const [favoritedVacancies, setFavoritedVacancies] = useState<Set<string>>(new Set());
+  const [loadingActions, setLoadingActions] = useState<Set<string>>(new Set());
   const [remainingViews, setRemainingViews] = useState<number>(20);
+  const [commentsModalVisible, setCommentsModalVisible] = useState(false);
+  const [selectedVacancyId, setSelectedVacancyId] = useState<string | null>(null);
 
   // Check view limit on mount
   useEffect(() => {
@@ -67,52 +75,175 @@ export function VacancyFeedScreen({ navigation }: any) {
     trackView();
   }, [currentIndex, user, vacancies, navigation]);
 
-  const handleLike = (vacancyId: string) => {
+  /**
+   * Handle Like/Unlike with API
+   */
+  const handleLike = async (vacancyId: string) => {
     if (!user) {
       navigation.navigate('RegistrationRequired');
       return;
     }
-    setLikedVacancies((prev) => {
-      const newSet = new Set(prev);
-      if (newSet.has(vacancyId)) {
-        newSet.delete(vacancyId);
+
+    const actionKey = `like-${vacancyId}`;
+    if (loadingActions.has(actionKey)) return;
+
+    try {
+      // Optimistic UI update
+      const wasLiked = likedVacancies.has(vacancyId);
+      setLikedVacancies((prev) => {
+        const newSet = new Set(prev);
+        if (wasLiked) {
+          newSet.delete(vacancyId);
+        } else {
+          newSet.add(vacancyId);
+        }
+        return newSet;
+      });
+
+      // Add to loading
+      setLoadingActions((prev) => new Set(prev).add(actionKey));
+
+      // API call
+      if (wasLiked) {
+        await api.unlikeVacancy(vacancyId);
+        haptics.light();
       } else {
-        newSet.add(vacancyId);
+        await api.likeVacancy(vacancyId);
+        haptics.success();
+        showToast('success', '❤️ Вакансия понравилась!');
       }
-      return newSet;
-    });
+    } catch (error) {
+      console.error('Error liking vacancy:', error);
+
+      // Revert optimistic update on error
+      setLikedVacancies((prev) => {
+        const newSet = new Set(prev);
+        if (likedVacancies.has(vacancyId)) {
+          newSet.delete(vacancyId);
+        } else {
+          newSet.add(vacancyId);
+        }
+        return newSet;
+      });
+
+      haptics.error();
+      showToast('error', 'Ошибка при лайке');
+    } finally {
+      setLoadingActions((prev) => {
+        const newSet = new Set(prev);
+        newSet.delete(actionKey);
+        return newSet;
+      });
+    }
   };
 
-  const handleFavorite = (vacancyId: string) => {
+  /**
+   * Handle Favorite/Unfavorite with API
+   */
+  const handleFavorite = async (vacancyId: string) => {
     if (!user) {
       navigation.navigate('RegistrationRequired');
       return;
     }
-    setFavoritedVacancies((prev) => {
-      const newSet = new Set(prev);
-      if (newSet.has(vacancyId)) {
-        newSet.delete(vacancyId);
+
+    const actionKey = `favorite-${vacancyId}`;
+    if (loadingActions.has(actionKey)) return;
+
+    try {
+      // Optimistic UI update
+      const wasFavorited = favoritedVacancies.has(vacancyId);
+      setFavoritedVacancies((prev) => {
+        const newSet = new Set(prev);
+        if (wasFavorited) {
+          newSet.delete(vacancyId);
+        } else {
+          newSet.add(vacancyId);
+        }
+        return newSet;
+      });
+
+      // Add to loading
+      setLoadingActions((prev) => new Set(prev).add(actionKey));
+
+      // API call
+      if (wasFavorited) {
+        await api.unfavoriteVacancy(vacancyId);
+        haptics.light();
+        showToast('info', 'Удалено из избранного');
       } else {
-        newSet.add(vacancyId);
+        await api.favoriteVacancy(vacancyId);
+        haptics.success();
+        showToast('success', '🔖 Добавлено в избранное!');
       }
-      return newSet;
-    });
+    } catch (error) {
+      console.error('Error favoriting vacancy:', error);
+
+      // Revert optimistic update on error
+      setFavoritedVacancies((prev) => {
+        const newSet = new Set(prev);
+        if (favoritedVacancies.has(vacancyId)) {
+          newSet.delete(vacancyId);
+        } else {
+          newSet.add(vacancyId);
+        }
+        return newSet;
+      });
+
+      haptics.error();
+      showToast('error', 'Ошибка при добавлении в избранное');
+    } finally {
+      setLoadingActions((prev) => {
+        const newSet = new Set(prev);
+        newSet.delete(actionKey);
+        return newSet;
+      });
+    }
   };
 
+  /**
+   * Handle Comment - open modal
+   */
   const handleComment = (vacancyId: string) => {
     if (!user) {
       navigation.navigate('RegistrationRequired');
       return;
     }
-    console.log('Comment on', vacancyId);
+
+    haptics.light();
+    setSelectedVacancyId(vacancyId);
+    setCommentsModalVisible(true);
   };
 
+  /**
+   * Handle Apply to vacancy
+   */
   const handleApply = (vacancyId: string) => {
     if (!user) {
       navigation.navigate('RegistrationRequired');
       return;
     }
+
+    haptics.success();
+    showToast('success', '✅ Отклик отправлен!');
+    // TODO: Navigate to ApplicationScreen or create application
     console.log('Apply to', vacancyId);
+  };
+
+  /**
+   * Handle Share
+   */
+  const handleShare = (vacancyId: string) => {
+    haptics.light();
+    showToast('info', 'Функция "Поделиться" скоро будет доступна');
+    console.log('Share', vacancyId);
+  };
+
+  /**
+   * Handle Sound/Music info
+   */
+  const handleSoundPress = (vacancyId: string) => {
+    haptics.light();
+    console.log('Sound info', vacancyId);
   };
 
   const gesture = Gesture.Pan().onEnd((event) => {
@@ -175,8 +306,8 @@ export function VacancyFeedScreen({ navigation }: any) {
                   onLike={() => handleLike(item.id)}
                   onComment={() => handleComment(item.id)}
                   onFavorite={() => handleFavorite(item.id)}
-                  onShare={() => console.log('Share', item.id)}
-                  onSoundPress={() => console.log('Sound', item.id)}
+                  onShare={() => handleShare(item.id)}
+                  onSoundPress={() => handleSoundPress(item.id)}
                 />
               </Animated.View>
             )}
@@ -197,6 +328,16 @@ export function VacancyFeedScreen({ navigation }: any) {
           />
         </View>
       </GestureDetector>
+
+      {/* Comments Modal */}
+      <CommentsModal
+        visible={commentsModalVisible}
+        vacancyId={selectedVacancyId}
+        onClose={() => {
+          setCommentsModalVisible(false);
+          setSelectedVacancyId(null);
+        }}
+      />
     </>
   );
 }
