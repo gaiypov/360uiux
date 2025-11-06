@@ -1,13 +1,15 @@
 /**
  * 360° РАБОТА - ULTRA EDITION
- * Chat Store
+ * Chat Store with WebSocket Integration
  */
 
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { wsService } from '../services/WebSocketService';
 
 export type MessageType = 'text' | 'video' | 'system';
+export type MessageStatus = 'sending' | 'sent' | 'delivered' | 'read' | 'failed';
 
 export interface Message {
   id: string;
@@ -16,7 +18,10 @@ export interface Message {
   timestamp: Date;
   isOwn: boolean;
   read: boolean;
+  status?: MessageStatus; // Message delivery status
   videoId?: string; // Architecture v3: For video messages
+  videoUrl?: string;
+  viewsRemaining?: number;
   attachments?: Array<{
     id: string;
     type: 'image' | 'file';
@@ -34,11 +39,14 @@ export interface Conversation {
   lastMessage?: Message;
   unreadCount: number;
   messages: Message[];
+  isTyping?: boolean; // WebSocket: Typing indicator
+  typingUserName?: string;
 }
 
 interface ChatState {
   conversations: Conversation[];
   activeConversationId: string | null;
+  isConnected: boolean;
 
   // Actions
   createConversation: (conversation: Omit<Conversation, 'messages' | 'unreadCount'>) => void;
@@ -48,13 +56,21 @@ interface ChatState {
     text: string,
     type?: MessageType,
     videoId?: string,
+    videoUrl?: string,
     attachments?: Message['attachments']
   ) => void;
-  receiveMessage: (conversationId: string, message: Omit<Message, 'id' | 'isOwn' | 'read'>) => void;
+  receiveMessage: (conversationId: string, message: Omit<Message, 'isOwn' | 'read'>) => void;
+  updateMessageStatus: (messageId: string, status: MessageStatus) => void;
   markConversationAsRead: (conversationId: string) => void;
   deleteConversation: (conversationId: string) => void;
   setActiveConversation: (conversationId: string | null) => void;
   getTotalUnreadCount: () => number;
+
+  // WebSocket actions
+  connectWebSocket: (userId: string) => Promise<void>;
+  disconnectWebSocket: () => void;
+  setTypingIndicator: (conversationId: string, isTyping: boolean, userName?: string) => void;
+  sendTypingIndicator: (conversationId: string, isTyping: boolean) => void;
 }
 
 export const useChatStore = create<ChatState>()(
@@ -62,6 +78,84 @@ export const useChatStore = create<ChatState>()(
     (set, get) => ({
       conversations: [],
       activeConversationId: null,
+      isConnected: false,
+
+      // WebSocket: Connect
+      connectWebSocket: async (userId: string) => {
+        try {
+          await wsService.connect(userId);
+          set({ isConnected: true });
+
+          // Setup WebSocket event listeners
+          wsService.on('message:received', (data: any) => {
+            get().receiveMessage(data.conversationId, {
+              id: data.id,
+              type: data.type,
+              text: data.text,
+              timestamp: new Date(data.timestamp),
+              status: 'delivered',
+              videoId: data.videoId,
+              videoUrl: data.videoUrl,
+              viewsRemaining: data.viewsRemaining,
+            });
+          });
+
+          wsService.on('message:delivered', (data: any) => {
+            get().updateMessageStatus(data.messageId, 'delivered');
+          });
+
+          wsService.on('message:read', (data: any) => {
+            get().updateMessageStatus(data.messageId, 'read');
+          });
+
+          wsService.on('typing:start', (data: any) => {
+            get().setTypingIndicator(data.conversationId, true, data.userName);
+          });
+
+          wsService.on('typing:stop', (data: any) => {
+            get().setTypingIndicator(data.conversationId, false);
+          });
+
+          wsService.on('connection:lost', () => {
+            set({ isConnected: false });
+          });
+
+          wsService.on('connection:success', () => {
+            set({ isConnected: true });
+          });
+
+          console.log('✅ Chat store connected to WebSocket');
+        } catch (error) {
+          console.error('Error connecting to WebSocket:', error);
+          set({ isConnected: false });
+        }
+      },
+
+      // WebSocket: Disconnect
+      disconnectWebSocket: () => {
+        wsService.disconnect();
+        set({ isConnected: false });
+      },
+
+      // WebSocket: Send typing indicator
+      sendTypingIndicator: (conversationId: string, isTyping: boolean) => {
+        wsService.sendTyping(conversationId, isTyping);
+      },
+
+      // WebSocket: Set typing indicator
+      setTypingIndicator: (conversationId: string, isTyping: boolean, userName?: string) => {
+        set((state) => ({
+          conversations: state.conversations.map((conv) =>
+            conv.id === conversationId
+              ? {
+                  ...conv,
+                  isTyping,
+                  typingUserName: userName,
+                }
+              : conv
+          ),
+        }));
+      },
 
       createConversation: (conversation) => {
         set((state) => {
@@ -86,7 +180,7 @@ export const useChatStore = create<ChatState>()(
         return get().conversations.find((c) => c.id === conversationId);
       },
 
-      sendMessage: (conversationId, text, type = 'text', videoId, attachments) => {
+      sendMessage: (conversationId, text, type = 'text', videoId, videoUrl, attachments) => {
         const newMessage: Message = {
           id: Date.now().toString() + Math.random().toString(36).substring(7),
           type, // Architecture v3
@@ -94,10 +188,13 @@ export const useChatStore = create<ChatState>()(
           timestamp: new Date(),
           isOwn: true,
           read: true,
+          status: 'sending',
           videoId, // Architecture v3
+          videoUrl,
           attachments,
         };
 
+        // Add message to store
         set((state) => ({
           conversations: state.conversations.map((conv) =>
             conv.id === conversationId
@@ -109,18 +206,59 @@ export const useChatStore = create<ChatState>()(
               : conv
           ),
         }));
+
+        // Send via WebSocket
+        if (get().isConnected) {
+          wsService.sendMessage({
+            conversationId,
+            text,
+            type,
+            videoId,
+            videoUrl,
+          });
+
+          // Update status to sent
+          setTimeout(() => {
+            get().updateMessageStatus(newMessage.id, 'sent');
+          }, 100);
+        } else {
+          // Update status to failed if not connected
+          setTimeout(() => {
+            get().updateMessageStatus(newMessage.id, 'failed');
+          }, 100);
+        }
+      },
+
+      // Update message status
+      updateMessageStatus: (messageId: string, status: MessageStatus) => {
+        set((state) => ({
+          conversations: state.conversations.map((conv) => ({
+            ...conv,
+            messages: conv.messages.map((msg) =>
+              msg.id === messageId
+                ? { ...msg, status }
+                : msg
+            ),
+          })),
+        }));
       },
 
       receiveMessage: (conversationId, message) => {
+        // Use existing message ID from WebSocket or generate new one
         const newMessage: Message = {
           ...message,
-          id: Date.now().toString() + Math.random().toString(36).substring(7),
+          id: message.id || Date.now().toString() + Math.random().toString(36).substring(7),
           isOwn: false,
           read: false,
         };
 
         set((state) => {
           const isActiveConversation = state.activeConversationId === conversationId;
+
+          // Mark as read immediately if conversation is active
+          if (isActiveConversation && get().isConnected) {
+            wsService.markAsRead(newMessage.id, conversationId);
+          }
 
           return {
             conversations: state.conversations.map((conv) =>
@@ -160,10 +298,21 @@ export const useChatStore = create<ChatState>()(
       },
 
       setActiveConversation: (conversationId) => {
+        const prevConversationId = get().activeConversationId;
+
+        // Leave previous conversation room
+        if (prevConversationId && get().isConnected) {
+          wsService.leaveConversation(prevConversationId);
+        }
+
         set({ activeConversationId: conversationId });
 
-        // Auto-mark as read when opening conversation
+        // Join new conversation room and mark as read
         if (conversationId) {
+          if (get().isConnected) {
+            wsService.joinConversation(conversationId);
+            wsService.markConversationAsRead(conversationId);
+          }
           get().markConversationAsRead(conversationId);
         }
       },
@@ -177,6 +326,7 @@ export const useChatStore = create<ChatState>()(
       storage: createJSONStorage(() => AsyncStorage),
       partialize: (state) => ({
         conversations: state.conversations,
+        // Don't persist WebSocket connection state
       }),
     }
   )
