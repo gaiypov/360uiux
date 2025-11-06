@@ -1,8 +1,8 @@
 /**
- * 360° РАБОТА - Jobseeker Applications Screen
+ * 360° РАБОТА - Employer Applications Screen
  *
- * Экран откликов для соискателя
- * Architecture v3: Список всех откликов с фильтрацией и мессенджерами
+ * Экран откликов для работодателя
+ * Architecture v3: Список всех откликов с фильтрацией и чатом
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
@@ -33,34 +33,28 @@ interface Application {
   status: Exclude<ApplicationStatus, 'all'>;
   applied_at: string;
   viewed_at?: string;
-  interview_scheduled_at?: string;
   last_message_at?: string;
   unread_messages_count: number;
-  vacancy_id: string;
-  vacancy_title: string;
-  vacancy_salary_from?: number;
-  vacancy_salary_to?: number;
-  vacancy_city: string;
-  employer_id: string;
-  employer_company_name: string;
-  employer_telegram_username?: string;
-  employer_telegram_enabled: boolean;
-  employer_whatsapp_phone?: string;
-  employer_whatsapp_enabled: boolean;
+  jobseeker_id: string;
+  jobseeker_name: string;
+  jobseeker_phone: string;
   resume_id: string;
   resume_title: string;
+  vacancy_id: string;
+  vacancy_title: string;
+  video_views_remaining: number;
 }
 
 const STATUS_FILTERS: { value: ApplicationStatus; label: string; emoji: string }[] = [
   { value: 'all', label: 'Все', emoji: '📋' },
-  { value: 'pending', label: 'Отправлено', emoji: '⏳' },
+  { value: 'pending', label: 'Новые', emoji: '⏳' },
   { value: 'viewed', label: 'Просмотрено', emoji: '👁️' },
   { value: 'interview', label: 'Собеседование', emoji: '📅' },
   { value: 'hired', label: 'Приняты', emoji: '✅' },
   { value: 'rejected', label: 'Отклонено', emoji: '❌' },
 ];
 
-export const JobseekerApplicationsScreen: React.FC = () => {
+export const EmployerApplicationsScreen: React.FC = () => {
   const navigation = useNavigation();
 
   // Состояние
@@ -128,8 +122,8 @@ export const JobseekerApplicationsScreen: React.FC = () => {
   const handleOpenChat = (application: Application) => {
     navigation.navigate('Chat' as never, {
       applicationId: application.application_id,
-      title: application.employer_company_name,
-      subtitle: application.vacancy_title,
+      title: application.jobseeker_name,
+      subtitle: application.resume_title,
     } as never);
   };
 
@@ -179,38 +173,20 @@ export const JobseekerApplicationsScreen: React.FC = () => {
   /**
    * Рендер карточки
    */
-  const renderCard = ({ item }: { item: Application }) => {
-    // Форматировать зарплату
-    let salaryText = '';
-    if (item.vacancy_salary_from && item.vacancy_salary_to) {
-      salaryText = `${item.vacancy_salary_from.toLocaleString()} - ${item.vacancy_salary_to.toLocaleString()} ₽`;
-    } else if (item.vacancy_salary_from) {
-      salaryText = `от ${item.vacancy_salary_from.toLocaleString()} ₽`;
-    }
-
-    const subtitle = salaryText
-      ? `${item.employer_company_name} · ${salaryText}`
-      : item.employer_company_name;
-
-    return (
-      <ApplicationCard
-        applicationId={item.application_id}
-        status={item.status}
-        appliedAt={item.applied_at}
-        title={item.vacancy_title}
-        subtitle={subtitle}
-        lastMessageAt={item.last_message_at}
-        lastMessagePreview={undefined}
-        unreadCount={item.unread_messages_count}
-        telegramUsername={item.employer_telegram_username}
-        telegramEnabled={item.employer_telegram_enabled}
-        whatsappPhone={item.employer_whatsapp_phone}
-        whatsappEnabled={item.employer_whatsapp_enabled}
-        onPress={() => handleOpenChat(item)}
-        userRole="jobseeker"
-      />
-    );
-  };
+  const renderCard = ({ item }: { item: Application }) => (
+    <ApplicationCard
+      applicationId={item.application_id}
+      status={item.status}
+      appliedAt={item.applied_at}
+      title={item.jobseeker_name}
+      subtitle={item.resume_title}
+      lastMessageAt={item.last_message_at}
+      lastMessagePreview={undefined}
+      unreadCount={item.unread_messages_count}
+      onPress={() => handleOpenChat(item)}
+      userRole="employer"
+    />
+  );
 
   /**
    * Пустой список
@@ -226,7 +202,7 @@ export const JobseekerApplicationsScreen: React.FC = () => {
         <Text style={styles.emptyTitle}>Нет откликов</Text>
         <Text style={styles.emptyText}>
           {selectedFilter === 'all'
-            ? 'Вы еще не откликнулись ни на одну вакансию'
+            ? 'У вас пока нет откликов на вакансии'
             : `Нет откликов со статусом "${STATUS_FILTERS.find((f) => f.value === selectedFilter)?.label}"`}
         </Text>
       </View>
@@ -246,7 +222,7 @@ export const JobseekerApplicationsScreen: React.FC = () => {
     <View style={styles.container}>
       {/* Хедер */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Мои отклики</Text>
+        <Text style={styles.headerTitle}>Отклики</Text>
         <Text style={styles.headerSubtitle}>
           {applications.length} {applications.length === 1 ? 'отклик' : 'откликов'}
         </Text>
