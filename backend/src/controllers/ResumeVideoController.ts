@@ -6,7 +6,8 @@
 import { Request, Response } from 'express';
 import { videoService } from '../services/video/VideoService';
 import { db } from '../config/database';
-import { Video, VideoStatus } from '../types';
+import { Video, VideoStatus, ResumeVideoView, ViewLimitCheckResponse, SecureVideoUrlResponse } from '../types';
+import crypto from 'crypto';
 
 export class ResumeVideoController {
   /**
@@ -67,14 +68,15 @@ export class ResumeVideoController {
         },
       });
 
-      // Сохранить информацию о видео в БД
+      // Сохранить информацию о видео в БД (Architecture v3: private & protected)
       const video = await db.one<Video>(
         `INSERT INTO videos (
           video_id, type, user_id, title, description,
           player_url, hls_url, thumbnail_url, duration,
-          status, views, provider, created_at, updated_at
+          status, views, provider, is_public, download_protected,
+          created_at, updated_at
         )
-        VALUES ($1, 'resume', $2, $3, $4, $5, $6, $7, $8, 'ready', 0, $9, NOW(), NOW())
+        VALUES ($1, 'resume', $2, $3, $4, $5, $6, $7, $8, 'ready', 0, $9, false, true, NOW(), NOW())
         RETURNING *`,
         [
           uploadResult.videoId,
@@ -313,6 +315,180 @@ export class ResumeVideoController {
     } catch (error: any) {
       console.error('Update resume video metadata error:', error);
       return res.status(500).json({ error: 'Failed to update video metadata' });
+    }
+  }
+
+  // ===================================
+  // ARCHITECTURE V3: SECURE VIDEO URLS WITH VIEW LIMITING
+  // ===================================
+
+  /**
+   * Проверить лимит просмотров для работодателя
+   * GET /api/v1/resumes/video/:videoId/check-view-limit
+   * Query: applicationId
+   */
+  static async checkViewLimit(req: Request, res: Response) {
+    try {
+      const { videoId } = req.params;
+      const { applicationId } = req.query;
+      const employerId = req.user!.userId;
+      const role = req.user!.role;
+
+      if (role !== 'employer') {
+        return res.status(403).json({ error: 'Only employers can check view limits' });
+      }
+
+      if (!applicationId) {
+        return res.status(400).json({ error: 'Application ID is required' });
+      }
+
+      // Вызов SQL функции check_video_view_limit
+      const result = await db.one<ViewLimitCheckResponse>(
+        'SELECT * FROM check_video_view_limit($1, $2, $3)',
+        [videoId, applicationId, employerId]
+      );
+
+      return res.json(result);
+    } catch (error: any) {
+      console.error('Check view limit error:', error);
+      return res.status(500).json({ error: 'Failed to check view limit' });
+    }
+  }
+
+  /**
+   * Получить защищенный URL для просмотра видео-резюме
+   * POST /api/v1/resumes/video/:videoId/secure-url
+   * Body: { applicationId }
+   */
+  static async getSecureVideoUrl(req: Request, res: Response) {
+    try {
+      const { videoId } = req.params;
+      const { applicationId } = req.body;
+      const employerId = req.user!.userId;
+      const role = req.user!.role;
+
+      if (role !== 'employer') {
+        return res.status(403).json({ error: 'Only employers can access resume videos' });
+      }
+
+      if (!applicationId) {
+        return res.status(400).json({ error: 'Application ID is required' });
+      }
+
+      // Проверить лимит просмотров
+      const viewLimit = await db.one<ViewLimitCheckResponse>(
+        'SELECT * FROM check_video_view_limit($1, $2, $3)',
+        [videoId, applicationId, employerId]
+      );
+
+      if (!viewLimit.can_view) {
+        return res.status(403).json({
+          error: 'View limit exceeded',
+          message: 'Вы исчерпали лимит просмотров этого видео (макс. 2)',
+          views_left: 0,
+        });
+      }
+
+      // Получить информацию о видео
+      const video = await db.oneOrNone<Video>(
+        'SELECT * FROM videos WHERE id = $1 AND type = $2',
+        [videoId, 'resume']
+      );
+
+      if (!video) {
+        return res.status(404).json({ error: 'Resume video not found' });
+      }
+
+      // Проверить, что видео приватное
+      if (video.is_public) {
+        return res.status(400).json({ error: 'This video is not a private resume video' });
+      }
+
+      // Генерировать временный токен (5 минут)
+      const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
+      const token = crypto.randomBytes(32).toString('hex');
+
+      // TODO: Сохранить токен в кэше (Redis) с TTL 5 минут
+      // await redis.setex(`video_token:${token}`, 300, JSON.stringify({
+      //   videoId, employerId, applicationId, expiresAt
+      // }));
+
+      // Для api.video - можно использовать их встроенные приватные токены
+      // или вернуть наш защищенный endpoint
+      const secureUrl = `${video.hls_url}?token=${token}`;
+
+      // Увеличить счетчик просмотров
+      const incremented = await db.one<{ increment_video_view: boolean }>(
+        'SELECT increment_video_view($1, $2, $3) as increment_video_view',
+        [videoId, applicationId, employerId]
+      );
+
+      if (!incremented.increment_video_view) {
+        console.warn(`Failed to increment view count for video ${videoId}`);
+      }
+
+      const response: SecureVideoUrlResponse = {
+        url: secureUrl,
+        expires_at: expiresAt,
+        views_remaining: viewLimit.views_left - 1, // Минус текущий просмотр
+      };
+
+      return res.json(response);
+    } catch (error: any) {
+      console.error('Get secure video URL error:', error);
+      return res.status(500).json({ error: 'Failed to generate secure URL' });
+    }
+  }
+
+  /**
+   * Получить статистику просмотров видео-резюме для соискателя
+   * GET /api/v1/resumes/video/view-stats
+   */
+  static async getResumeViewStats(req: Request, res: Response) {
+    try {
+      const userId = req.user!.userId;
+      const role = req.user!.role;
+
+      if (role !== 'jobseeker') {
+        return res.status(403).json({ error: 'Only job seekers can access resume view stats' });
+      }
+
+      // Получить видео соискателя
+      const video = await db.oneOrNone<Video>(
+        'SELECT * FROM videos WHERE user_id = $1 AND type = $2',
+        [userId, 'resume']
+      );
+
+      if (!video) {
+        return res.status(404).json({ error: 'Resume video not found' });
+      }
+
+      // Получить статистику из view resume_video_stats
+      const stats = await db.oneOrNone(
+        `SELECT
+          unique_employers_viewed,
+          total_views,
+          applications_with_views,
+          employers_exhausted_limit,
+          last_viewed_at
+        FROM resume_video_stats
+        WHERE video_id = $1`,
+        [video.id]
+      );
+
+      return res.json({
+        video_id: video.id,
+        stats: stats || {
+          unique_employers_viewed: 0,
+          total_views: 0,
+          applications_with_views: 0,
+          employers_exhausted_limit: 0,
+          last_viewed_at: null,
+        },
+      });
+    } catch (error: any) {
+      console.error('Get resume view stats error:', error);
+      return res.status(500).json({ error: 'Failed to get view stats' });
     }
   }
 }
