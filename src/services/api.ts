@@ -53,8 +53,7 @@ export interface VerifyCodeResponse {
 export interface RegisterJobSeekerRequest {
   phone: string;
   name: string;
-  profession: string;
-  city: string;
+  age?: number; // Architecture v3: Simplified registration
 }
 
 export interface RegisterEmployerRequest {
@@ -304,6 +303,59 @@ class APIService {
 
   async getPaymentStatus(paymentId: string): Promise<any> {
     const response = await this.client.get(`/billing/payment/${paymentId}/status`);
+    return response.data;
+  }
+
+  // ===================================
+  // VACANCY INTERACTIONS API (Architecture v3)
+  // ===================================
+
+  async likeVacancy(vacancyId: string): Promise<{ liked: boolean }> {
+    const response = await this.client.post(`/vacancies/${vacancyId}/like`);
+    return response.data;
+  }
+
+  async unlikeVacancy(vacancyId: string): Promise<{ liked: boolean }> {
+    const response = await this.client.delete(`/vacancies/${vacancyId}/like`);
+    return response.data;
+  }
+
+  async favoriteVacancy(vacancyId: string): Promise<{ favorited: boolean }> {
+    const response = await this.client.post(`/vacancies/${vacancyId}/favorite`);
+    return response.data;
+  }
+
+  async unfavoriteVacancy(vacancyId: string): Promise<{ favorited: boolean }> {
+    const response = await this.client.delete(`/vacancies/${vacancyId}/favorite`);
+    return response.data;
+  }
+
+  async addComment(vacancyId: string, text: string): Promise<{ id: string; text: string; createdAt: string }> {
+    const response = await this.client.post(`/vacancies/${vacancyId}/comments`, { text });
+    return response.data;
+  }
+
+  async getComments(vacancyId: string, params?: { limit?: number; offset?: number }): Promise<any[]> {
+    const response = await this.client.get(`/vacancies/${vacancyId}/comments`, { params });
+    return response.data.comments;
+  }
+
+  async getFavorites(params?: { limit?: number; offset?: number }): Promise<any[]> {
+    const response = await this.client.get('/vacancies/favorites', { params });
+    return response.data.vacancies;
+  }
+
+  // ===================================
+  // GUEST VIEWS SYNC API (Architecture v3)
+  // ===================================
+
+  async syncGuestViews(viewsData: {
+    count: number;
+    viewedVacancies: string[];
+    firstViewAt: string;
+    lastViewAt: string;
+  }): Promise<{ synced: boolean }> {
+    const response = await this.client.post('/analytics/guest-views', viewsData);
     return response.data;
   }
 

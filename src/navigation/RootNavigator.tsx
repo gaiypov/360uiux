@@ -28,21 +28,26 @@ const ONBOARDING_KEY = '@360rabota:onboarding_completed';
 export function RootNavigator() {
   const [showSplash, setShowSplash] = useState(true);
   const [showOnboarding, setShowOnboarding] = useState<boolean | null>(null);
-  const { isAuthenticated, user } = useAuthStore();
+  const { isAuthenticated, user, initialize } = useAuthStore();
 
   useEffect(() => {
-    // Check if onboarding has been completed
-    const checkOnboarding = async () => {
+    // Initialize app: load auth state and check onboarding
+    const initializeApp = async () => {
       try {
+        // Initialize auth state from storage
+        await initialize();
+
+        // Check if onboarding has been completed
         const completed = await AsyncStorage.getItem(ONBOARDING_KEY);
         setShowOnboarding(completed !== 'true');
       } catch (error) {
-        console.error('Error checking onboarding:', error);
+        console.error('Error initializing app:', error);
         setShowOnboarding(true);
       }
     };
-    checkOnboarding();
-  }, []);
+
+    initializeApp();
+  }, [initialize]);
 
   const handleOnboardingComplete = async () => {
     try {
