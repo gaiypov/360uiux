@@ -1,54 +1,92 @@
 /**
- * 360° РАБОТА - ULTRA EDITION
- * Video Record Screen
- * Запись видео с камеры
+ * 360° РАБОТА - Video Record Screen
+ * Record resume video with camera
  */
 
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import {
   View,
-  Text,
   StyleSheet,
   TouchableOpacity,
-  StatusBar,
+  Text,
   Alert,
   Platform,
+  Dimensions,
+  StatusBar,
 } from 'react-native';
-import { Camera, useCameraDevice, useCameraPermission, useMicrophonePermission } from 'react-native-vision-camera';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
-import LinearGradient from 'react-native-linear-gradient';
-import { colors, metalGradients, typography, sizes } from '@/constants';
-import { haptics } from '@/utils/haptics';
+import {
+  Camera,
+  useCameraDevice,
+  useCameraPermission,
+  useMicrophonePermission,
+} from 'react-native-vision-camera';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+  withTiming,
+  withRepeat,
+  Easing,
+} from 'react-native-reanimated';
+import Icon from 'react-native-vector-icons/Ionicons';
+import { colors } from '../../theme/colors';
 
-interface Props {
+const { width, height } = Dimensions.get('window');
+
+interface VideoRecordScreenProps {
+  navigation: any;
   route: {
-    params: {
-      type: 'vacancy' | 'resume';
-      vacancyId?: string;
-      onVideoRecorded: (videoPath: string) => void;
+    params?: {
+      onVideoRecorded?: (videoPath: string, duration: number) => void;
+      maxDuration?: number; // in seconds
     };
   };
-  navigation: any;
 }
 
-export function VideoRecordScreen({ route, navigation }: Props) {
-  const { type, vacancyId, onVideoRecorded } = route.params;
-
+export function VideoRecordScreen({ navigation, route }: VideoRecordScreenProps) {
   const camera = useRef<Camera>(null);
-  const device = useCameraDevice('front'); // Фронтальная камера для селфи-видео
+  const device = useCameraDevice('front');
   const { hasPermission: hasCameraPermission, requestPermission: requestCameraPermission } = useCameraPermission();
   const { hasPermission: hasMicrophonePermission, requestPermission: requestMicrophonePermission } = useMicrophonePermission();
 
   const [isRecording, setIsRecording] = useState(false);
   const [recordingDuration, setRecordingDuration] = useState(0);
-  const [cameraReady, setCameraReady] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
 
-  const MAX_DURATION = 60; // Максимум 60 секунд
+  const maxDuration = route.params?.maxDuration || 120; // 2 minutes default
+  const onVideoRecorded = route.params?.onVideoRecorded;
 
-  /**
-   * Запросить разрешения
-   */
+  // Animation values
+  const recordButtonScale = useSharedValue(1);
+  const recordingIndicatorOpacity = useSharedValue(0);
+  const timerScale = useSharedValue(0);
+
+  // Timer effect
+  useEffect(() => {
+    let interval: NodeJS.Timeout | null = null;
+
+    if (isRecording && !isPaused) {
+      interval = setInterval(() => {
+        setRecordingDuration((prev) => {
+          const newDuration = prev + 1;
+
+          // Auto-stop at max duration
+          if (newDuration >= maxDuration) {
+            handleStopRecording();
+            return maxDuration;
+          }
+
+          return newDuration;
+        });
+      }, 1000);
+    }
+
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [isRecording, isPaused, maxDuration]);
+
+  // Request permissions on mount
   useEffect(() => {
     const checkPermissions = async () => {
       if (!hasCameraPermission) {
@@ -62,90 +100,90 @@ export function VideoRecordScreen({ route, navigation }: Props) {
     checkPermissions();
   }, []);
 
-  /**
-   * Таймер записи
-   */
-  useEffect(() => {
-    let interval: NodeJS.Timeout | null = null;
+  // Format duration to MM:SS
+  const formatDuration = (seconds: number): string => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
 
-    if (isRecording) {
-      interval = setInterval(() => {
-        setRecordingDuration((prev) => {
-          if (prev >= MAX_DURATION) {
-            // Автоматическая остановка при достижении лимита
-            handleStopRecording();
-            return prev;
-          }
-          return prev + 1;
-        });
-      }, 1000);
-    } else {
-      setRecordingDuration(0);
+  // Start recording
+  const handleStartRecording = useCallback(async () => {
+    if (!camera.current) {
+      Alert.alert('Ошибка', 'Камера не готова');
+      return;
     }
 
-    return () => {
-      if (interval) clearInterval(interval);
-    };
-  }, [isRecording]);
-
-  /**
-   * Начать запись
-   */
-  const handleStartRecording = async () => {
     try {
-      if (!camera.current) return;
-
-      haptics.medium();
       setIsRecording(true);
+      setRecordingDuration(0);
+
+      // Animate recording indicator
+      recordingIndicatorOpacity.value = withRepeat(
+        withTiming(1, { duration: 500, easing: Easing.inOut(Easing.ease) }),
+        -1,
+        true
+      );
+      timerScale.value = withSpring(1);
+      recordButtonScale.value = withSpring(0.8);
 
       await camera.current.startRecording({
         onRecordingFinished: (video) => {
-          console.log('📹 Video recorded:', video.path);
-          setIsRecording(false);
-          onVideoRecorded(video.path);
-          navigation.goBack();
+          console.log('Recording finished:', video.path);
+
+          // Navigate to preview screen
+          navigation.replace('VideoPreview', {
+            videoPath: video.path,
+            duration: recordingDuration,
+            onConfirm: onVideoRecorded,
+          });
         },
         onRecordingError: (error) => {
-          console.error('❌ Recording error:', error);
-          haptics.error();
-          setIsRecording(false);
-          Alert.alert('Ошибка', 'Не удалось записать видео');
+          console.error('Recording error:', error);
+          Alert.alert('Ошибка записи', error.message);
+          resetRecordingState();
         },
       });
     } catch (error) {
-      console.error('Start recording error:', error);
-      haptics.error();
+      console.error('Error starting recording:', error);
       Alert.alert('Ошибка', 'Не удалось начать запись');
+      resetRecordingState();
     }
-  };
+  }, [navigation, onVideoRecorded, recordingDuration]);
 
-  /**
-   * Остановить запись
-   */
-  const handleStopRecording = async () => {
+  // Stop recording
+  const handleStopRecording = useCallback(async () => {
+    if (!camera.current || !isRecording) return;
+
     try {
-      if (!camera.current) return;
-
-      haptics.medium();
       await camera.current.stopRecording();
-      setIsRecording(false);
+      resetRecordingState();
     } catch (error) {
-      console.error('Stop recording error:', error);
+      console.error('Error stopping recording:', error);
+      Alert.alert('Ошибка', 'Не удалось остановить запись');
+      resetRecordingState();
     }
+  }, [isRecording]);
+
+  // Reset recording state
+  const resetRecordingState = () => {
+    setIsRecording(false);
+    setIsPaused(false);
+    recordingIndicatorOpacity.value = withTiming(0);
+    timerScale.value = withTiming(0);
+    recordButtonScale.value = withSpring(1);
   };
 
-  /**
-   * Закрыть экран
-   */
-  const handleClose = () => {
+  // Cancel recording
+  const handleCancel = () => {
     if (isRecording) {
       Alert.alert(
-        'Остановить запись?',
-        'Вы действительно хотите отменить запись видео?',
+        'Отменить запись?',
+        'Видео будет удалено',
         [
           { text: 'Продолжить запись', style: 'cancel' },
           {
-            text: 'Остановить',
+            text: 'Отменить',
             style: 'destructive',
             onPress: async () => {
               await handleStopRecording();
@@ -159,56 +197,59 @@ export function VideoRecordScreen({ route, navigation }: Props) {
     }
   };
 
-  /**
-   * Форматировать время
-   */
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
-  };
+  // Animated styles
+  const recordButtonAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: recordButtonScale.value }],
+  }));
 
-  // Проверка разрешений
+  const recordingIndicatorAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: recordingIndicatorOpacity.value,
+  }));
+
+  const timerAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: timerScale.value }],
+    opacity: timerScale.value,
+  }));
+
+  // Loading or no permission
   if (!hasCameraPermission || !hasMicrophonePermission) {
     return (
-      <View style={styles.container}>
-        <StatusBar barStyle="light-content" backgroundColor={colors.primaryBlack} />
-        <View style={styles.centerContent}>
-          <Icon name="camera-off" size={64} color={colors.chromeSilver} />
-          <Text style={styles.permissionText}>
-            Для записи видео необходимо{'\n'}разрешение на камеру и микрофон
-          </Text>
-          <TouchableOpacity style={styles.permissionButton} onPress={async () => {
+      <View style={styles.permissionContainer}>
+        <Icon name="videocam-off" size={80} color={colors.error} />
+        <Text style={styles.permissionTitle}>Нужны разрешения</Text>
+        <Text style={styles.permissionText}>
+          Для записи видео-резюме нужен доступ к камере и микрофону
+        </Text>
+        <TouchableOpacity
+          style={styles.permissionButton}
+          onPress={async () => {
             await requestCameraPermission();
             await requestMicrophonePermission();
-          }}>
-            <LinearGradient
-              colors={metalGradients.platinum}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={styles.buttonGradient}
-            >
-              <Text style={styles.buttonText}>РАЗРЕШИТЬ</Text>
-            </LinearGradient>
-          </TouchableOpacity>
-        </View>
+          }}
+        >
+          <Text style={styles.permissionButtonText}>Разрешить</Text>
+        </TouchableOpacity>
       </View>
     );
   }
 
   if (!device) {
     return (
-      <View style={styles.container}>
-        <Text style={styles.permissionText}>Камера не найдена</Text>
+      <View style={styles.permissionContainer}>
+        <Icon name="videocam-off" size={80} color={colors.error} />
+        <Text style={styles.permissionTitle}>Камера не найдена</Text>
+        <Text style={styles.permissionText}>
+          Не удалось обнаружить камеру на устройстве
+        </Text>
       </View>
     );
   }
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
+      <StatusBar barStyle="light-content" />
 
-      {/* Камера */}
+      {/* Camera */}
       <Camera
         ref={camera}
         style={StyleSheet.absoluteFill}
@@ -216,74 +257,69 @@ export function VideoRecordScreen({ route, navigation }: Props) {
         isActive={true}
         video={true}
         audio={true}
-        onInitialized={() => {
-          console.log('📹 Camera initialized');
-          setCameraReady(true);
-        }}
+        photoQualityBalance="speed"
       />
 
-      {/* Overlay */}
-      <View style={styles.overlay}>
-        {/* Header */}
-        <Animated.View entering={FadeIn.duration(400)} style={styles.header}>
-          <TouchableOpacity onPress={handleClose} style={styles.closeButton}>
-            <Icon name="close" size={28} color={colors.softWhite} />
-          </TouchableOpacity>
-
-          <Text style={styles.titleText}>
-            {type === 'vacancy' ? 'Видео вакансии' : 'Видеорезюме'}
-          </Text>
-
-          <View style={styles.placeholder} />
-        </Animated.View>
+      {/* Top overlay */}
+      <View style={styles.topOverlay}>
+        {/* Cancel button */}
+        <TouchableOpacity
+          style={styles.cancelButton}
+          onPress={handleCancel}
+        >
+          <Icon name="close" size={30} color="#fff" />
+        </TouchableOpacity>
 
         {/* Recording indicator */}
         {isRecording && (
-          <Animated.View entering={FadeIn} exiting={FadeOut} style={styles.recordingIndicator}>
+          <Animated.View style={[styles.recordingIndicator, recordingIndicatorAnimatedStyle]}>
             <View style={styles.recordingDot} />
-            <Text style={styles.recordingText}>REC {formatTime(recordingDuration)}</Text>
-            <Text style={styles.maxDurationText}>/ {formatTime(MAX_DURATION)}</Text>
+            <Text style={styles.recordingText}>REC</Text>
           </Animated.View>
         )}
+      </View>
 
-        {/* Controls */}
-        <Animated.View entering={FadeIn.delay(200)} style={styles.controls}>
+      {/* Timer */}
+      <Animated.View style={[styles.timerContainer, timerAnimatedStyle]}>
+        <Text style={styles.timerText}>{formatDuration(recordingDuration)}</Text>
+        <Text style={styles.timerMaxText}>/ {formatDuration(maxDuration)}</Text>
+      </Animated.View>
+
+      {/* Bottom controls */}
+      <View style={styles.bottomOverlay}>
+        {/* Recording tips */}
+        {!isRecording && (
+          <View style={styles.tipsContainer}>
+            <Text style={styles.tipsTitle}>💡 Советы для записи:</Text>
+            <Text style={styles.tipsText}>• Хорошее освещение</Text>
+            <Text style={styles.tipsText}>• Камера на уровне глаз</Text>
+            <Text style={styles.tipsText}>• Расскажите о своих навыках</Text>
+            <Text style={styles.tipsText}>• Будьте естественны</Text>
+          </View>
+        )}
+
+        {/* Record button */}
+        <View style={styles.controlsContainer}>
           {!isRecording ? (
-            <>
-              <Text style={styles.hintText}>
-                Максимальная длительность: {MAX_DURATION} сек
-              </Text>
-              <TouchableOpacity
-                style={styles.recordButton}
-                onPress={handleStartRecording}
-                disabled={!cameraReady}
-              >
-                <LinearGradient
-                  colors={metalGradients.platinum}
-                  style={styles.recordButtonGradient}
-                >
-                  <View style={styles.recordButtonInner}>
-                    <Icon name="circle" size={40} color={colors.error} />
-                  </View>
-                </LinearGradient>
-                <Text style={styles.recordButtonText}>Начать запись</Text>
-              </TouchableOpacity>
-            </>
+            <TouchableOpacity
+              onPress={handleStartRecording}
+              activeOpacity={0.8}
+            >
+              <Animated.View style={[styles.recordButton, recordButtonAnimatedStyle]}>
+                <View style={styles.recordButtonInner} />
+              </Animated.View>
+            </TouchableOpacity>
           ) : (
             <TouchableOpacity
-              style={styles.stopButton}
               onPress={handleStopRecording}
+              activeOpacity={0.8}
             >
-              <LinearGradient
-                colors={[colors.error, '#c0392b']}
-                style={styles.stopButtonGradient}
-              >
-                <Icon name="stop" size={32} color={colors.softWhite} />
-              </LinearGradient>
-              <Text style={styles.stopButtonText}>Остановить</Text>
+              <Animated.View style={[styles.stopButton, recordButtonAnimatedStyle]}>
+                <View style={styles.stopButtonInner} />
+              </Animated.View>
             </TouchableOpacity>
           )}
-        </Animated.View>
+        </View>
       </View>
     </View>
   );
@@ -292,152 +328,161 @@ export function VideoRecordScreen({ route, navigation }: Props) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.primaryBlack,
+    backgroundColor: '#000',
   },
-  centerContent: {
+  permissionContainer: {
     flex: 1,
+    backgroundColor: colors.background,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: sizes.xl,
+    padding: 24,
   },
-  overlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+  permissionTitle: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: colors.text,
+    marginTop: 24,
+    marginBottom: 12,
   },
-  header: {
+  permissionText: {
+    fontSize: 16,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 24,
+    marginBottom: 32,
+  },
+  permissionButton: {
+    backgroundColor: colors.primary,
+    paddingHorizontal: 32,
+    paddingVertical: 16,
+    borderRadius: 12,
+  },
+  permissionButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#fff',
+  },
+  topOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    paddingTop: Platform.OS === 'ios' ? 60 : 20,
+    paddingHorizontal: 20,
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: sizes.lg,
-    paddingTop: Platform.OS === 'ios' ? 60 : 40,
-    paddingBottom: sizes.lg,
+    alignItems: 'center',
+    zIndex: 10,
   },
-  closeButton: {
+  cancelButton: {
     width: 44,
     height: 44,
     borderRadius: 22,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    alignItems: 'center',
     justifyContent: 'center',
-  },
-  titleText: {
-    ...typography.h2,
-    color: colors.softWhite,
-    textShadowColor: 'rgba(0, 0, 0, 0.75)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 3,
-  },
-  placeholder: {
-    width: 44,
+    alignItems: 'center',
   },
   recordingIndicator: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
-    paddingHorizontal: sizes.lg,
-    paddingVertical: sizes.sm,
-    borderRadius: sizes.radiusLarge,
-    alignSelf: 'center',
-    marginTop: sizes.lg,
+    backgroundColor: 'rgba(239, 68, 68, 0.9)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
   },
   recordingDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: colors.error,
-    marginRight: sizes.sm,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#fff',
+    marginRight: 6,
   },
   recordingText: {
-    ...typography.h3,
-    color: colors.softWhite,
+    fontSize: 14,
     fontWeight: '700',
+    color: '#fff',
   },
-  maxDurationText: {
-    ...typography.body,
-    color: colors.chromeSilver,
-    marginLeft: sizes.xs,
-  },
-  controls: {
+  timerContainer: {
     position: 'absolute',
-    bottom: Platform.OS === 'ios' ? 60 : 40,
+    top: Platform.OS === 'ios' ? 120 : 80,
+    alignSelf: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 20,
+    flexDirection: 'row',
+    alignItems: 'baseline',
+  },
+  timerText: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#fff',
+  },
+  timerMaxText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: 'rgba(255, 255, 255, 0.7)',
+    marginLeft: 4,
+  },
+  bottomOverlay: {
+    position: 'absolute',
+    bottom: 0,
     left: 0,
     right: 0,
-    alignItems: 'center',
-    gap: sizes.lg,
+    paddingBottom: Platform.OS === 'ios' ? 40 : 24,
+    paddingHorizontal: 20,
+    paddingTop: 20,
   },
-  hintText: {
-    ...typography.body,
-    color: colors.softWhite,
-    textAlign: 'center',
-    textShadowColor: 'rgba(0, 0, 0, 0.75)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 3,
+  tipsContainer: {
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    padding: 16,
+    borderRadius: 16,
+    marginBottom: 24,
+  },
+  tipsTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#fff',
+    marginBottom: 8,
+  },
+  tipsText: {
+    fontSize: 14,
+    color: 'rgba(255, 255, 255, 0.9)',
+    marginBottom: 4,
+  },
+  controlsContainer: {
+    alignItems: 'center',
   },
   recordButton: {
-    alignItems: 'center',
-    gap: sizes.sm,
-  },
-  recordButtonGradient: {
-    width: 90,
-    height: 90,
-    borderRadius: 45,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  recordButtonInner: {
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: colors.graphiteBlack,
-    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.3)',
     justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 4,
+    borderColor: '#fff',
   },
-  recordButtonText: {
-    ...typography.bodyMedium,
-    color: colors.softWhite,
-    textShadowColor: 'rgba(0, 0, 0, 0.75)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 3,
+  recordButtonInner: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: colors.error,
   },
   stopButton: {
-    alignItems: 'center',
-    gap: sizes.sm,
-  },
-  stopButtonGradient: {
-    width: 90,
-    height: 90,
-    borderRadius: 45,
-    alignItems: 'center',
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: 'rgba(255, 255, 255, 0.3)',
     justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 4,
+    borderColor: '#fff',
   },
-  stopButtonText: {
-    ...typography.bodyMedium,
-    color: colors.softWhite,
-    textShadowColor: 'rgba(0, 0, 0, 0.75)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 3,
-  },
-  permissionText: {
-    ...typography.h3,
-    color: colors.chromeSilver,
-    textAlign: 'center',
-    marginTop: sizes.xl,
-    marginBottom: sizes.xxl,
-    lineHeight: 28,
-  },
-  permissionButton: {
-    borderRadius: sizes.radiusLarge,
-    overflow: 'hidden',
-  },
-  buttonGradient: {
-    paddingHorizontal: sizes.xxl,
-    paddingVertical: sizes.md + 2,
-  },
-  buttonText: {
-    ...typography.h3,
-    color: colors.graphiteBlack,
-    fontWeight: '700',
-    letterSpacing: 1.5,
+  stopButtonInner: {
+    width: 28,
+    height: 28,
+    borderRadius: 4,
+    backgroundColor: colors.error,
   },
 });

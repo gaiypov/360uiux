@@ -99,24 +99,49 @@ export function CreateResumeScreen({ navigation }: CreateResumeScreenProps) {
   const handlePublish = async () => {
     setLoading(true);
     try {
-      // TODO: Загрузка видео на сервер через API (если есть)
-      // if (videoPath) {
-      //   const videoResult = await apiService.uploadResumeVideo(videoPath, form);
-      // }
-      // await apiService.createResume(form);
+      let videoData = null;
 
-      // Имитация загрузки
-      await new Promise((resolve) => setTimeout(resolve, 2000));
+      // Upload video to api.video if exists
+      if (videoPath) {
+        showToast('info', '⏳ Загружаем видео...');
+
+        const { VideoUploadService } = require('../../services/VideoUploadService');
+        const videoTitle = `Resume - ${form.name} - ${form.profession}`;
+
+        videoData = await VideoUploadService.uploadResumeVideo(
+          videoPath,
+          videoTitle,
+          (progress) => {
+            // Progress callback (could show progress bar)
+            console.log(`Upload progress: ${progress.percentage.toFixed(1)}%`);
+          }
+        );
+
+        console.log('Video uploaded:', videoData);
+        showToast('success', '✅ Видео загружено!');
+      }
+
+      // TODO: Send resume data to backend with video metadata
+      // await apiService.createResume({
+      //   ...form,
+      //   videoId: videoData?.videoId,
+      //   videoUrl: videoData?.playerUrl,
+      //   hlsUrl: videoData?.hlsUrl,
+      //   thumbnailUrl: videoData?.thumbnailUrl,
+      // });
+
+      // Simulate API call
+      await new Promise((resolve) => setTimeout(resolve, 1000));
 
       if (videoPath) {
-        // Architecture v3: Приватное видео с легкой AI-модерацией
+        // Architecture v3: Private video with light AI moderation
         showToast('success', '🎉 Резюме с видео опубликовано!');
         showToast('info', '🤖 Видео проходит быструю AI-проверку');
       } else {
         showToast('success', '🎉 Резюме опубликовано!');
       }
 
-      // Возврат на главный экран
+      // Navigate back to main screen
       navigation.navigate('VacancyFeed');
     } catch (error: any) {
       console.error('Error publishing resume:', error);
