@@ -66,13 +66,14 @@ export function CreateResumeScreen({ navigation }: CreateResumeScreenProps) {
       }
       setCurrentStep(2);
     } else if (currentStep === 2) {
-      // Валидация шага 2
-      if (!videoPath) {
-        showToast('error', 'Запишите видео-резюме');
-        return;
-      }
+      // Architecture v3: Видео ОПЦИОНАЛЬНО
       setCurrentStep(3);
     }
+  };
+
+  const handleSkipVideo = () => {
+    // Architecture v3: Пропустить видео и перейти к публикации
+    setCurrentStep(3);
   };
 
   const handleBack = () => {
@@ -96,21 +97,24 @@ export function CreateResumeScreen({ navigation }: CreateResumeScreenProps) {
   };
 
   const handlePublish = async () => {
-    if (!videoPath) {
-      showToast('error', 'Видео не записано');
-      return;
-    }
-
     setLoading(true);
     try {
-      // TODO: Загрузка видео на сервер через API
-      // const videoResult = await apiService.uploadResumeVideo(videoPath, form);
+      // TODO: Загрузка видео на сервер через API (если есть)
+      // if (videoPath) {
+      //   const videoResult = await apiService.uploadResumeVideo(videoPath, form);
+      // }
+      // await apiService.createResume(form);
 
       // Имитация загрузки
       await new Promise((resolve) => setTimeout(resolve, 2000));
 
-      showToast('success', '🎉 Видео-резюме отправлено на модерацию!');
-      showToast('info', '⏳ Обычно модерация занимает 1-2 часа');
+      if (videoPath) {
+        // Architecture v3: Приватное видео с легкой AI-модерацией
+        showToast('success', '🎉 Резюме с видео опубликовано!');
+        showToast('info', '🤖 Видео проходит быструю AI-проверку');
+      } else {
+        showToast('success', '🎉 Резюме опубликовано!');
+      }
 
       // Возврат на главный экран
       navigation.navigate('VacancyFeed');
@@ -252,10 +256,10 @@ export function CreateResumeScreen({ navigation }: CreateResumeScreenProps) {
           </LinearGradient>
         </View>
 
-        <Text style={styles.sectionTitle}>Видео-резюме</Text>
+        <Text style={styles.sectionTitle}>Видео-резюме (опционально)</Text>
         <Text style={styles.sectionHint}>
           Запишите короткое видео о себе (30-120 сек){'\n'}
-          Расскажите о своем опыте, навыках и целях.
+          Это повысит ваши шансы! Но можно и пропустить.
         </Text>
 
         {videoPath ? (
@@ -303,6 +307,19 @@ export function CreateResumeScreen({ navigation }: CreateResumeScreenProps) {
             • Расскажите о ключевых достижениях
           </Text>
         </View>
+
+        {/* Architecture v3: Skip Video Option */}
+        {!videoPath && (
+          <TouchableOpacity
+            style={styles.skipVideoButton}
+            onPress={handleSkipVideo}
+          >
+            <Text style={styles.skipVideoText}>Пропустить видео →</Text>
+            <Text style={styles.skipVideoHint}>
+              Вы сможете добавить видео позже
+            </Text>
+          </TouchableOpacity>
+        )}
       </GlassCard>
     </ScrollView>
   );
@@ -354,25 +371,50 @@ export function CreateResumeScreen({ navigation }: CreateResumeScreenProps) {
           </View>
         )}
 
-        <View style={styles.previewRow}>
-          <Icon name="video" size={20} color={colors.liquidSilver} />
-          <Text style={styles.previewLabel}>Видео:</Text>
-          <Text style={styles.previewValue}>
-            {Math.floor(videoDuration / 60)}:
-            {(videoDuration % 60).toString().padStart(2, '0')}
-          </Text>
-        </View>
-
-        <View style={styles.moderationNotice}>
-          <Icon name="clock-outline" size={24} color={colors.warning} />
-          <View style={styles.moderationTextBox}>
-            <Text style={styles.moderationTitle}>Модерация</Text>
-            <Text style={styles.moderationText}>
-              После публикации ваше видео-резюме пройдёт модерацию.{'\n'}
-              Обычно это занимает 1-2 часа в рабочее время.
+        {videoPath && (
+          <View style={styles.previewRow}>
+            <Icon name="video" size={20} color={colors.liquidSilver} />
+            <Text style={styles.previewLabel}>Видео:</Text>
+            <Text style={styles.previewValue}>
+              {Math.floor(videoDuration / 60)}:
+              {(videoDuration % 60).toString().padStart(2, '0')}
             </Text>
           </View>
-        </View>
+        )}
+
+        {!videoPath && (
+          <View style={styles.previewRow}>
+            <Icon name="video-off" size={20} color={colors.liquidSilver} />
+            <Text style={styles.previewLabel}>Видео:</Text>
+            <Text style={styles.previewValue}>Без видео</Text>
+          </View>
+        )}
+
+        {/* Architecture v3: Light AI check for resume videos */}
+        {videoPath && (
+          <View style={styles.moderationNotice}>
+            <Icon name="robot" size={24} color={colors.info} />
+            <View style={styles.moderationTextBox}>
+              <Text style={styles.moderationTitle}>AI-Проверка</Text>
+              <Text style={styles.moderationText}>
+                Ваше видео пройдёт быструю автоматическую проверку.{'\n'}
+                Обычно это занимает 2-3 минуты.
+              </Text>
+            </View>
+          </View>
+        )}
+
+        {!videoPath && (
+          <View style={styles.privacyNotice}>
+            <Icon name="shield-check" size={24} color={colors.success} />
+            <View style={styles.moderationTextBox}>
+              <Text style={styles.privacyTitle}>Приватность</Text>
+              <Text style={styles.privacyText}>
+                Ваши данные будут видны только работодателям, которым вы откликнетесь.
+              </Text>
+            </View>
+          </View>
+        )}
       </GlassCard>
     </ScrollView>
   );
@@ -658,5 +700,44 @@ const styles = StyleSheet.create({
   },
   publishButton: {
     width: '100%',
+  },
+  skipVideoButton: {
+    marginTop: sizes.large,
+    padding: sizes.medium,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  skipVideoText: {
+    ...typography.body,
+    color: colors.platinumSilver,
+    fontWeight: '600',
+  },
+  skipVideoHint: {
+    ...typography.caption,
+    color: colors.liquidSilver,
+    marginTop: sizes.xSmall,
+  },
+  privacyNotice: {
+    flexDirection: 'row',
+    backgroundColor: 'rgba(76,175,80,0.1)',
+    borderWidth: 1,
+    borderColor: colors.success,
+    borderRadius: 12,
+    padding: sizes.medium,
+    marginTop: sizes.large,
+    gap: sizes.medium,
+  },
+  privacyTitle: {
+    ...typography.body,
+    color: colors.success,
+    fontWeight: '700',
+    marginBottom: sizes.xSmall,
+  },
+  privacyText: {
+    ...typography.caption,
+    color: colors.liquidSilver,
   },
 });
