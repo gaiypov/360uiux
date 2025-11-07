@@ -307,6 +307,108 @@ class APIService {
   }
 
   // ===================================
+  // VACANCIES API (Phase 2)
+  // ===================================
+
+  async getVacancies(params?: {
+    query?: string;
+    cities?: string[];
+    experience?: number[];
+    employment?: string[];
+    schedule?: string[];
+    salaryMin?: number;
+    salaryMax?: number;
+    limit?: number;
+    offset?: number;
+    sortBy?: 'newest' | 'salary_high' | 'salary_low' | 'most_views';
+  }): Promise<{ vacancies: any[]; pagination: any }> {
+    const queryParams: any = {};
+
+    if (params?.query) queryParams.query = params.query;
+    if (params?.cities?.length) queryParams.cities = params.cities.join(',');
+    if (params?.experience?.length) queryParams.experience = params.experience.join(',');
+    if (params?.employment?.length) queryParams.employment = params.employment.join(',');
+    if (params?.schedule?.length) queryParams.schedule = params.schedule.join(',');
+    if (params?.salaryMin) queryParams.salaryMin = params.salaryMin;
+    if (params?.salaryMax) queryParams.salaryMax = params.salaryMax;
+    if (params?.limit) queryParams.limit = params.limit;
+    if (params?.offset) queryParams.offset = params.offset;
+    if (params?.sortBy) queryParams.sortBy = params.sortBy;
+
+    const response = await this.client.get('/vacancies', { params: queryParams });
+    return response.data;
+  }
+
+  async getVacancy(vacancyId: string): Promise<any> {
+    const response = await this.client.get(`/vacancies/${vacancyId}`);
+    return response.data.vacancy;
+  }
+
+  async createVacancy(data: {
+    title: string;
+    profession: string;
+    description?: string;
+    requirements?: string;
+    benefits?: string;
+    responsibilities?: string;
+    salaryMin?: number;
+    salaryMax?: number;
+    currency?: string;
+    city: string;
+    address?: string;
+    metroStation?: string;
+    employment?: string;
+    schedule?: string;
+    experienceRequired?: number;
+    videoUrl?: string;
+    thumbnailUrl?: string;
+    tags?: string[];
+  }): Promise<any> {
+    const response = await this.client.post('/vacancies', data);
+    return response.data.vacancy;
+  }
+
+  async updateVacancy(vacancyId: string, data: Partial<{
+    title: string;
+    profession: string;
+    description: string;
+    requirements: string;
+    benefits: string;
+    responsibilities: string;
+    salaryMin: number;
+    salaryMax: number;
+    currency: string;
+    city: string;
+    address: string;
+    metroStation: string;
+    employment: string;
+    schedule: string;
+    experienceRequired: number;
+    videoUrl: string;
+    thumbnailUrl: string;
+    tags: string[];
+    status: string;
+  }>): Promise<any> {
+    const response = await this.client.put(`/vacancies/${vacancyId}`, data);
+    return response.data.vacancy;
+  }
+
+  async deleteVacancy(vacancyId: string): Promise<void> {
+    await this.client.delete(`/vacancies/${vacancyId}`);
+  }
+
+  async getFilterOptions(): Promise<{
+    cities: string[];
+    professions: string[];
+    employmentTypes: string[];
+    schedules: string[];
+    experienceLevels: Array<{ value: number; label: string }>;
+  }> {
+    const response = await this.client.get('/vacancies/filters');
+    return response.data.filters;
+  }
+
+  // ===================================
   // VACANCY INTERACTIONS API (Architecture v3)
   // ===================================
 
@@ -373,6 +475,154 @@ class APIService {
 
   async getVideoViewsRemaining(videoId: string): Promise<{ viewsRemaining: number }> {
     const response = await this.client.get(`/videos/${videoId}/views`);
+    return response.data;
+  }
+
+  // ===================================
+  // USER PROFILE API (Phase 2)
+  // ===================================
+
+  async getProfile(): Promise<{
+    user: any;
+  }> {
+    const response = await this.client.get('/users/profile');
+    return response.data;
+  }
+
+  async updateProfile(data: Partial<{
+    name: string;
+    email: string;
+    companyName: string;
+    description: string;
+    website: string;
+    address: string;
+    city: string;
+  }>): Promise<{ user: any }> {
+    const response = await this.client.put('/users/profile', data);
+    return response.data;
+  }
+
+  async uploadAvatar(avatarUrl: string): Promise<{ user: any }> {
+    const response = await this.client.post('/users/profile/avatar', { avatarUrl });
+    return response.data;
+  }
+
+  async deleteAccount(confirmPassword: string): Promise<void> {
+    await this.client.delete('/users/profile', {
+      data: { confirmPassword },
+    });
+  }
+
+  async getUserById(userId: string): Promise<{ user: any }> {
+    const response = await this.client.get(`/users/${userId}`);
+    return response.data;
+  }
+
+  // ===================================
+  // APPLICATIONS API (Phase 2)
+  // ===================================
+
+  async getMyApplications(params?: {
+    limit?: number;
+    offset?: number;
+  }): Promise<{ applications: any[]; count: number }> {
+    const response = await this.client.get('/applications/my', { params });
+    return response.data;
+  }
+
+  async getApplication(applicationId: string): Promise<{ application: any }> {
+    const response = await this.client.get(`/applications/${applicationId}`);
+    return response.data;
+  }
+
+  async createApplication(data: {
+    vacancyId: string;
+    resumeId?: string;
+    message?: string;
+    attachResumeVideo?: boolean;
+  }): Promise<{ application: any }> {
+    const response = await this.client.post('/applications', data);
+    return response.data;
+  }
+
+  async deleteApplication(applicationId: string): Promise<void> {
+    await this.client.delete(`/applications/${applicationId}`);
+  }
+
+  async getApplicationsByStatus(status?: string): Promise<{
+    applications: any[];
+    count: number;
+    status: string;
+  }> {
+    const response = await this.client.get('/applications', {
+      params: { status },
+    });
+    return response.data;
+  }
+
+  async updateApplicationStatus(
+    applicationId: string,
+    data: {
+      status: 'pending' | 'viewed' | 'interview' | 'rejected' | 'hired' | 'cancelled';
+      rejectionReason?: string;
+    }
+  ): Promise<{ application: any }> {
+    const response = await this.client.patch(`/applications/${applicationId}/status`, data);
+    return response.data;
+  }
+
+  // ===================================
+  // DEVICE & NOTIFICATIONS API (Phase 2)
+  // ===================================
+
+  async registerDevice(data: {
+    deviceType: 'ios' | 'android' | 'web';
+    fcmToken?: string;
+    apnsToken?: string;
+    webPushSubscription?: any;
+    deviceModel?: string;
+    osVersion?: string;
+    appVersion?: string;
+  }): Promise<{ device: any }> {
+    const response = await this.client.post('/devices/register', data);
+    return response.data;
+  }
+
+  async unregisterDevice(deviceId: string): Promise<void> {
+    await this.client.delete(`/devices/${deviceId}`);
+  }
+
+  async getUserDevices(): Promise<{ devices: any[]; count: number }> {
+    const response = await this.client.get('/devices');
+    return response.data;
+  }
+
+  async updateDeviceToken(deviceId: string, data: {
+    fcmToken?: string;
+    apnsToken?: string;
+    webPushSubscription?: any;
+  }): Promise<{ device: any }> {
+    const response = await this.client.put(`/devices/${deviceId}/token`, data);
+    return response.data;
+  }
+
+  async getNotificationPreferences(): Promise<{
+    pushEnabled: boolean;
+    emailEnabled: boolean;
+    smsEnabled: boolean;
+    notificationTypes: string[];
+  }> {
+    const response = await this.client.get('/devices/preferences');
+    return response.data.preferences;
+  }
+
+  async updateNotificationPreferences(data: {
+    pushEnabled?: boolean;
+    emailEnabled?: boolean;
+    smsEnabled?: boolean;
+    notificationTypes?: string[];
+  }): Promise<{ preferences: any }> {
+    const response = await this.client.put('/devices/preferences', data);
     return response.data;
   }
 
