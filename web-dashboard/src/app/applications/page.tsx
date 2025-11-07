@@ -1,451 +1,391 @@
 'use client';
 
-import { useState } from 'react';
-import { Card } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+import { useState, useEffect } from 'react';
 import {
-  Heart,
-  X,
+  Eye,
+  Users,
   Calendar,
-  MessageCircle,
-  MapPin,
-  Briefcase,
-  DollarSign,
-  Star,
+  Heart,
   Clock,
   Filter,
   Search,
+  ChevronRight,
+  UserCheck,
+  Ban,
+  Play,
 } from 'lucide-react';
-import ResumeVideoViewer from '@/components/ResumeVideoViewer';
+import { GlassCard, GlassCardHeader, GlassCardTitle, GlassCardContent } from '@/components/ui/glass-card';
+import { NeonButton } from '@/components/ui/neon-button';
+import { StatusBadge } from '@/components/ui/status-badge';
+import { GlassInput } from '@/components/ui/glass-input';
+import { ApplicationModal } from '@/components/ApplicationModal';
+import { api, type Application } from '@/lib/api';
+import { cn } from '@/lib/utils';
 
-// Mock data
-const mockApplications = [
+type KanbanColumn = {
+  id: string;
+  title: string;
+  status: string;
+  color: string;
+  icon: React.ReactNode;
+};
+
+const columns: KanbanColumn[] = [
   {
-    id: 1,
-    jobseeker: {
-      name: 'Анна Иванова',
-      photo: 'https://i.pravatar.cc/300?img=1',
-      profession: 'Frontend Developer',
-      experience: '3 года',
-      city: 'Москва',
-      expectedSalary: '150,000 ₽',
-      rating: 4.8,
-    },
-    vacancy: {
-      title: 'Senior Frontend Developer',
-      company: 'Tech Corp',
-    },
-    videoResume: 'https://storage.yandex.net/videos/resume1.mp4',
-    coverLetter:
-      'Здравствуйте! Я Frontend разработчик с 3-летним опытом работы с React, TypeScript и Next.js. Имею опыт создания масштабируемых веб-приложений...',
-    skills: ['React', 'TypeScript', 'Next.js', 'Tailwind CSS'],
-    status: 'pending',
-    appliedAt: '2 часа назад',
+    id: 'NEW',
+    title: 'Новые',
+    status: 'NEW',
+    color: 'primary',
+    icon: <Clock className="h-5 w-5" />,
   },
   {
-    id: 2,
-    jobseeker: {
-      name: 'Дмитрий Петров',
-      photo: 'https://i.pravatar.cc/300?img=12',
-      profession: 'Backend Developer',
-      experience: '5 лет',
-      city: 'Санкт-Петербург',
-      expectedSalary: '200,000 ₽',
-      rating: 4.9,
-    },
-    vacancy: {
-      title: 'Senior Backend Developer',
-      company: 'Tech Corp',
-    },
-    videoResume: 'https://storage.yandex.net/videos/resume2.mp4',
-    coverLetter:
-      'Добрый день! Backend разработчик с опытом работы над высоконагруженными системами...',
-    skills: ['Node.js', 'PostgreSQL', 'Redis', 'Docker'],
-    status: 'pending',
-    appliedAt: '5 часов назад',
+    id: 'VIEWED',
+    title: 'Просмотрено',
+    status: 'VIEWED',
+    color: 'secondary',
+    icon: <Eye className="h-5 w-5" />,
   },
   {
-    id: 3,
-    jobseeker: {
-      name: 'Елена Смирнова',
-      photo: 'https://i.pravatar.cc/300?img=5',
-      profession: 'UI/UX Designer',
-      experience: '4 года',
-      city: 'Москва',
-      expectedSalary: '120,000 ₽',
-      rating: 4.7,
-    },
-    vacancy: {
-      title: 'UI/UX Designer',
-      company: 'Tech Corp',
-    },
-    videoResume: 'https://storage.yandex.net/videos/resume3.mp4',
-    coverLetter:
-      'Привет! Я UI/UX дизайнер с опытом создания премиальных интерфейсов...',
-    skills: ['Figma', 'Adobe XD', 'Prototyping', 'User Research'],
-    status: 'pending',
-    appliedAt: '1 день назад',
+    id: 'INTERVIEW',
+    title: 'Собеседование',
+    status: 'INTERVIEW',
+    color: 'warning',
+    icon: <Calendar className="h-5 w-5" />,
+  },
+  {
+    id: 'HIRED',
+    title: 'Приняты',
+    status: 'HIRED',
+    color: 'success',
+    icon: <Heart className="h-5 w-5" />,
+  },
+  {
+    id: 'REJECTED',
+    title: 'Отклонены',
+    status: 'REJECTED',
+    color: 'destructive',
+    icon: <Ban className="h-5 w-5" />,
   },
 ];
 
 export default function ApplicationsPage() {
-  const [applications, setApplications] = useState(mockApplications);
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [filter, setFilter] = useState('all');
+  const [applications, setApplications] = useState<Application[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [draggedItem, setDraggedItem] = useState<Application | null>(null);
+  const [selectedApplication, setSelectedApplication] = useState<Application | null>(null);
+  const [modalOpen, setModalOpen] = useState(false);
 
-  const currentApplication =
-    applications.length > 0 ? applications[currentIndex] : null;
+  useEffect(() => {
+    loadApplications();
+  }, [searchQuery]);
 
-  const handleAccept = () => {
-    if (currentApplication) {
-      console.log('Accepted:', currentApplication.id);
-      nextCard();
+  const loadApplications = async () => {
+    try {
+      setLoading(true);
+      const response = await api.getApplications({ limit: 100 });
+      setApplications(response.applications);
+    } catch (error) {
+      console.error('Failed to load applications:', error);
+      // Mock data for demo
+      setApplications([]);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleReject = () => {
-    if (currentApplication) {
-      console.log('Rejected:', currentApplication.id);
-      nextCard();
+  const getApplicationsByStatus = (status: string) => {
+    return applications.filter((app) => app.status === status);
+  };
+
+  const handleDragStart = (e: React.DragEvent, application: Application) => {
+    setDraggedItem(application);
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+  };
+
+  const handleDrop = async (e: React.DragEvent, targetStatus: string) => {
+    e.preventDefault();
+
+    if (!draggedItem || draggedItem.status === targetStatus) {
+      setDraggedItem(null);
+      return;
+    }
+
+    try {
+      // Optimistically update UI
+      setApplications((prev) =>
+        prev.map((app) =>
+          app.id === draggedItem.id ? { ...app, status: targetStatus as any } : app
+        )
+      );
+
+      // Update via API
+      await api.updateApplicationStatus(draggedItem.id, { status: targetStatus });
+    } catch (error) {
+      console.error('Failed to update application status:', error);
+      // Revert on error
+      loadApplications();
+    } finally {
+      setDraggedItem(null);
     }
   };
 
-  const handleInterview = () => {
-    if (currentApplication) {
-      console.log('Interview scheduled:', currentApplication.id);
-      nextCard();
+  const handleStatusChange = async (applicationId: string, status: string, message?: string) => {
+    try {
+      setApplications((prev) =>
+        prev.map((app) => (app.id === applicationId ? { ...app, status: status as any } : app))
+      );
+
+      await api.updateApplicationStatus(applicationId, { status, message });
+    } catch (error) {
+      console.error('Failed to update application status:', error);
+      loadApplications();
     }
   };
 
-  const nextCard = () => {
-    if (currentIndex < applications.length - 1) {
-      setCurrentIndex(currentIndex + 1);
-    } else {
-      setCurrentIndex(0);
-    }
+  const handleCardClick = (application: Application) => {
+    setSelectedApplication(application);
+    setModalOpen(true);
   };
 
-  const previousCard = () => {
-    if (currentIndex > 0) {
-      setCurrentIndex(currentIndex - 1);
-    }
+  const stats = {
+    total: applications.length,
+    new: applications.filter((a) => a.status === 'NEW').length,
+    interview: applications.filter((a) => a.status === 'INTERVIEW').length,
+    hired: applications.filter((a) => a.status === 'HIRED').length,
   };
-
-  if (!currentApplication) {
-    return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="text-center">
-          <p className="text-2xl text-gray-400">Нет откликов</p>
-        </div>
-      </div>
-    );
-  }
 
   return (
-    <div className="min-h-screen bg-[#0A0A0F] p-6">
+    <div className="space-y-6 animate-fade-in">
       {/* Header */}
-      <div className="mb-8">
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-3xl font-bold text-white mb-2">
-              Отклики на вакансии
-            </h1>
-            <p className="text-gray-400">
-              {applications.length} кандидатов ожидают рассмотрения
-            </p>
-          </div>
-
-          <div className="flex gap-3">
-            {/* Search */}
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Поиск по имени..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 pr-4 py-2 bg-[#121218] border border-[#1A1A23] rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-[#8E7FFF]"
-              />
-            </div>
-
-            {/* Filter */}
-            <Button className="bg-[#121218] hover:bg-[#1A1A23] text-white border border-[#1A1A23]">
-              <Filter className="w-5 h-5 mr-2" />
-              Фильтры
-            </Button>
-          </div>
-        </div>
-
-        {/* Stats */}
-        <div className="grid grid-cols-4 gap-4">
-          <Card className="bg-[#121218] border-[#1A1A23] p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-gray-400 text-sm">Всего</p>
-                <p className="text-2xl font-bold text-white">
-                  {applications.length}
-                </p>
-              </div>
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#8E7FFF] to-[#39E0F8] flex items-center justify-center">
-                <Briefcase className="w-5 h-5 text-white" />
-              </div>
-            </div>
-          </Card>
-
-          <Card className="bg-[#121218] border-[#1A1A23] p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-gray-400 text-sm">Новые</p>
-                <p className="text-2xl font-bold text-white">12</p>
-              </div>
-              <div className="w-10 h-10 rounded-xl bg-green-500/20 flex items-center justify-center">
-                <Clock className="w-5 h-5 text-green-400" />
-              </div>
-            </div>
-          </Card>
-
-          <Card className="bg-[#121218] border-[#1A1A23] p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-gray-400 text-sm">На собеседовании</p>
-                <p className="text-2xl font-bold text-white">5</p>
-              </div>
-              <div className="w-10 h-10 rounded-xl bg-blue-500/20 flex items-center justify-center">
-                <Calendar className="w-5 h-5 text-blue-400" />
-              </div>
-            </div>
-          </Card>
-
-          <Card className="bg-[#121218] border-[#1A1A23] p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-gray-400 text-sm">Принято</p>
-                <p className="text-2xl font-bold text-white">23</p>
-              </div>
-              <div className="w-10 h-10 rounded-xl bg-purple-500/20 flex items-center justify-center">
-                <Heart className="w-5 h-5 text-purple-400" />
-              </div>
-            </div>
-          </Card>
-        </div>
+      <div>
+        <h1 className="text-display-lg font-bold bg-gradient-neon bg-clip-text text-transparent">
+          Отклики на вакансии
+        </h1>
+        <p className="mt-2 text-foreground-secondary">
+          {stats.total} кандидатов ожидают рассмотрения
+        </p>
       </div>
 
-      {/* Main Swipe Card */}
-      <div className="max-w-5xl mx-auto">
-        <div className="relative">
-          {/* Progress Indicator */}
-          <div className="flex justify-center gap-2 mb-6">
-            {applications.map((_, index) => (
-              <div
-                key={index}
-                className={`h-1 rounded-full transition-all duration-300 ${
-                  index === currentIndex
-                    ? 'w-12 bg-gradient-to-r from-[#8E7FFF] to-[#39E0F8]'
-                    : 'w-8 bg-[#1A1A23]'
-                }`}
-              />
-            ))}
+      {/* Stats */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <GlassCard glow>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-foreground-secondary mb-1">Всего откликов</p>
+              <p className="text-number-md font-bold bg-gradient-neon bg-clip-text text-transparent">
+                {stats.total}
+              </p>
+            </div>
+            <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-gradient-neon">
+              <Users className="h-6 w-6 text-white" />
+            </div>
           </div>
+        </GlassCard>
 
-          <Card className="bg-[#121218] border-[#1A1A23] overflow-hidden">
-            <div className="grid grid-cols-2 gap-6 p-8">
-              {/* Left: Video & Basic Info */}
-              <div className="space-y-6">
-                {/* Video Resume */}
-                <div className="relative rounded-2xl overflow-hidden bg-[#0A0A0F] aspect-[9/16]">
-                  <ResumeVideoViewer
-                    videoUrl={currentApplication.videoResume}
-                    thumbnailUrl={currentApplication.jobseeker.photo}
-                  />
+        <GlassCard glow>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-foreground-secondary mb-1">Новые</p>
+              <p className="text-number-md font-bold text-primary">{stats.new}</p>
+            </div>
+            <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary/20">
+              <Clock className="h-6 w-6 text-primary" />
+            </div>
+          </div>
+        </GlassCard>
 
-                  {/* Overlay Info */}
-                  <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-6">
-                    <div className="flex items-center gap-4 mb-3">
-                      <img
-                        src={currentApplication.jobseeker.photo}
-                        alt={currentApplication.jobseeker.name}
-                        className="w-16 h-16 rounded-full border-2 border-white/20"
-                      />
-                      <div>
-                        <h3 className="text-xl font-bold text-white">
-                          {currentApplication.jobseeker.name}
-                        </h3>
-                        <p className="text-gray-300">
-                          {currentApplication.jobseeker.profession}
-                        </p>
-                      </div>
+        <GlassCard glow>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-foreground-secondary mb-1">На собеседовании</p>
+              <p className="text-number-md font-bold text-warning">{stats.interview}</p>
+            </div>
+            <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-warning/20">
+              <Calendar className="h-6 w-6 text-warning" />
+            </div>
+          </div>
+        </GlassCard>
+
+        <GlassCard glow>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-foreground-secondary mb-1">Приняты</p>
+              <p className="text-number-md font-bold text-success">{stats.hired}</p>
+            </div>
+            <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-success/20">
+              <Heart className="h-6 w-6 text-success" />
+            </div>
+          </div>
+        </GlassCard>
+      </div>
+
+      {/* Search and Filter */}
+      <div className="flex gap-4">
+        <div className="flex-1">
+          <GlassInput
+            type="search"
+            placeholder="Поиск по имени кандидата..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            icon={<Search className="h-4 w-4" />}
+          />
+        </div>
+        <NeonButton variant="glass">
+          <Filter className="h-4 w-4" />
+          Фильтры
+        </NeonButton>
+      </div>
+
+      {/* Kanban Board */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-5">
+        {columns.map((column) => {
+          const columnApplications = getApplicationsByStatus(column.status);
+
+          return (
+            <div
+              key={column.id}
+              onDragOver={handleDragOver}
+              onDrop={(e) => handleDrop(e, column.status)}
+              className={cn(
+                'flex flex-col rounded-xl border-2 border-dashed transition-colors',
+                draggedItem && draggedItem.status !== column.status
+                  ? 'border-primary/50 bg-primary/5'
+                  : 'border-glass-border bg-transparent'
+              )}
+            >
+              {/* Column Header */}
+              <GlassCard variant="elevated" className="mb-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div
+                      className={cn(
+                        'flex h-8 w-8 items-center justify-center rounded-lg',
+                        column.color === 'primary' && 'bg-primary/20 text-primary',
+                        column.color === 'secondary' && 'bg-secondary/20 text-secondary',
+                        column.color === 'warning' && 'bg-warning/20 text-warning',
+                        column.color === 'success' && 'bg-success/20 text-success',
+                        column.color === 'destructive' && 'bg-destructive/20 text-destructive'
+                      )}
+                    >
+                      {column.icon}
                     </div>
-
-                    {/* Rating */}
-                    <div className="flex items-center gap-2">
-                      <Star className="w-5 h-5 text-yellow-400 fill-yellow-400" />
-                      <span className="text-white font-semibold">
-                        {currentApplication.jobseeker.rating}
-                      </span>
-                    </div>
+                    <h3 className="font-semibold text-foreground">{column.title}</h3>
                   </div>
+                  <StatusBadge
+                    variant={column.color as any}
+                    className="text-xs px-2 py-0.5"
+                  >
+                    {columnApplications.length}
+                  </StatusBadge>
                 </div>
+              </GlassCard>
 
-                {/* Quick Info */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="bg-[#0A0A0F] p-4 rounded-xl">
-                    <div className="flex items-center gap-3 text-gray-300">
-                      <Briefcase className="w-5 h-5 text-[#8E7FFF]" />
-                      <div>
-                        <p className="text-xs text-gray-500">Опыт</p>
-                        <p className="font-semibold">
-                          {currentApplication.jobseeker.experience}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="bg-[#0A0A0F] p-4 rounded-xl">
-                    <div className="flex items-center gap-3 text-gray-300">
-                      <MapPin className="w-5 h-5 text-[#39E0F8]" />
-                      <div>
-                        <p className="text-xs text-gray-500">Город</p>
-                        <p className="font-semibold">
-                          {currentApplication.jobseeker.city}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="bg-[#0A0A0F] p-4 rounded-xl col-span-2">
-                    <div className="flex items-center gap-3 text-gray-300">
-                      <DollarSign className="w-5 h-5 text-green-400" />
-                      <div>
-                        <p className="text-xs text-gray-500">
-                          Ожидаемая зарплата
-                        </p>
-                        <p className="font-semibold text-lg">
-                          {currentApplication.jobseeker.expectedSalary}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Right: Detailed Info */}
-              <div className="space-y-6">
-                {/* Vacancy Info */}
-                <div>
-                  <h4 className="text-sm text-gray-400 mb-2">
-                    Откликнулся на:
-                  </h4>
-                  <div className="bg-[#0A0A0F] p-4 rounded-xl">
-                    <h3 className="text-white font-semibold mb-1">
-                      {currentApplication.vacancy.title}
-                    </h3>
-                    <p className="text-gray-400 text-sm">
-                      {currentApplication.vacancy.company}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Cover Letter */}
-                <div>
-                  <h4 className="text-sm text-gray-400 mb-2">
-                    Сопроводительное письмо:
-                  </h4>
-                  <div className="bg-[#0A0A0F] p-4 rounded-xl">
-                    <p className="text-gray-300 text-sm leading-relaxed">
-                      {currentApplication.coverLetter}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Skills */}
-                <div>
-                  <h4 className="text-sm text-gray-400 mb-2">Навыки:</h4>
-                  <div className="flex flex-wrap gap-2">
-                    {currentApplication.skills.map((skill, index) => (
-                      <span
-                        key={index}
-                        className="px-3 py-1.5 bg-gradient-to-r from-[#8E7FFF]/10 to-[#39E0F8]/10 border border-[#8E7FFF]/20 rounded-full text-sm text-white"
-                      >
-                        {skill}
-                      </span>
+              {/* Cards */}
+              <div className="flex-1 space-y-3 p-2 min-h-[400px]">
+                {loading ? (
+                  <>
+                    {[1, 2, 3].map((i) => (
+                      <div key={i} className="h-40 animate-pulse rounded-lg bg-glass-bg" />
                     ))}
+                  </>
+                ) : columnApplications.length > 0 ? (
+                  columnApplications.map((application) => (
+                    <div
+                      key={application.id}
+                      draggable
+                      onDragStart={(e) => handleDragStart(e, application)}
+                      onClick={() => handleCardClick(application)}
+                      className="group cursor-move"
+                    >
+                      <GlassCard
+                        variant="hover"
+                        className={cn(
+                          'transition-all duration-200',
+                          draggedItem?.id === application.id && 'opacity-50 scale-95'
+                        )}
+                      >
+                        {/* Video Thumbnail */}
+                        <div className="relative aspect-video rounded-lg overflow-hidden bg-gradient-to-br from-graphite to-dark-gray mb-3">
+                          {application.videoUrl ? (
+                            <>
+                              <div className="absolute inset-0 bg-gradient-to-t from-ultra-black/60 to-transparent" />
+                              <div className="absolute inset-0 flex items-center justify-center">
+                                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-glass-bg backdrop-blur-glass border border-glass-border group-hover:scale-110 transition-transform">
+                                  <Play className="h-5 w-5 text-primary" />
+                                </div>
+                              </div>
+                            </>
+                          ) : (
+                            <div className="absolute inset-0 flex items-center justify-center">
+                              <UserCheck className="h-8 w-8 text-foreground-muted opacity-50" />
+                            </div>
+                          )}
+
+                          {/* View count badge */}
+                          {application.videoViewCount > 0 && (
+                            <div className="absolute top-2 right-2 px-2 py-1 rounded-full bg-ultra-black/60 backdrop-blur-glass text-xs text-foreground-secondary">
+                              👁️ {application.videoViewCount}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Candidate Info */}
+                        <div className="space-y-2">
+                          <div className="flex items-start justify-between">
+                            <div className="flex items-center gap-2">
+                              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-neon text-white text-sm font-bold">
+                                {application.user?.name?.[0] || 'K'}
+                              </div>
+                              <div>
+                                <p className="font-semibold text-foreground text-sm line-clamp-1">
+                                  {application.user?.name || 'Кандидат'}
+                                </p>
+                                <p className="text-xs text-foreground-muted">
+                                  {application.vacancy?.profession || 'Вакансия'}
+                                </p>
+                              </div>
+                            </div>
+                            <ChevronRight className="h-4 w-4 text-foreground-muted group-hover:text-primary transition-colors" />
+                          </div>
+
+                          <div className="flex items-center gap-2 text-xs text-foreground-secondary">
+                            <Clock className="h-3 w-3" />
+                            <span>{new Date(application.createdAt).toLocaleDateString('ru-RU')}</span>
+                          </div>
+                        </div>
+                      </GlassCard>
+                    </div>
+                  ))
+                ) : (
+                  <div className="flex flex-col items-center justify-center h-40 text-center p-4">
+                    <div className="h-12 w-12 rounded-full bg-glass-bg flex items-center justify-center mb-2">
+                      {column.icon}
+                    </div>
+                    <p className="text-sm text-foreground-muted">Нет откликов</p>
                   </div>
-                </div>
-
-                {/* Applied Time */}
-                <div className="flex items-center gap-2 text-gray-400 text-sm">
-                  <Clock className="w-4 h-4" />
-                  <span>Откликнулся {currentApplication.appliedAt}</span>
-                </div>
-
-                {/* Action Buttons */}
-                <div className="space-y-3 pt-4">
-                  {/* Accept */}
-                  <Button
-                    onClick={handleAccept}
-                    className="w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-semibold py-3 rounded-xl"
-                  >
-                    <Heart className="w-5 h-5 mr-2" />
-                    Принять кандидата
-                  </Button>
-
-                  {/* Interview */}
-                  <Button
-                    onClick={handleInterview}
-                    className="w-full bg-gradient-to-r from-[#8E7FFF] to-[#39E0F8] hover:opacity-90 text-white font-semibold py-3 rounded-xl"
-                  >
-                    <Calendar className="w-5 h-5 mr-2" />
-                    Пригласить на собеседование
-                  </Button>
-
-                  {/* Reject */}
-                  <Button
-                    onClick={handleReject}
-                    variant="outline"
-                    className="w-full border-red-500/30 text-red-400 hover:bg-red-500/10 font-semibold py-3 rounded-xl"
-                  >
-                    <X className="w-5 h-5 mr-2" />
-                    Отклонить
-                  </Button>
-
-                  {/* Message */}
-                  <Button
-                    variant="outline"
-                    className="w-full border-[#1A1A23] text-white hover:bg-[#1A1A23] py-3 rounded-xl"
-                  >
-                    <MessageCircle className="w-5 h-5 mr-2" />
-                    Написать сообщение
-                  </Button>
-                </div>
+                )}
               </div>
             </div>
-          </Card>
-
-          {/* Navigation Arrows */}
-          <div className="flex justify-center gap-4 mt-6">
-            <Button
-              onClick={previousCard}
-              disabled={currentIndex === 0}
-              className="bg-[#121218] hover:bg-[#1A1A23] text-white border border-[#1A1A23] disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              ← Назад
-            </Button>
-
-            <span className="flex items-center text-gray-400 text-sm">
-              {currentIndex + 1} из {applications.length}
-            </span>
-
-            <Button
-              onClick={nextCard}
-              disabled={currentIndex === applications.length - 1}
-              className="bg-[#121218] hover:bg-[#1A1A23] text-white border border-[#1A1A23] disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Вперед →
-            </Button>
-          </div>
-        </div>
+          );
+        })}
       </div>
+
+      {/* Application Detail Modal */}
+      <ApplicationModal
+        application={selectedApplication}
+        isOpen={modalOpen}
+        onClose={() => {
+          setModalOpen(false);
+          setSelectedApplication(null);
+        }}
+        onStatusChange={handleStatusChange}
+      />
     </div>
   );
 }
