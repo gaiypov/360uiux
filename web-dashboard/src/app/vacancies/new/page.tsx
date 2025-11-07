@@ -1,9 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Card } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { useRouter } from 'next/navigation';
 import {
   Upload,
   Play,
@@ -17,54 +15,64 @@ import {
   CheckCircle2,
   ArrowRight,
   ArrowLeft,
+  Video as VideoIcon,
+  AlertCircle,
 } from 'lucide-react';
+import { GlassCard } from '@/components/ui/glass-card';
+import { NeonButton } from '@/components/ui/neon-button';
+import { GlassInput } from '@/components/ui/glass-input';
+import { StatusBadge } from '@/components/ui/status-badge';
+import { api } from '@/lib/api';
+import { cn } from '@/lib/utils';
 
 type VacancyFormData = {
   title: string;
+  profession: string;
   description: string;
   requirements: string;
   responsibilities: string;
-  salary: {
-    min: string;
-    max: string;
-    currency: string;
-  };
-  location: string;
+  benefits: string;
+  salaryMin: string;
+  salaryMax: string;
+  city: string;
   employmentType: string;
-  experience: string;
+  schedule: string;
+  experience: number;
   skills: string[];
-  benefits: string[];
   video: File | null;
   videoPreview: string | null;
 };
 
 const EMPLOYMENT_TYPES = [
-  'Полная занятость',
-  'Частичная занятость',
-  'Проектная работа',
-  'Стажировка',
+  { value: 'FULL_TIME', label: 'Полная занятость' },
+  { value: 'PART_TIME', label: 'Частичная занятость' },
+  { value: 'CONTRACT', label: 'Проектная работа' },
+  { value: 'INTERNSHIP', label: 'Стажировка' },
+];
+
+const SCHEDULE_TYPES = [
+  { value: 'FULL_DAY', label: 'Полный день' },
+  { value: 'SHIFT', label: 'Сменный график' },
+  { value: 'FLEXIBLE', label: 'Гибкий график' },
+  { value: 'REMOTE', label: 'Удаленная работа' },
 ];
 
 const EXPERIENCE_LEVELS = [
-  'Без опыта',
-  '1-3 года',
-  '3-5 лет',
-  '5+ лет',
+  { value: 0, label: 'Без опыта' },
+  { value: 1, label: '1-3 года' },
+  { value: 3, label: '3-5 лет' },
+  { value: 5, label: '5+ лет' },
 ];
 
-const POPULAR_SKILLS = [
-  'JavaScript',
-  'TypeScript',
-  'React',
-  'Node.js',
-  'Python',
-  'Java',
-  'SQL',
-  'Docker',
-  'AWS',
-  'Figma',
-  'Git',
-  'REST API',
+const POPULAR_PROFESSIONS = [
+  'Официант',
+  'Бармен',
+  'Повар',
+  'Администратор',
+  'Менеджер',
+  'Продавец',
+  'Курьер',
+  'Водитель',
 ];
 
 const POPULAR_BENEFITS = [
@@ -79,38 +87,35 @@ const POPULAR_BENEFITS = [
 ];
 
 export default function CreateVacancyPage() {
+  const router = useRouter();
   const [step, setStep] = useState(1);
+  const [loading, setLoading] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
   const [formData, setFormData] = useState<VacancyFormData>({
     title: '',
+    profession: '',
     description: '',
     requirements: '',
     responsibilities: '',
-    salary: {
-      min: '',
-      max: '',
-      currency: '₽',
-    },
-    location: '',
-    employmentType: EMPLOYMENT_TYPES[0],
-    experience: EXPERIENCE_LEVELS[1],
+    benefits: '',
+    salaryMin: '',
+    salaryMax: '',
+    city: '',
+    employmentType: 'FULL_TIME',
+    schedule: 'FULL_DAY',
+    experience: 0,
     skills: [],
-    benefits: [],
     video: null,
     videoPreview: null,
   });
 
   const [currentSkill, setCurrentSkill] = useState('');
-  const [currentBenefit, setCurrentBenefit] = useState('');
 
-  const handleInputChange = (field: string, value: any) => {
+  const handleInputChange = (field: keyof VacancyFormData, value: any) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
-  };
-
-  const handleSalaryChange = (field: 'min' | 'max', value: string) => {
-    setFormData((prev) => ({
-      ...prev,
-      salary: { ...prev.salary, [field]: value },
-    }));
+    // Clear error for this field
+    setErrors((prev) => ({ ...prev, [field]: '' }));
   };
 
   const addSkill = (skill: string) => {
@@ -130,56 +135,106 @@ export default function CreateVacancyPage() {
     }));
   };
 
-  const addBenefit = (benefit: string) => {
-    if (benefit && !formData.benefits.includes(benefit)) {
-      setFormData((prev) => ({
-        ...prev,
-        benefits: [...prev.benefits, benefit],
-      }));
-      setCurrentBenefit('');
-    }
-  };
-
-  const removeBenefit = (benefit: string) => {
-    setFormData((prev) => ({
-      ...prev,
-      benefits: prev.benefits.filter((b) => b !== benefit),
-    }));
-  };
-
   const handleVideoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      // Check file size (max 100MB)
+      if (file.size > 100 * 1024 * 1024) {
+        setErrors({ video: 'Файл слишком большой (макс. 100MB)' });
+        return;
+      }
+
       setFormData((prev) => ({
         ...prev,
         video: file,
         videoPreview: URL.createObjectURL(file),
       }));
+      setErrors((prev) => ({ ...prev, video: '' }));
     }
   };
 
-  const handlePublish = () => {
-    console.log('Publishing vacancy:', formData);
-    alert('Вакансия успешно опубликована!');
+  const validateStep = (currentStep: number): boolean => {
+    const newErrors: Record<string, string> = {};
+
+    if (currentStep === 1) {
+      if (!formData.title.trim()) newErrors.title = 'Укажите название вакансии';
+      if (!formData.profession.trim()) newErrors.profession = 'Укажите профессию';
+      if (!formData.description.trim()) newErrors.description = 'Добавьте описание';
+      if (!formData.city.trim()) newErrors.city = 'Укажите город';
+      if (!formData.salaryMin) newErrors.salaryMin = 'Укажите зарплату от';
+    }
+
+    if (currentStep === 2) {
+      if (!formData.requirements.trim())
+        newErrors.requirements = 'Укажите требования к кандидату';
+      if (!formData.responsibilities.trim())
+        newErrors.responsibilities = 'Укажите обязанности';
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
   };
 
-  const nextStep = () => setStep((prev) => Math.min(prev + 1, 4));
-  const prevStep = () => setStep((prev) => Math.max(prev - 1, 1));
+  const handleNext = () => {
+    if (validateStep(step)) {
+      setStep((prev) => Math.min(prev + 1, 4));
+    }
+  };
+
+  const handlePrev = () => {
+    setStep((prev) => Math.max(prev - 1, 1));
+  };
+
+  const handlePublish = async () => {
+    try {
+      setLoading(true);
+
+      // Prepare vacancy data
+      const vacancyData = {
+        title: formData.title,
+        profession: formData.profession,
+        description: formData.description,
+        requirements: formData.requirements,
+        responsibilities: formData.responsibilities,
+        benefits: formData.benefits,
+        salaryMin: parseInt(formData.salaryMin),
+        salaryMax: formData.salaryMax ? parseInt(formData.salaryMax) : undefined,
+        city: formData.city,
+        employment: formData.employmentType,
+        schedule: formData.schedule,
+        experience: formData.experience,
+        // videoUrl would be uploaded separately
+      };
+
+      const response = await api.createVacancy(vacancyData);
+
+      // Show success message
+      alert('Вакансия успешно создана и отправлена на модерацию!');
+
+      // Redirect to vacancies list
+      router.push('/vacancies');
+    } catch (error) {
+      console.error('Failed to create vacancy:', error);
+      alert('Не удалось создать вакансию. Попробуйте еще раз.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
-    <div className="min-h-screen bg-[#0A0A0F] p-6">
+    <div className="space-y-8 animate-fade-in max-w-5xl mx-auto">
       {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-white mb-2">
+      <div>
+        <h1 className="text-display-lg font-bold bg-gradient-neon bg-clip-text text-transparent">
           Создать вакансию
         </h1>
-        <p className="text-gray-400">
+        <p className="mt-2 text-foreground-secondary">
           Заполните информацию о вакансии и загрузите видео
         </p>
       </div>
 
       {/* Progress Steps */}
-      <div className="max-w-4xl mx-auto mb-8">
+      <div className="mb-8">
         <div className="flex items-center justify-between">
           {[
             { number: 1, label: 'Основная информация' },
@@ -189,32 +244,35 @@ export default function CreateVacancyPage() {
           ].map((s, index) => (
             <div key={s.number} className="flex items-center flex-1">
               <div
-                className={`flex items-center justify-center w-10 h-10 rounded-full ${
+                className={cn(
+                  'flex items-center justify-center w-12 h-12 rounded-full transition-all',
                   step >= s.number
-                    ? 'bg-gradient-to-r from-[#8E7FFF] to-[#39E0F8]'
-                    : 'bg-[#1A1A23]'
-                }`}
+                    ? 'bg-gradient-neon shadow-neon-sm'
+                    : 'bg-glass-bg border border-glass-border'
+                )}
               >
                 {step > s.number ? (
-                  <CheckCircle2 className="w-5 h-5 text-white" />
+                  <CheckCircle2 className="w-6 h-6 text-white" />
                 ) : (
-                  <span className="text-white font-semibold">{s.number}</span>
+                  <span className="text-foreground font-semibold">{s.number}</span>
                 )}
               </div>
-              <div className="ml-3 flex-1">
+              <div className="ml-3 flex-1 min-w-0">
                 <p
-                  className={`text-sm font-medium ${
-                    step >= s.number ? 'text-white' : 'text-gray-500'
-                  }`}
+                  className={cn(
+                    'text-sm font-medium truncate',
+                    step >= s.number ? 'text-foreground' : 'text-foreground-muted'
+                  )}
                 >
                   {s.label}
                 </p>
               </div>
               {index < 3 && (
                 <div
-                  className={`flex-1 h-0.5 mx-4 ${
-                    step > s.number ? 'bg-gradient-to-r from-[#8E7FFF] to-[#39E0F8]' : 'bg-[#1A1A23]'
-                  }`}
+                  className={cn(
+                    'flex-1 h-0.5 mx-4 transition-all',
+                    step > s.number ? 'bg-gradient-neon' : 'bg-glass-border'
+                  )}
                 />
               )}
             </div>
@@ -223,465 +281,411 @@ export default function CreateVacancyPage() {
       </div>
 
       {/* Form Content */}
-      <div className="max-w-4xl mx-auto">
-        <Card className="bg-[#121218] border-[#1A1A23] p-8">
-          {/* Step 1: Basic Info */}
-          {step === 1 && (
-            <div className="space-y-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Название вакансии *
-                </label>
-                <Input
-                  value={formData.title}
-                  onChange={(e) => handleInputChange('title', e.target.value)}
-                  placeholder="Например: Senior Frontend Developer"
-                  className="bg-[#0A0A0F] border-[#1A1A23] text-white"
-                />
-              </div>
+      <GlassCard className="p-8">
+        {/* Step 1: Basic Info */}
+        {step === 1 && (
+          <div className="space-y-6">
+            <div>
+              <label className="block text-sm font-medium text-foreground-secondary mb-2">
+                Название вакансии *
+              </label>
+              <GlassInput
+                value={formData.title}
+                onChange={(e) => handleInputChange('title', e.target.value)}
+                placeholder="Например: Официант в ресторан"
+                error={errors.title}
+              />
+            </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Описание вакансии *
-                </label>
-                <textarea
-                  value={formData.description}
-                  onChange={(e) =>
-                    handleInputChange('description', e.target.value)
-                  }
-                  placeholder="Расскажите о вакансии, компании и команде..."
-                  rows={6}
-                  className="w-full px-4 py-3 bg-[#0A0A0F] border border-[#1A1A23] rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-[#8E7FFF]"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    Город *
-                  </label>
-                  <div className="relative">
-                    <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                    <Input
-                      value={formData.location}
-                      onChange={(e) =>
-                        handleInputChange('location', e.target.value)
-                      }
-                      placeholder="Москва"
-                      className="pl-10 bg-[#0A0A0F] border-[#1A1A23] text-white"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    Тип занятости
-                  </label>
-                  <select
-                    value={formData.employmentType}
-                    onChange={(e) =>
-                      handleInputChange('employmentType', e.target.value)
-                    }
-                    className="w-full px-4 py-3 bg-[#0A0A0F] border border-[#1A1A23] rounded-xl text-white focus:outline-none focus:border-[#8E7FFF]"
+            <div>
+              <label className="block text-sm font-medium text-foreground-secondary mb-2">
+                Профессия *
+              </label>
+              <GlassInput
+                value={formData.profession}
+                onChange={(e) => handleInputChange('profession', e.target.value)}
+                placeholder="Официант"
+                error={errors.profession}
+              />
+              <div className="mt-2 flex flex-wrap gap-2">
+                <p className="text-xs text-foreground-muted w-full mb-1">Популярные:</p>
+                {POPULAR_PROFESSIONS.map((prof) => (
+                  <button
+                    key={prof}
+                    onClick={() => handleInputChange('profession', prof)}
+                    className="px-3 py-1.5 bg-glass-bg border border-glass-border rounded-full text-xs text-foreground-secondary hover:border-primary transition-colors"
                   >
-                    {EMPLOYMENT_TYPES.map((type) => (
-                      <option key={type} value={type}>
-                        {type}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Зарплата *
-                </label>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="relative">
-                    <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                    <Input
-                      type="number"
-                      value={formData.salary.min}
-                      onChange={(e) => handleSalaryChange('min', e.target.value)}
-                      placeholder="От"
-                      className="pl-10 bg-[#0A0A0F] border-[#1A1A23] text-white"
-                    />
-                  </div>
-                  <div className="relative">
-                    <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                    <Input
-                      type="number"
-                      value={formData.salary.max}
-                      onChange={(e) => handleSalaryChange('max', e.target.value)}
-                      placeholder="До"
-                      className="pl-10 bg-[#0A0A0F] border-[#1A1A23] text-white"
-                    />
-                  </div>
-                </div>
+                    {prof}
+                  </button>
+                ))}
               </div>
             </div>
-          )}
 
-          {/* Step 2: Requirements */}
-          {step === 2 && (
-            <div className="space-y-6">
+            <div>
+              <label className="block text-sm font-medium text-foreground-secondary mb-2">
+                Описание вакансии *
+              </label>
+              <textarea
+                value={formData.description}
+                onChange={(e) => handleInputChange('description', e.target.value)}
+                placeholder="Расскажите о вакансии, компании и команде..."
+                rows={6}
+                className={cn(
+                  'w-full px-4 py-3 rounded-lg bg-glass-bg backdrop-blur-glass border text-foreground placeholder:text-foreground-muted',
+                  'focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary',
+                  'transition-all duration-300',
+                  errors.description ? 'border-destructive' : 'border-glass-border'
+                )}
+              />
+              {errors.description && (
+                <p className="mt-1.5 text-xs text-destructive">{errors.description}</p>
+              )}
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Требования *
+                <label className="block text-sm font-medium text-foreground-secondary mb-2">
+                  Город *
                 </label>
-                <textarea
-                  value={formData.requirements}
-                  onChange={(e) =>
-                    handleInputChange('requirements', e.target.value)
-                  }
-                  placeholder="Опишите требования к кандидату..."
-                  rows={5}
-                  className="w-full px-4 py-3 bg-[#0A0A0F] border border-[#1A1A23] rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-[#8E7FFF]"
+                <GlassInput
+                  value={formData.city}
+                  onChange={(e) => handleInputChange('city', e.target.value)}
+                  placeholder="Москва"
+                  icon={<MapPin className="h-4 w-4" />}
+                  error={errors.city}
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Обязанности *
-                </label>
-                <textarea
-                  value={formData.responsibilities}
-                  onChange={(e) =>
-                    handleInputChange('responsibilities', e.target.value)
-                  }
-                  placeholder="Что будет делать сотрудник..."
-                  rows={5}
-                  className="w-full px-4 py-3 bg-[#0A0A0F] border border-[#1A1A23] rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-[#8E7FFF]"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Опыт работы
+                <label className="block text-sm font-medium text-foreground-secondary mb-2">
+                  Тип занятости
                 </label>
                 <select
-                  value={formData.experience}
-                  onChange={(e) =>
-                    handleInputChange('experience', e.target.value)
-                  }
-                  className="w-full px-4 py-3 bg-[#0A0A0F] border border-[#1A1A23] rounded-xl text-white focus:outline-none focus:border-[#8E7FFF]"
+                  value={formData.employmentType}
+                  onChange={(e) => handleInputChange('employmentType', e.target.value)}
+                  className="w-full h-11 rounded-lg px-4 bg-glass-bg border border-glass-border text-foreground focus:border-primary focus:outline-none transition-all"
                 >
-                  {EXPERIENCE_LEVELS.map((level) => (
-                    <option key={level} value={level}>
-                      {level}
+                  {EMPLOYMENT_TYPES.map((type) => (
+                    <option key={type.value} value={type.value}>
+                      {type.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-foreground-secondary mb-2">
+                  График работы
+                </label>
+                <select
+                  value={formData.schedule}
+                  onChange={(e) => handleInputChange('schedule', e.target.value)}
+                  className="w-full h-11 rounded-lg px-4 bg-glass-bg border border-glass-border text-foreground focus:border-primary focus:outline-none transition-all"
+                >
+                  {SCHEDULE_TYPES.map((type) => (
+                    <option key={type.value} value={type.value}>
+                      {type.label}
                     </option>
                   ))}
                 </select>
               </div>
 
-              {/* Skills */}
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Навыки *
+                <label className="block text-sm font-medium text-foreground-secondary mb-2">
+                  Опыт работы
                 </label>
-                <div className="flex gap-2 mb-3">
-                  <Input
-                    value={currentSkill}
-                    onChange={(e) => setCurrentSkill(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault();
-                        addSkill(currentSkill);
-                      }
-                    }}
-                    placeholder="Добавить навык..."
-                    className="bg-[#0A0A0F] border-[#1A1A23] text-white"
-                  />
-                  <Button
-                    onClick={() => addSkill(currentSkill)}
-                    className="bg-gradient-to-r from-[#8E7FFF] to-[#39E0F8]"
-                  >
-                    <Plus className="w-5 h-5" />
-                  </Button>
-                </div>
-
-                {/* Popular Skills */}
-                <div className="mb-4">
-                  <p className="text-xs text-gray-500 mb-2">Популярные:</p>
-                  <div className="flex flex-wrap gap-2">
-                    {POPULAR_SKILLS.map((skill) => (
-                      <button
-                        key={skill}
-                        onClick={() => addSkill(skill)}
-                        className="px-3 py-1.5 bg-[#0A0A0F] border border-[#1A1A23] rounded-full text-sm text-gray-300 hover:border-[#8E7FFF] transition-colors"
-                      >
-                        + {skill}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Selected Skills */}
-                {formData.skills.length > 0 && (
-                  <div className="flex flex-wrap gap-2">
-                    {formData.skills.map((skill) => (
-                      <span
-                        key={skill}
-                        className="px-3 py-1.5 bg-gradient-to-r from-[#8E7FFF]/20 to-[#39E0F8]/20 border border-[#8E7FFF]/40 rounded-full text-sm text-white flex items-center gap-2"
-                      >
-                        {skill}
-                        <button
-                          onClick={() => removeSkill(skill)}
-                          className="hover:text-red-400"
-                        >
-                          <X className="w-4 h-4" />
-                        </button>
-                      </span>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* Benefits */}
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Бонусы и льготы
-                </label>
-                <div className="flex gap-2 mb-3">
-                  <Input
-                    value={currentBenefit}
-                    onChange={(e) => setCurrentBenefit(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault();
-                        addBenefit(currentBenefit);
-                      }
-                    }}
-                    placeholder="Добавить бонус..."
-                    className="bg-[#0A0A0F] border-[#1A1A23] text-white"
-                  />
-                  <Button
-                    onClick={() => addBenefit(currentBenefit)}
-                    className="bg-gradient-to-r from-[#8E7FFF] to-[#39E0F8]"
-                  >
-                    <Plus className="w-5 h-5" />
-                  </Button>
-                </div>
-
-                {/* Popular Benefits */}
-                <div className="mb-4">
-                  <p className="text-xs text-gray-500 mb-2">Популярные:</p>
-                  <div className="flex flex-wrap gap-2">
-                    {POPULAR_BENEFITS.map((benefit) => (
-                      <button
-                        key={benefit}
-                        onClick={() => addBenefit(benefit)}
-                        className="px-3 py-1.5 bg-[#0A0A0F] border border-[#1A1A23] rounded-full text-sm text-gray-300 hover:border-[#8E7FFF] transition-colors"
-                      >
-                        + {benefit}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Selected Benefits */}
-                {formData.benefits.length > 0 && (
-                  <div className="flex flex-wrap gap-2">
-                    {formData.benefits.map((benefit) => (
-                      <span
-                        key={benefit}
-                        className="px-3 py-1.5 bg-green-500/20 border border-green-500/40 rounded-full text-sm text-green-300 flex items-center gap-2"
-                      >
-                        {benefit}
-                        <button
-                          onClick={() => removeBenefit(benefit)}
-                          className="hover:text-red-400"
-                        >
-                          <X className="w-4 h-4" />
-                        </button>
-                      </span>
-                    ))}
-                  </div>
-                )}
+                <select
+                  value={formData.experience}
+                  onChange={(e) => handleInputChange('experience', parseInt(e.target.value))}
+                  className="w-full h-11 rounded-lg px-4 bg-glass-bg border border-glass-border text-foreground focus:border-primary focus:outline-none transition-all"
+                >
+                  {EXPERIENCE_LEVELS.map((level) => (
+                    <option key={level.value} value={level.value}>
+                      {level.label}
+                    </option>
+                  ))}
+                </select>
               </div>
             </div>
-          )}
 
-          {/* Step 3: Video Upload */}
-          {step === 3 && (
-            <div className="space-y-6">
-              <div className="text-center">
-                <h3 className="text-xl font-bold text-white mb-2">
-                  Загрузите видео о вакансии
-                </h3>
-                <p className="text-gray-400 mb-8">
-                  Расскажите о компании, команде и задачах (макс. 60 секунд)
-                </p>
+            <div>
+              <label className="block text-sm font-medium text-foreground-secondary mb-2">
+                Зарплата *
+              </label>
+              <div className="grid grid-cols-2 gap-4">
+                <GlassInput
+                  type="number"
+                  value={formData.salaryMin}
+                  onChange={(e) => handleInputChange('salaryMin', e.target.value)}
+                  placeholder="От"
+                  icon={<DollarSign className="h-4 w-4" />}
+                  error={errors.salaryMin}
+                />
+                <GlassInput
+                  type="number"
+                  value={formData.salaryMax}
+                  onChange={(e) => handleInputChange('salaryMax', e.target.value)}
+                  placeholder="До (опционально)"
+                  icon={<DollarSign className="h-4 w-4" />}
+                />
+              </div>
+            </div>
+          </div>
+        )}
 
-                {formData.videoPreview ? (
-                  <div className="relative rounded-2xl overflow-hidden bg-black max-w-md mx-auto aspect-[9/16]">
-                    <video
-                      src={formData.videoPreview}
-                      controls
-                      className="w-full h-full object-cover"
-                    />
-                    <button
-                      onClick={() =>
-                        setFormData((prev) => ({
-                          ...prev,
-                          video: null,
-                          videoPreview: null,
-                        }))
-                      }
-                      className="absolute top-4 right-4 p-2 bg-red-500/80 hover:bg-red-500 rounded-full"
-                    >
-                      <X className="w-5 h-5 text-white" />
-                    </button>
-                  </div>
-                ) : (
-                  <label className="block cursor-pointer">
-                    <div className="border-2 border-dashed border-[#1A1A23] rounded-2xl p-12 hover:border-[#8E7FFF] transition-colors">
-                      <div className="flex flex-col items-center">
-                        <div className="w-20 h-20 rounded-full bg-gradient-to-r from-[#8E7FFF]/20 to-[#39E0F8]/20 flex items-center justify-center mb-4">
-                          <Upload className="w-10 h-10 text-[#8E7FFF]" />
-                        </div>
-                        <p className="text-white font-semibold mb-2">
-                          Нажмите для загрузки видео
-                        </p>
-                        <p className="text-gray-400 text-sm">
-                          MP4, MOV до 100MB
-                        </p>
+        {/* Step 2: Requirements */}
+        {step === 2 && (
+          <div className="space-y-6">
+            <div>
+              <label className="block text-sm font-medium text-foreground-secondary mb-2">
+                Требования к кандидату *
+              </label>
+              <textarea
+                value={formData.requirements}
+                onChange={(e) => handleInputChange('requirements', e.target.value)}
+                placeholder="Опишите требования к кандидату..."
+                rows={6}
+                className={cn(
+                  'w-full px-4 py-3 rounded-lg bg-glass-bg backdrop-blur-glass border text-foreground placeholder:text-foreground-muted',
+                  'focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary',
+                  'transition-all duration-300',
+                  errors.requirements ? 'border-destructive' : 'border-glass-border'
+                )}
+              />
+              {errors.requirements && (
+                <p className="mt-1.5 text-xs text-destructive">{errors.requirements}</p>
+              )}
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-foreground-secondary mb-2">
+                Обязанности *
+              </label>
+              <textarea
+                value={formData.responsibilities}
+                onChange={(e) => handleInputChange('responsibilities', e.target.value)}
+                placeholder="Что будет делать сотрудник..."
+                rows={6}
+                className={cn(
+                  'w-full px-4 py-3 rounded-lg bg-glass-bg backdrop-blur-glass border text-foreground placeholder:text-foreground-muted',
+                  'focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary',
+                  'transition-all duration-300',
+                  errors.responsibilities ? 'border-destructive' : 'border-glass-border'
+                )}
+              />
+              {errors.responsibilities && (
+                <p className="mt-1.5 text-xs text-destructive">{errors.responsibilities}</p>
+              )}
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-foreground-secondary mb-2">
+                Бонусы и льготы
+              </label>
+              <textarea
+                value={formData.benefits}
+                onChange={(e) => handleInputChange('benefits', e.target.value)}
+                placeholder="Что вы предлагаете сотруднику..."
+                rows={4}
+                className="w-full px-4 py-3 rounded-lg bg-glass-bg backdrop-blur-glass border border-glass-border text-foreground placeholder:text-foreground-muted focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all duration-300"
+              />
+              <div className="mt-2 flex flex-wrap gap-2">
+                <p className="text-xs text-foreground-muted w-full mb-1">Популярные:</p>
+                {POPULAR_BENEFITS.map((benefit) => (
+                  <button
+                    key={benefit}
+                    onClick={() => {
+                      const current = formData.benefits;
+                      const newValue = current
+                        ? `${current}\n• ${benefit}`
+                        : `• ${benefit}`;
+                      handleInputChange('benefits', newValue);
+                    }}
+                    className="px-3 py-1.5 bg-glass-bg border border-glass-border rounded-full text-xs text-foreground-secondary hover:border-success transition-colors"
+                  >
+                    + {benefit}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Step 3: Video Upload */}
+        {step === 3 && (
+          <div className="space-y-6">
+            <div className="text-center">
+              <h3 className="text-display-md font-bold bg-gradient-neon bg-clip-text text-transparent mb-2">
+                Загрузите видео о вакансии
+              </h3>
+              <p className="text-foreground-secondary mb-8">
+                Расскажите о компании, команде и задачах (макс. 60 секунд)
+              </p>
+
+              {formData.videoPreview ? (
+                <div className="relative rounded-xl overflow-hidden bg-ultra-black max-w-md mx-auto aspect-[9/16]">
+                  <video src={formData.videoPreview} controls className="w-full h-full object-cover" />
+                  <button
+                    onClick={() =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        video: null,
+                        videoPreview: null,
+                      }))
+                    }
+                    className="absolute top-4 right-4 p-2 bg-destructive hover:bg-destructive/90 rounded-full transition-colors"
+                  >
+                    <X className="w-5 h-5 text-white" />
+                  </button>
+                </div>
+              ) : (
+                <label className="block cursor-pointer">
+                  <div className="border-2 border-dashed border-glass-border rounded-xl p-12 hover:border-primary transition-colors">
+                    <div className="flex flex-col items-center">
+                      <div className="w-20 h-20 rounded-full bg-gradient-neon/10 flex items-center justify-center mb-4">
+                        <Upload className="w-10 h-10 text-primary" />
                       </div>
+                      <p className="text-foreground font-semibold mb-2">Нажмите для загрузки видео</p>
+                      <p className="text-foreground-secondary text-sm">MP4, MOV до 100MB</p>
                     </div>
-                    <input
-                      type="file"
-                      accept="video/*"
-                      onChange={handleVideoUpload}
-                      className="hidden"
-                    />
-                  </label>
-                )}
-              </div>
-
-              <div className="bg-[#0A0A0F] p-6 rounded-xl">
-                <h4 className="text-white font-semibold mb-4">
-                  Советы для видео:
-                </h4>
-                <ul className="space-y-2 text-gray-300 text-sm">
-                  <li className="flex items-start gap-2">
-                    <CheckCircle2 className="w-5 h-5 text-green-400 flex-shrink-0 mt-0.5" />
-                    Расскажите о компании и команде
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <CheckCircle2 className="w-5 h-5 text-green-400 flex-shrink-0 mt-0.5" />
-                    Опишите задачи и проекты
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <CheckCircle2 className="w-5 h-5 text-green-400 flex-shrink-0 mt-0.5" />
-                    Покажите офис или рабочее место
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <CheckCircle2 className="w-5 h-5 text-green-400 flex-shrink-0 mt-0.5" />
-                    Говорите искренне и естественно
-                  </li>
-                </ul>
-              </div>
+                  </div>
+                  <input
+                    type="file"
+                    accept="video/*"
+                    onChange={handleVideoUpload}
+                    className="hidden"
+                  />
+                </label>
+              )}
+              {errors.video && <p className="mt-2 text-sm text-destructive">{errors.video}</p>}
             </div>
-          )}
 
-          {/* Step 4: Review & Publish */}
-          {step === 4 && (
-            <div className="space-y-6">
-              <div className="text-center mb-8">
-                <div className="w-20 h-20 rounded-full bg-gradient-to-r from-[#8E7FFF] to-[#39E0F8] flex items-center justify-center mx-auto mb-4">
-                  <CheckCircle2 className="w-10 h-10 text-white" />
+            <GlassCard variant="elevated">
+              <h4 className="text-foreground font-semibold mb-4">Советы для видео:</h4>
+              <ul className="space-y-2 text-foreground-secondary text-sm">
+                {[
+                  'Расскажите о компании и команде',
+                  'Опишите задачи и проекты',
+                  'Покажите офис или рабочее место',
+                  'Говорите искренне и естественно',
+                ].map((tip, i) => (
+                  <li key={i} className="flex items-start gap-2">
+                    <CheckCircle2 className="w-5 h-5 text-success-green flex-shrink-0 mt-0.5" />
+                    {tip}
+                  </li>
+                ))}
+              </ul>
+            </GlassCard>
+          </div>
+        )}
+
+        {/* Step 4: Review & Publish */}
+        {step === 4 && (
+          <div className="space-y-6">
+            <div className="text-center mb-8">
+              <div className="w-20 h-20 rounded-full bg-gradient-neon flex items-center justify-center mx-auto mb-4 shadow-neon">
+                <CheckCircle2 className="w-10 h-10 text-white" />
+              </div>
+              <h3 className="text-display-md font-bold bg-gradient-neon bg-clip-text text-transparent mb-2">
+                Готово к публикации!
+              </h3>
+              <p className="text-foreground-secondary">Проверьте информацию перед публикацией</p>
+            </div>
+
+            {/* Summary */}
+            <GlassCard variant="elevated" className="space-y-4">
+              <div>
+                <p className="text-foreground-secondary text-sm mb-1">Название:</p>
+                <p className="text-foreground font-semibold text-lg">{formData.title}</p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-foreground-secondary text-sm mb-1">Профессия:</p>
+                  <p className="text-foreground font-semibold">{formData.profession}</p>
                 </div>
-                <h3 className="text-2xl font-bold text-white mb-2">
-                  Готово к публикации!
-                </h3>
-                <p className="text-gray-400">
-                  Проверьте информацию перед публикацией
+                <div>
+                  <p className="text-foreground-secondary text-sm mb-1">Город:</p>
+                  <p className="text-foreground font-semibold">{formData.city}</p>
+                </div>
+              </div>
+
+              <div>
+                <p className="text-foreground-secondary text-sm mb-1">Зарплата:</p>
+                <p className="text-success-green font-semibold text-lg">
+                  {formData.salaryMin}
+                  {formData.salaryMax ? ` - ${formData.salaryMax}` : '+'} ₽
                 </p>
               </div>
 
-              {/* Summary */}
-              <div className="bg-[#0A0A0F] p-6 rounded-xl space-y-4">
+              <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <p className="text-gray-400 text-sm mb-1">Название:</p>
-                  <p className="text-white font-semibold text-lg">
-                    {formData.title}
+                  <p className="text-foreground-secondary text-sm mb-1">Занятость:</p>
+                  <StatusBadge variant="glass">
+                    {EMPLOYMENT_TYPES.find((t) => t.value === formData.employmentType)?.label}
+                  </StatusBadge>
+                </div>
+                <div>
+                  <p className="text-foreground-secondary text-sm mb-1">График:</p>
+                  <StatusBadge variant="glass">
+                    {SCHEDULE_TYPES.find((t) => t.value === formData.schedule)?.label}
+                  </StatusBadge>
+                </div>
+              </div>
+
+              {formData.video && (
+                <div>
+                  <p className="text-foreground-secondary text-sm mb-1">Видео:</p>
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="h-5 w-5 text-success-green" />
+                    <p className="text-success-green font-semibold">Загружено</p>
+                  </div>
+                </div>
+              )}
+            </GlassCard>
+
+            <GlassCard variant="elevated" className="bg-warning/5 border-warning/20">
+              <div className="flex gap-3">
+                <AlertCircle className="h-5 w-5 text-warning flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-warning font-semibold mb-1">Модерация</p>
+                  <p className="text-foreground-secondary text-sm">
+                    Вакансия будет отправлена на модерацию и опубликована после проверки (обычно в течение 24 часов)
                   </p>
                 </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-gray-400 text-sm mb-1">Зарплата:</p>
-                    <p className="text-white font-semibold">
-                      {formData.salary.min} - {formData.salary.max}{' '}
-                      {formData.salary.currency}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-gray-400 text-sm mb-1">Город:</p>
-                    <p className="text-white font-semibold">
-                      {formData.location}
-                    </p>
-                  </div>
-                </div>
-
-                <div>
-                  <p className="text-gray-400 text-sm mb-2">Навыки:</p>
-                  <div className="flex flex-wrap gap-2">
-                    {formData.skills.map((skill) => (
-                      <span
-                        key={skill}
-                        className="px-3 py-1 bg-[#121218] border border-[#1A1A23] rounded-full text-sm text-gray-300"
-                      >
-                        {skill}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-
-                {formData.video && (
-                  <div>
-                    <p className="text-gray-400 text-sm mb-1">Видео:</p>
-                    <p className="text-green-400 font-semibold">
-                      ✓ Загружено
-                    </p>
-                  </div>
-                )}
               </div>
+            </GlassCard>
 
-              <Button
-                onClick={handlePublish}
-                className="w-full bg-gradient-to-r from-[#8E7FFF] to-[#39E0F8] hover:opacity-90 text-white font-semibold py-4 rounded-xl text-lg"
-              >
-                Опубликовать вакансию
-              </Button>
-            </div>
-          )}
-
-          {/* Navigation Buttons */}
-          <div className="flex justify-between mt-8 pt-6 border-t border-[#1A1A23]">
-            <Button
-              onClick={prevStep}
-              disabled={step === 1}
-              variant="outline"
-              className="border-[#1A1A23] text-white hover:bg-[#1A1A23] disabled:opacity-50 disabled:cursor-not-allowed"
+            <NeonButton
+              variant="neon"
+              size="xl"
+              glow
+              onClick={handlePublish}
+              disabled={loading}
+              className="w-full"
             >
-              <ArrowLeft className="w-5 h-5 mr-2" />
-              Назад
-            </Button>
-
-            {step < 4 && (
-              <Button
-                onClick={nextStep}
-                className="bg-gradient-to-r from-[#8E7FFF] to-[#39E0F8] hover:opacity-90 text-white"
-              >
-                Далее
-                <ArrowRight className="w-5 h-5 ml-2" />
-              </Button>
-            )}
+              {loading ? 'Публикация...' : 'Опубликовать вакансию'}
+            </NeonButton>
           </div>
-        </Card>
-      </div>
+        )}
+
+        {/* Navigation Buttons */}
+        <div className="flex justify-between mt-8 pt-6 border-t border-glass-border">
+          <NeonButton onClick={handlePrev} disabled={step === 1} variant="ghost">
+            <ArrowLeft className="w-5 h-5" />
+            Назад
+          </NeonButton>
+
+          {step < 4 && (
+            <NeonButton onClick={handleNext} variant="neon">
+              Далее
+              <ArrowRight className="w-5 h-5" />
+            </NeonButton>
+          )}
+        </div>
+      </GlassCard>
     </div>
   );
 }
