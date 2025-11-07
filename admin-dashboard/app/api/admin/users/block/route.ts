@@ -1,4 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { db } from '@/lib/db';
+
+interface BlockRequest {
+  userId: string;
+  reason?: string;
+}
 
 /**
  * Block User API
@@ -7,8 +13,8 @@ import { NextRequest, NextResponse } from 'next/server';
  */
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    const { userId } = body;
+    const body: BlockRequest = await request.json();
+    const { userId, reason } = body;
 
     if (!userId) {
       return NextResponse.json(
@@ -17,29 +23,53 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // TODO: Get admin ID from JWT token
-    const adminId = 'admin-123';
+    // Get admin ID from middleware headers
+    const adminId = request.headers.get('x-admin-id');
 
-    // TODO: Replace with actual database update
-    // Example SQL:
-    // UPDATE users SET status = 'blocked', blocked_at = NOW(), blocked_by = $1 WHERE id = $2
-    const updateQuery = `
-      UPDATE users
-      SET status = 'blocked',
-          blocked_at = NOW(),
-          blocked_by = $1
-      WHERE id = $2
-      RETURNING *
-    `;
+    if (!adminId) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+
+    // Check if user exists
+    const user = await db.oneOrNone<{ id: string; phone: string }>(
+      'SELECT id, phone FROM users WHERE id = $1',
+      [userId]
+    );
+
+    if (!user) {
+      return NextResponse.json(
+        { error: 'User not found' },
+        { status: 404 }
+      );
+    }
+
+    // Block the user
+    await db.none(
+      `UPDATE users
+       SET blocked_at = CURRENT_TIMESTAMP,
+           blocked_by = $1,
+           blocked_reason = $2
+       WHERE id = $3`,
+      [adminId, reason || 'Blocked by administrator', userId]
+    );
 
     // Log admin action
-    // TODO: Replace with actual database insert
-    const logActionQuery = `
-      INSERT INTO admin_actions (admin_id, action_type, target_id, target_type, details)
-      VALUES ($1, 'user_block', $2, 'user', $3)
-    `;
+    await db.none(
+      `INSERT INTO admin_actions (admin_id, action_type, target_id, target_type, details)
+       VALUES ($1, 'user_block', $2, 'user', $3)`,
+      [
+        adminId,
+        userId,
+        JSON.stringify({
+          reason: reason || 'Blocked by administrator',
+          phone: user.phone
+        })
+      ]
+    );
 
-    // Mock success response
     return NextResponse.json({
       success: true,
       message: 'User blocked successfully',

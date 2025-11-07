@@ -1,4 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { db } from '@/lib/db';
+
+interface UserRow {
+  id: string;
+  phone: string;
+  email: string | null;
+  role: 'jobseeker' | 'employer';
+  name: string | null;
+  company_name: string | null;
+  created_at: string;
+  updated_at: string;
+  blocked_at: string | null;
+  deleted_at: string | null;
+  applications_count?: string;
+  vacancies_count?: string;
+}
 
 /**
  * Admin Users API
@@ -11,86 +27,81 @@ export async function GET(request: NextRequest) {
     const role = searchParams.get('role') || 'all';
     const status = searchParams.get('status') || 'all';
 
-    // TODO: Get admin ID from JWT token
-    const adminId = 'admin-123';
+    // Admin ID from middleware headers
+    const adminId = request.headers.get('x-admin-id');
 
-    // TODO: Replace with actual database query
-    // Mock data for demonstration
-    let users = [
-      {
-        id: 'user-1',
-        name: 'Алексей Иванов',
-        email: 'aleksey.ivanov@example.com',
-        phone: '+7 (999) 123-45-67',
-        role: 'jobseeker' as const,
-        status: 'active' as const,
-        registeredAt: '2024-01-15T10:00:00Z',
-        lastActive: '2024-02-01T15:30:00Z',
-        stats: {
-          applicationsCount: 12
-        }
-      },
-      {
-        id: 'user-2',
-        name: 'ООО "Технологии будущего"',
-        email: 'hr@tech-future.com',
-        phone: '+7 (495) 000-11-22',
-        role: 'employer' as const,
-        status: 'active' as const,
-        registeredAt: '2024-01-10T09:00:00Z',
-        lastActive: '2024-02-01T14:20:00Z',
-        stats: {
-          vacanciesCount: 8
-        }
-      },
-      {
-        id: 'user-3',
-        name: 'Мария Петрова',
-        email: 'maria.petrova@example.com',
-        phone: '+7 (999) 234-56-78',
-        role: 'jobseeker' as const,
-        status: 'blocked' as const,
-        registeredAt: '2024-01-20T11:00:00Z',
-        lastActive: '2024-01-28T16:45:00Z',
-        stats: {
-          applicationsCount: 5
-        }
-      },
-      {
-        id: 'user-4',
-        name: 'ИП Сидоров',
-        email: 'sidorov@business.com',
-        phone: '+7 (499) 111-22-33',
-        role: 'employer' as const,
-        status: 'active' as const,
-        registeredAt: '2024-01-12T08:30:00Z',
-        lastActive: '2024-02-01T10:15:00Z',
-        stats: {
-          vacanciesCount: 3
-        }
-      },
-      {
-        id: 'user-5',
-        name: 'Дмитрий Козлов',
-        email: 'dmitry.kozlov@example.com',
-        phone: '+7 (999) 345-67-89',
-        role: 'jobseeker' as const,
-        status: 'active' as const,
-        registeredAt: '2024-01-25T14:00:00Z',
-        lastActive: '2024-02-01T17:00:00Z',
-        stats: {
-          applicationsCount: 8
-        }
-      }
-    ];
+    // Build WHERE clause based on filters
+    const whereClauses: string[] = ['1=1'];
+    const params: any[] = [];
+    let paramIndex = 1;
 
-    // Apply filters
+    // Role filter
     if (role !== 'all') {
-      users = users.filter(u => u.role === role);
+      whereClauses.push(`u.role = $${paramIndex}`);
+      params.push(role);
+      paramIndex++;
     }
-    if (status !== 'all') {
-      users = users.filter(u => u.status === status);
+
+    // Status filter (active = not blocked/deleted, blocked = blocked_at is not null)
+    if (status === 'active') {
+      whereClauses.push('u.blocked_at IS NULL');
+      whereClauses.push('u.deleted_at IS NULL');
+    } else if (status === 'blocked') {
+      whereClauses.push('u.blocked_at IS NOT NULL');
     }
+
+    const whereClause = whereClauses.join(' AND ');
+
+    // Query users with stats
+    const query = `
+      SELECT
+        u.id,
+        u.phone,
+        u.email,
+        u.role,
+        u.name,
+        u.company_name,
+        u.created_at,
+        u.updated_at,
+        u.blocked_at,
+        u.deleted_at,
+        COALESCE(
+          (SELECT COUNT(*) FROM applications WHERE user_id = u.id),
+          0
+        ) as applications_count,
+        COALESCE(
+          (SELECT COUNT(*) FROM vacancies WHERE employer_id = u.id),
+          0
+        ) as vacancies_count
+      FROM users u
+      WHERE ${whereClause}
+      ORDER BY u.created_at DESC
+      LIMIT 100
+    `;
+
+    const userRows = await db.many<UserRow>(query, params);
+
+    // Format users for response
+    const users = userRows.map(row => ({
+      id: row.id,
+      name: row.role === 'jobseeker' ? row.name || 'Без имени' : row.company_name || 'Без названия',
+      email: row.email || '',
+      phone: row.phone,
+      role: row.role,
+      status: row.blocked_at ? 'blocked' as const : 'active' as const,
+      registeredAt: row.created_at,
+      lastActive: row.updated_at,
+      stats: row.role === 'jobseeker'
+        ? { applicationsCount: parseInt(row.applications_count || '0') }
+        : { vacanciesCount: parseInt(row.vacancies_count || '0') }
+    }));
+
+    // Log admin action
+    await db.none(
+      `INSERT INTO admin_actions (admin_id, action_type, details)
+       VALUES ($1, 'view_users', $2)`,
+      [adminId, JSON.stringify({ filters: { role, status }, count: users.length })]
+    );
 
     return NextResponse.json({ users });
 
