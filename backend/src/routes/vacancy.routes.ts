@@ -4,49 +4,54 @@
 
 import { Router } from 'express';
 import { authMiddleware, requireEmployer } from '../middleware/auth';
+import { VacancyController } from '../controllers/VacancyController';
 import { VacancyInteractionsController } from '../controllers/VacancyInteractionsController';
 
 const router = Router();
 
 /**
- * Создать вакансию
+ * Get available filter options
+ * GET /api/v1/vacancies/filters
+ * Must be before /:id route
+ */
+router.get('/filters', VacancyController.getFilterOptions);
+
+/**
+ * Get user's favorite vacancies
+ * GET /api/v1/vacancies/user/favorites
+ * Must be before /:id route
+ */
+router.get('/user/favorites', authMiddleware, VacancyInteractionsController.getFavorites);
+
+/**
+ * Create a vacancy
  * POST /api/v1/vacancies
  */
-router.post('/', authMiddleware, requireEmployer, async (req, res) => {
-  res.json({ message: 'Create vacancy endpoint - Coming soon' });
-});
+router.post('/', authMiddleware, requireEmployer, VacancyController.createVacancy);
 
 /**
- * Получить список вакансий
+ * Get list of vacancies with search and filters
  * GET /api/v1/vacancies
  */
-router.get('/', async (req, res) => {
-  res.json({ message: 'List vacancies endpoint - Coming soon' });
-});
+router.get('/', VacancyController.getVacancies);
 
 /**
- * Получить вакансию по ID
+ * Get vacancy by ID
  * GET /api/v1/vacancies/:id
  */
-router.get('/:id', async (req, res) => {
-  res.json({ message: 'Get vacancy endpoint - Coming soon' });
-});
+router.get('/:id', VacancyController.getVacancy);
 
 /**
- * Обновить вакансию
+ * Update a vacancy
  * PUT /api/v1/vacancies/:id
  */
-router.put('/:id', authMiddleware, requireEmployer, async (req, res) => {
-  res.json({ message: 'Update vacancy endpoint - Coming soon' });
-});
+router.put('/:id', authMiddleware, requireEmployer, VacancyController.updateVacancy);
 
 /**
- * Удалить вакансию
+ * Delete a vacancy (soft delete)
  * DELETE /api/v1/vacancies/:id
  */
-router.delete('/:id', authMiddleware, requireEmployer, async (req, res) => {
-  res.json({ message: 'Delete vacancy endpoint - Coming soon' });
-});
+router.delete('/:id', authMiddleware, requireEmployer, VacancyController.deleteVacancy);
 
 /**
  * Like a vacancy
@@ -83,11 +88,5 @@ router.post('/:id/comments', authMiddleware, VacancyInteractionsController.addCo
  * GET /api/v1/vacancies/:id/comments
  */
 router.get('/:id/comments', VacancyInteractionsController.getComments);
-
-/**
- * Get user's favorite vacancies
- * GET /api/v1/favorites
- */
-router.get('/user/favorites', authMiddleware, VacancyInteractionsController.getFavorites);
 
 export default router;
