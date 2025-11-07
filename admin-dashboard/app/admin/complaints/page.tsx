@@ -12,6 +12,26 @@ import {
   Flag
 } from 'lucide-react';
 
+// API Response interface
+interface ComplaintAPIResponse {
+  id: string;
+  reporter_id: string;
+  reporter_name: string;
+  reporter_phone: string | null;
+  reported_id: string;
+  reported_name: string;
+  reported_type: 'user' | 'vacancy' | 'application';
+  type: 'user_behavior' | 'content_violation' | 'technical_issue' | 'fraud' | 'other';
+  description: string;
+  status: 'pending' | 'resolved' | 'rejected';
+  priority: 'low' | 'medium' | 'high' | 'critical';
+  created_at: string;
+  resolved_at: string | null;
+  resolved_by_name: string | null;
+  resolution: string | null;
+  notes: string | null;
+}
+
 interface Complaint {
   id: string;
   reporterId: string;
@@ -52,7 +72,27 @@ export default function ComplaintsPage() {
         `/api/admin/complaints?status=${statusFilter}&type=${typeFilter}&priority=${priorityFilter}`
       );
       const data = await response.json();
-      setComplaints(data.complaints);
+
+      // Map API response to component interface
+      const mappedComplaints: Complaint[] = (data.complaints || []).map((c: ComplaintAPIResponse) => ({
+        id: c.id,
+        reporterId: c.reporter_id,
+        reporterName: c.reporter_name,
+        reportedId: c.reported_id,
+        reportedName: c.reported_name,
+        reportedRole: c.reported_type === 'user' ? 'jobseeker' : c.reported_type === 'vacancy' ? 'vacancy' : 'employer',
+        type: c.type,
+        description: c.description,
+        status: c.status,
+        priority: c.priority,
+        createdAt: c.created_at,
+        resolvedAt: c.resolved_at || undefined,
+        resolvedBy: c.resolved_by_name || undefined,
+        resolution: c.resolution || undefined,
+        notes: c.notes || undefined
+      }));
+
+      setComplaints(mappedComplaints);
     } catch (error) {
       console.error('Error fetching complaints:', error);
     } finally {

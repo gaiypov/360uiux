@@ -2,6 +2,31 @@
 
 import { useEffect, useState } from 'react';
 
+// API Response interface
+interface VacancyAPIResponse {
+  id: string;
+  title: string;
+  profession: string;
+  employer_id: string;
+  employer_name: string;
+  video_url: string;
+  thumbnail_url: string | null;
+  salary_min: number | null;
+  salary_max: number | null;
+  currency: string;
+  city: string;
+  salary_text: string;
+  moderation_status: 'pending' | 'approved' | 'rejected';
+  created_at: string;
+  approved_at: string | null;
+  rejected_at: string | null;
+  rejection_reason: string | null;
+  rejection_comment: string | null;
+  approved_by_name: string | null;
+  rejected_by_name: string | null;
+  ai_check: any;
+}
+
 type Vacancy = {
   id: string;
   title: string;
@@ -14,6 +39,13 @@ type Vacancy = {
   description: string;
   salary: string;
   location: string;
+  profession: string;
+  rejectionReason?: string;
+  rejectionComment?: string;
+  approvedByName?: string;
+  rejectedByName?: string;
+  approvedAt?: string;
+  rejectedAt?: string;
 };
 
 export default function ModerationPage() {
@@ -33,7 +65,30 @@ export default function ModerationPage() {
     try {
       const response = await fetch(`/api/admin/moderation?status=${filter}`);
       const data = await response.json();
-      setVacancies(data);
+
+      // Map API response to component interface
+      const mappedVacancies: Vacancy[] = (data.vacancies || []).map((v: VacancyAPIResponse) => ({
+        id: v.id,
+        title: v.title,
+        company: v.employer_name,
+        employerName: v.employer_name,
+        videoUrl: v.video_url,
+        duration: 'N/A', // Duration not available from API, would need to be added
+        quality: 'HD', // Quality not available from API, placeholder
+        createdAt: v.created_at,
+        description: v.profession, // Using profession as description placeholder
+        salary: v.salary_text,
+        location: v.city,
+        profession: v.profession,
+        rejectionReason: v.rejection_reason || undefined,
+        rejectionComment: v.rejection_comment || undefined,
+        approvedByName: v.approved_by_name || undefined,
+        rejectedByName: v.rejected_by_name || undefined,
+        approvedAt: v.approved_at || undefined,
+        rejectedAt: v.rejected_at || undefined
+      }));
+
+      setVacancies(mappedVacancies);
     } catch (error) {
       console.error('Error fetching vacancies:', error);
     } finally {

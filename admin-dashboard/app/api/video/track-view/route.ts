@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import { notificationService } from '@/lib/notification';
 
 interface ViewCountRow {
   count: string;
@@ -160,29 +161,26 @@ export async function POST(request: NextRequest) {
       [userId]
     );
 
-    // TODO: Send push notification to job seeker
+    // Send push notification to job seeker
     if (videoInfo) {
       const employerName = viewerInfo?.company_name || 'Работодатель';
       const viewsRemaining = 2 - newViewCount;
 
       if (newViewCount === 1) {
         // First view notification
-        // await notificationService.send({
-        //   userId: videoInfo.jobseeker_id,
-        //   title: 'Ваше видео просмотрено!',
-        //   body: `${employerName} просмотрел ваше видео-резюме. Осталось ${viewsRemaining} просмотр.`,
-        //   type: 'video_viewed',
-        //   data: { applicationId, viewsRemaining: 1 }
-        // });
+        await notificationService.notifyVideoViewed({
+          jobseekerId: videoInfo.jobseeker_id,
+          viewerName: employerName,
+          viewsRemaining: viewsRemaining,
+          applicationId: applicationId
+        });
       } else if (newViewCount === 2) {
         // Final view notification - video will be auto-deleted by trigger
-        // await notificationService.send({
-        //   userId: videoInfo.jobseeker_id,
-        //   title: 'Лимит просмотров достигнут',
-        //   body: `${employerName} просмотрел ваше видео во второй раз. Видео удалено согласно правилам платформы.`,
-        //   type: 'video_limit_reached',
-        //   data: { applicationId, viewsRemaining: 0 }
-        // });
+        await notificationService.notifyVideoLimitReached({
+          jobseekerId: videoInfo.jobseeker_id,
+          viewerName: employerName,
+          applicationId: applicationId
+        });
       }
     }
 

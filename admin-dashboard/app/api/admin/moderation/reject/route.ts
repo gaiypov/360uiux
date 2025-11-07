@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import { notificationService } from '@/lib/notification';
 
 /**
  * Reject Vacancy API
@@ -78,13 +79,14 @@ export async function POST(request: NextRequest) {
       ]
     );
 
-    // TODO: Send notification to employer
-    // await notificationService.send({
-    //   userId: vacancy.employer_id,
-    //   title: 'Вакансия отклонена',
-    //   body: `Ваша вакансия "${vacancy.title}" отклонена модератором.\nПричина: ${reason}${comment ? `\nКомментарий: ${comment}` : ''}`,
-    //   type: 'vacancy_rejected'
-    // });
+    // Send notification to employer
+    await notificationService.notifyVacancyRejected({
+      employerId: vacancy.employer_id,
+      vacancyId: vacancyId,
+      vacancyTitle: vacancy.title,
+      reason: reason,
+      comment: comment
+    });
 
     return NextResponse.json({
       success: true,

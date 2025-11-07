@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import { notificationService } from '@/lib/notification';
 
 /**
  * Approve Vacancy API
@@ -66,13 +67,12 @@ export async function POST(request: NextRequest) {
       ]
     );
 
-    // TODO: Send notification to employer
-    // await notificationService.send({
-    //   userId: vacancy.employer_id,
-    //   title: 'Вакансия одобрена',
-    //   body: `Ваша вакансия "${vacancy.title}" успешно прошла модерацию`,
-    //   type: 'vacancy_approved'
-    // });
+    // Send notification to employer
+    await notificationService.notifyVacancyApproved({
+      employerId: vacancy.employer_id,
+      vacancyId: vacancyId,
+      vacancyTitle: vacancy.title
+    });
 
     return NextResponse.json({
       success: true,
