@@ -1,4 +1,27 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { db } from '@/lib/db';
+
+interface VacancyRow {
+  id: string;
+  title: string;
+  profession: string;
+  video_url: string;
+  thumbnail_url: string | null;
+  salary_min: number | null;
+  salary_max: number | null;
+  currency: string;
+  city: string;
+  moderation_status: string;
+  created_at: string;
+  approved_at: string | null;
+  rejected_at: string | null;
+  rejection_reason: string | null;
+  rejection_comment: string | null;
+  approved_by_name: string | null;
+  rejected_by_name: string | null;
+  employer_id: string;
+  employer_name: string | null;
+}
 
 /**
  * Admin Moderation API
@@ -10,124 +33,85 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const status = searchParams.get('status') || 'pending';
 
-    // TODO: Get admin ID from JWT token
-    const adminId = 'admin-123';
+    // Get admin ID from middleware headers
+    const adminId = request.headers.get('x-admin-id');
 
-    // TODO: Replace with actual database query
-    // Mock data for demonstration
-    let vacancies = [
-      {
-        id: 'vacancy-1',
-        title: 'Менеджер по продажам',
-        employerName: 'ООО "Технологии будущего"',
-        employerId: 'employer-1',
-        videoUrl: '/api/videos/vacancy-1.mp4',
-        description: 'Ищем активного менеджера по продажам в отдел корпоративных продаж. Зарплата от 80,000 руб + бонусы.',
-        salary: '80,000 - 150,000 руб',
-        location: 'Москва',
-        category: 'Продажи',
-        status: 'pending' as const,
-        createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-        aiCheck: {
-          videoQuality: 'good',
-          audioQuality: 'good',
-          contentMatch: 'high',
-          flags: [],
-          confidence: 0.92
-        }
-      },
-      {
-        id: 'vacancy-2',
-        title: 'React разработчик',
-        employerName: 'Стартап "Инновации"',
-        employerId: 'employer-2',
-        videoUrl: '/api/videos/vacancy-2.mp4',
-        description: 'Требуется опытный React разработчик для работы над интересным проектом.',
-        salary: '150,000 - 250,000 руб',
-        location: 'Санкт-Петербург',
-        category: 'IT',
-        status: 'pending' as const,
-        createdAt: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString(),
-        aiCheck: {
-          videoQuality: 'excellent',
-          audioQuality: 'good',
-          contentMatch: 'high',
-          flags: [],
-          confidence: 0.95
-        }
-      },
-      {
-        id: 'vacancy-3',
-        title: 'Курьер',
-        employerName: 'ИП Петров',
-        employerId: 'employer-3',
-        videoUrl: '/api/videos/vacancy-3.mp4',
-        description: 'Требуется курьер для доставки товаров по городу.',
-        salary: '40,000 - 60,000 руб',
-        location: 'Казань',
-        category: 'Логистика',
-        status: 'pending' as const,
-        createdAt: new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString(),
-        aiCheck: {
-          videoQuality: 'poor',
-          audioQuality: 'medium',
-          contentMatch: 'medium',
-          flags: ['low_video_quality'],
-          confidence: 0.65
-        }
-      },
-      {
-        id: 'vacancy-4',
-        title: 'Официант',
-        employerName: 'Ресторан "Вкусно"',
-        employerId: 'employer-4',
-        videoUrl: '/api/videos/vacancy-4.mp4',
-        description: 'Ищем дружелюбного официанта в команду ресторана.',
-        salary: '50,000 - 70,000 руб',
-        location: 'Москва',
-        category: 'HoReCa',
-        status: 'approved' as const,
-        createdAt: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
-        approvedAt: new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString(),
-        approvedBy: 'Иван Петров',
-        aiCheck: {
-          videoQuality: 'good',
-          audioQuality: 'excellent',
-          contentMatch: 'high',
-          flags: [],
-          confidence: 0.89
-        }
-      },
-      {
-        id: 'vacancy-5',
-        title: 'Программист Python',
-        employerName: 'ООО "Данные и Аналитика"',
-        employerId: 'employer-5',
-        videoUrl: '/api/videos/vacancy-5.mp4',
-        description: 'Backend разработчик для работы с большими данными.',
-        salary: '120,000 - 200,000 руб',
-        location: 'Удаленно',
-        category: 'IT',
-        status: 'rejected' as const,
-        createdAt: new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString(),
-        rejectedAt: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
-        rejectedBy: 'Мария Сидорова',
-        rejectionReason: 'Низкое качество видео',
-        rejectionComment: 'Видео слишком темное, звук прерывается. Пожалуйста, перезапишите.',
-        aiCheck: {
-          videoQuality: 'poor',
-          audioQuality: 'poor',
-          contentMatch: 'low',
-          flags: ['low_video_quality', 'low_audio_quality'],
-          confidence: 0.45
-        }
-      }
-    ];
+    // Query vacancies for moderation
+    const query = `
+      SELECT
+        v.id,
+        v.title,
+        v.profession,
+        v.video_url,
+        v.thumbnail_url,
+        v.salary_min,
+        v.salary_max,
+        v.currency,
+        v.city,
+        v.moderation_status,
+        v.created_at,
+        v.approved_at,
+        v.rejected_at,
+        v.rejection_reason,
+        v.rejection_comment,
+        v.employer_id,
+        u.company_name as employer_name,
+        admin_approved.name as approved_by_name,
+        admin_rejected.name as rejected_by_name
+      FROM vacancies v
+      JOIN users u ON u.id = v.employer_id
+      LEFT JOIN admins admin_approved ON admin_approved.id = v.approved_by
+      LEFT JOIN admins admin_rejected ON admin_rejected.id = v.rejected_by
+      WHERE v.moderation_status = $1 AND v.deleted_at IS NULL
+      ORDER BY v.created_at ASC
+      LIMIT 50
+    `;
 
-    // Apply status filter
-    if (status !== 'all') {
-      vacancies = vacancies.filter(v => v.status === status);
-    }
+    const vacancyRows = await db.many<VacancyRow>(query, [status]);
+
+    // Format vacancies for response
+    const vacancies = vacancyRows.map(row => {
+      const salaryText = row.salary_min && row.salary_max
+        ? `${row.salary_min.toLocaleString()} - ${row.salary_max.toLocaleString()} ${row.currency}`
+        : row.salary_min
+        ? `от ${row.salary_min.toLocaleString()} ${row.currency}`
+        : 'Договорная';
+
+      return {
+        id: row.id,
+        title: row.title,
+        employerName: row.employer_name || 'Неизвестная компания',
+        employerId: row.employer_id,
+        videoUrl: row.video_url,
+        description: `Профессия: ${row.profession}`,
+        salary: salaryText,
+        location: row.city,
+        category: row.profession,
+        status: row.moderation_status as 'pending' | 'approved' | 'rejected',
+        createdAt: row.created_at,
+        approvedAt: row.approved_at,
+        approvedBy: row.approved_by_name,
+        rejectedAt: row.rejected_at,
+        rejectedBy: row.rejected_by_name,
+        rejectionReason: row.rejection_reason,
+        rejectionComment: row.rejection_comment,
+        // AI check would come from separate AI service
+        aiCheck: {
+          videoQuality: 'unknown',
+          audioQuality: 'unknown',
+          contentMatch: 'unknown',
+          flags: [],
+          confidence: 0
+        }
+      };
+    });
+
+    // Log admin action
+    await db.none(
+      `INSERT INTO admin_actions (admin_id, action_type, details)
+       VALUES ($1, 'view_moderation', $2)`,
+      [adminId, JSON.stringify({ status, count: vacancies.length })]
+    );
 
     return NextResponse.json({ vacancies });
 

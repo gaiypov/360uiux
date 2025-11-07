@@ -1,4 +1,56 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { db } from '@/lib/db';
+
+interface DateSeriesRow {
+  date: string;
+}
+
+interface UserGrowthRow {
+  date: string;
+  jobseekers: string;
+  employers: string;
+}
+
+interface VacancyStatsRow {
+  date: string;
+  posted: string;
+  approved: string;
+  rejected: string;
+}
+
+interface VideoViewsRow {
+  date: string;
+  views: string;
+  unique_users: string;
+}
+
+interface ApplicationStatsRow {
+  date: string;
+  applications: string;
+}
+
+interface UserActivityRow {
+  hour: number;
+  active: string;
+}
+
+interface RoleDistributionRow {
+  role: string;
+  count: string;
+}
+
+interface VacancyCategoryRow {
+  profession: string;
+  count: string;
+}
+
+interface PlatformStatsRow {
+  total_users: string;
+  total_vacancies: string;
+  total_applications: string;
+  total_video_views: string;
+  prev_total_users: string;
+}
 
 /**
  * Admin Analytics API
@@ -10,20 +62,17 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const range = searchParams.get('range') || '30d';
 
-    // TODO: Get admin ID from JWT token
-    const adminId = 'admin-123';
+    // Get admin ID from middleware headers
+    const adminId = request.headers.get('x-admin-id');
 
-    // Generate date labels based on range
-    const getDates = (days: number) => {
-      const dates = [];
-      for (let i = days - 1; i >= 0; i--) {
-        const date = new Date();
-        date.setDate(date.getDate() - i);
-        dates.push(date.toISOString().split('T')[0]);
-      }
-      return dates;
-    };
+    if (!adminId) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
 
+    // Map range to days
     const daysMap: Record<string, number> = {
       '7d': 7,
       '30d': 30,
@@ -32,62 +81,210 @@ export async function GET(request: NextRequest) {
     };
 
     const days = daysMap[range] || 30;
-    const dates = getDates(days);
 
-    // TODO: Replace with actual database queries
-    // Generate mock data based on date range
-    const userGrowth = dates.map((date, index) => ({
-      date: new Date(date).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' }),
-      jobseekers: Math.floor(1000 + index * 50 + Math.random() * 100),
-      employers: Math.floor(200 + index * 10 + Math.random() * 20)
+    // User Growth - cumulative count by date
+    const userGrowthQuery = `
+      WITH date_series AS (
+        SELECT generate_series(
+          CURRENT_DATE - INTERVAL '${days - 1} days',
+          CURRENT_DATE,
+          '1 day'::interval
+        )::date as date
+      )
+      SELECT
+        ds.date::text,
+        COALESCE(SUM(CASE WHEN u.role = 'jobseeker' AND u.created_at::date <= ds.date THEN 1 ELSE 0 END), 0) as jobseekers,
+        COALESCE(SUM(CASE WHEN u.role = 'employer' AND u.created_at::date <= ds.date THEN 1 ELSE 0 END), 0) as employers
+      FROM date_series ds
+      LEFT JOIN users u ON u.created_at::date <= ds.date AND u.deleted_at IS NULL
+      GROUP BY ds.date
+      ORDER BY ds.date ASC
+    `;
+
+    const userGrowthRows = await db.many<UserGrowthRow>(userGrowthQuery);
+
+    const userGrowth = userGrowthRows.map(row => ({
+      date: new Date(row.date).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' }),
+      jobseekers: parseInt(row.jobseekers),
+      employers: parseInt(row.employers)
     }));
 
-    const vacancyStats = dates.map((date, index) => ({
-      date: new Date(date).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' }),
-      posted: Math.floor(10 + Math.random() * 20),
-      approved: Math.floor(7 + Math.random() * 15),
-      rejected: Math.floor(0 + Math.random() * 5)
+    // Vacancy Stats - posted/approved/rejected by date
+    const vacancyStatsQuery = `
+      WITH date_series AS (
+        SELECT generate_series(
+          CURRENT_DATE - INTERVAL '${days - 1} days',
+          CURRENT_DATE,
+          '1 day'::interval
+        )::date as date
+      )
+      SELECT
+        ds.date::text,
+        COALESCE(COUNT(CASE WHEN v.created_at::date = ds.date THEN 1 END), 0) as posted,
+        COALESCE(COUNT(CASE WHEN v.approved_at::date = ds.date THEN 1 END), 0) as approved,
+        COALESCE(COUNT(CASE WHEN v.rejected_at::date = ds.date THEN 1 END), 0) as rejected
+      FROM date_series ds
+      LEFT JOIN vacancies v ON (
+        v.created_at::date = ds.date OR
+        v.approved_at::date = ds.date OR
+        v.rejected_at::date = ds.date
+      ) AND v.deleted_at IS NULL
+      GROUP BY ds.date
+      ORDER BY ds.date ASC
+    `;
+
+    const vacancyStatsRows = await db.many<VacancyStatsRow>(vacancyStatsQuery);
+
+    const vacancyStats = vacancyStatsRows.map(row => ({
+      date: new Date(row.date).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' }),
+      posted: parseInt(row.posted),
+      approved: parseInt(row.approved),
+      rejected: parseInt(row.rejected)
     }));
 
-    const videoViews = dates.map((date, index) => ({
-      date: new Date(date).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' }),
-      views: Math.floor(50 + Math.random() * 100),
-      uniqueUsers: Math.floor(30 + Math.random() * 60)
+    // Video Views - total and unique by date
+    const videoViewsQuery = `
+      WITH date_series AS (
+        SELECT generate_series(
+          CURRENT_DATE - INTERVAL '${days - 1} days',
+          CURRENT_DATE,
+          '1 day'::interval
+        )::date as date
+      )
+      SELECT
+        ds.date::text,
+        COALESCE(COUNT(vv.id), 0) as views,
+        COALESCE(COUNT(DISTINCT vv.user_id), 0) as unique_users
+      FROM date_series ds
+      LEFT JOIN video_views vv ON vv.viewed_at::date = ds.date
+      GROUP BY ds.date
+      ORDER BY ds.date ASC
+    `;
+
+    const videoViewsRows = await db.many<VideoViewsRow>(videoViewsQuery);
+
+    const videoViews = videoViewsRows.map(row => ({
+      date: new Date(row.date).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' }),
+      views: parseInt(row.views),
+      uniqueUsers: parseInt(row.unique_users)
     }));
 
-    const applicationStats = dates.map((date, index) => ({
-      date: new Date(date).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' }),
-      applications: Math.floor(20 + Math.random() * 40),
-      responses: Math.floor(10 + Math.random() * 20)
+    // Application Stats - applications by date
+    const applicationStatsQuery = `
+      WITH date_series AS (
+        SELECT generate_series(
+          CURRENT_DATE - INTERVAL '${days - 1} days',
+          CURRENT_DATE,
+          '1 day'::interval
+        )::date as date
+      )
+      SELECT
+        ds.date::text,
+        COALESCE(COUNT(a.id), 0) as applications
+      FROM date_series ds
+      LEFT JOIN applications a ON a.created_at::date = ds.date
+      GROUP BY ds.date
+      ORDER BY ds.date ASC
+    `;
+
+    const applicationStatsRows = await db.many<ApplicationStatsRow>(applicationStatsQuery);
+
+    const applicationStats = applicationStatsRows.map(row => ({
+      date: new Date(row.date).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' }),
+      applications: parseInt(row.applications)
     }));
 
-    const userActivity = Array.from({ length: 24 }, (_, hour) => ({
-      hour: `${hour.toString().padStart(2, '0')}:00`,
-      active: Math.floor(50 + Math.sin(hour / 24 * Math.PI * 2) * 40 + Math.random() * 20)
+    // User Activity by Hour - based on last_active_at
+    const userActivityQuery = `
+      WITH hours AS (
+        SELECT generate_series(0, 23) as hour
+      )
+      SELECT
+        h.hour,
+        COALESCE(COUNT(u.id), 0) as active
+      FROM hours h
+      LEFT JOIN users u ON EXTRACT(HOUR FROM u.last_active_at) = h.hour
+        AND u.last_active_at >= CURRENT_DATE - INTERVAL '7 days'
+      GROUP BY h.hour
+      ORDER BY h.hour ASC
+    `;
+
+    const userActivityRows = await db.many<UserActivityRow>(userActivityQuery);
+
+    const userActivity = userActivityRows.map(row => ({
+      hour: `${row.hour.toString().padStart(2, '0')}:00`,
+      active: parseInt(row.active)
     }));
 
-    const roleDistribution = [
-      { name: 'Соискатели', value: 6500 },
-      { name: 'Работодатели', value: 2043 }
-    ];
+    // Role Distribution - pie chart data
+    const roleDistributionQuery = `
+      SELECT
+        role,
+        COUNT(*) as count
+      FROM users
+      WHERE deleted_at IS NULL AND blocked_at IS NULL
+      GROUP BY role
+    `;
 
-    const vacancyCategories = [
-      { category: 'IT', count: 245 },
-      { category: 'Продажи', count: 189 },
-      { category: 'Логистика', count: 167 },
-      { category: 'HoReCa', count: 143 },
-      { category: 'Производство', count: 128 },
-      { category: 'Строительство', count: 112 },
-      { category: 'Другое', count: 263 }
-    ];
+    const roleDistributionRows = await db.many<RoleDistributionRow>(roleDistributionQuery);
+
+    const roleDistribution = roleDistributionRows.map(row => ({
+      name: row.role === 'jobseeker' ? 'Соискатели' : 'Работодатели',
+      value: parseInt(row.count)
+    }));
+
+    // Vacancy Categories - bar chart data
+    const vacancyCategoriesQuery = `
+      SELECT
+        profession as profession,
+        COUNT(*) as count
+      FROM vacancies
+      WHERE deleted_at IS NULL AND moderation_status = 'approved'
+      GROUP BY profession
+      ORDER BY count DESC
+      LIMIT 10
+    `;
+
+    const vacancyCategoriesRows = await db.many<VacancyCategoryRow>(vacancyCategoriesQuery);
+
+    const vacancyCategories = vacancyCategoriesRows.map(row => ({
+      category: row.profession,
+      count: parseInt(row.count)
+    }));
+
+    // Platform Stats - overall metrics
+    const platformStatsQuery = `
+      SELECT
+        (SELECT COUNT(*) FROM users WHERE deleted_at IS NULL AND blocked_at IS NULL) as total_users,
+        (SELECT COUNT(*) FROM vacancies WHERE deleted_at IS NULL AND moderation_status = 'approved') as total_vacancies,
+        (SELECT COUNT(*) FROM applications) as total_applications,
+        (SELECT COUNT(*) FROM video_views) as total_video_views,
+        (SELECT COUNT(*) FROM users WHERE deleted_at IS NULL AND blocked_at IS NULL
+         AND created_at < CURRENT_DATE - INTERVAL '${days} days') as prev_total_users
+    `;
+
+    const platformStatsRow = await db.one<PlatformStatsRow>(platformStatsQuery);
+
+    const totalUsers = parseInt(platformStatsRow.total_users);
+    const prevTotalUsers = parseInt(platformStatsRow.prev_total_users);
+    const growthRate = prevTotalUsers > 0
+      ? ((totalUsers - prevTotalUsers) / prevTotalUsers * 100).toFixed(1)
+      : '0.0';
 
     const platformStats = {
-      totalUsers: userGrowth[userGrowth.length - 1].jobseekers + userGrowth[userGrowth.length - 1].employers,
-      totalVacancies: vacancyStats.reduce((sum, stat) => sum + stat.approved, 0),
-      totalApplications: applicationStats.reduce((sum, stat) => sum + stat.applications, 0),
-      totalVideoViews: videoViews.reduce((sum, stat) => sum + stat.views, 0),
-      growthRate: 12.5 // Mock growth rate
+      totalUsers,
+      totalVacancies: parseInt(platformStatsRow.total_vacancies),
+      totalApplications: parseInt(platformStatsRow.total_applications),
+      totalVideoViews: parseInt(platformStatsRow.total_video_views),
+      growthRate: parseFloat(growthRate)
     };
+
+    // Log admin action
+    await db.none(
+      `INSERT INTO admin_actions (admin_id, action_type, details)
+       VALUES ($1, 'view_analytics', $2)`,
+      [adminId, JSON.stringify({ range, timestamp: new Date().toISOString() })]
+    );
 
     const analyticsData = {
       userGrowth,

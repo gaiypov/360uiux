@@ -1,9 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { db } from '@/lib/db';
 
 /**
  * Reject Vacancy API
  *
  * Rejects a vacancy with reason and comment
+ *
+ * Possible rejection reasons:
+ * - Несоответствие описанию
+ * - Низкое качество видео
+ * - Низкое качество звука
+ * - Недопустимый контент
+ * - Спам/мошенничество
+ * - Другое
  */
 export async function POST(request: NextRequest) {
   try {
@@ -17,55 +26,74 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // TODO: Get admin ID from JWT token
-    const adminId = 'admin-123';
-    const adminName = 'Иван Петров'; // TODO: Get from database
+    // Get admin ID from middleware headers
+    const adminId = request.headers.get('x-admin-id');
+    const adminEmail = request.headers.get('x-admin-email') || 'Admin';
 
-    // TODO: Replace with actual database update
-    // Example SQL:
-    // UPDATE vacancies
-    // SET status = 'rejected',
-    //     rejected_at = NOW(),
-    //     rejected_by = $1,
-    //     rejection_reason = $2,
-    //     rejection_comment = $3
-    // WHERE id = $4
-    const updateQuery = `
-      UPDATE vacancies
-      SET status = 'rejected',
-          rejected_at = NOW(),
-          rejected_by = $1,
-          rejection_reason = $2,
-          rejection_comment = $3
-      WHERE id = $4
-      RETURNING *
-    `;
+    if (!adminId) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+
+    // Check if vacancy exists and get employer info
+    const vacancy = await db.oneOrNone<{ id: string; employer_id: string; title: string }>(
+      'SELECT id, employer_id, title FROM vacancies WHERE id = $1',
+      [vacancyId]
+    );
+
+    if (!vacancy) {
+      return NextResponse.json(
+        { error: 'Vacancy not found' },
+        { status: 404 }
+      );
+    }
+
+    // Reject the vacancy
+    await db.none(
+      `UPDATE vacancies
+       SET moderation_status = 'rejected',
+           rejected_at = CURRENT_TIMESTAMP,
+           rejected_by = $1,
+           rejection_reason = $2,
+           rejection_comment = $3
+       WHERE id = $4`,
+      [adminId, reason, comment || null, vacancyId]
+    );
 
     // Log admin action
-    // TODO: Replace with actual database insert
-    const logActionQuery = `
-      INSERT INTO admin_actions (admin_id, action_type, target_id, target_type, details)
-      VALUES ($1, 'vacancy_reject', $2, 'vacancy', $3)
-    `;
+    await db.none(
+      `INSERT INTO admin_actions (admin_id, action_type, target_id, target_type, details)
+       VALUES ($1, 'vacancy_reject', $2, 'vacancy', $3)`,
+      [
+        adminId,
+        vacancyId,
+        JSON.stringify({
+          title: vacancy.title,
+          employer_id: vacancy.employer_id,
+          reason,
+          comment: comment || null
+        })
+      ]
+    );
 
     // TODO: Send notification to employer
-    // notificationService.notifyVacancyRejected({
-    //   recipientId: vacancy.employerId,
-    //   vacancyId,
-    //   vacancyTitle: vacancy.title,
-    //   reason,
-    //   comment
+    // await notificationService.send({
+    //   userId: vacancy.employer_id,
+    //   title: 'Вакансия отклонена',
+    //   body: `Ваша вакансия "${vacancy.title}" отклонена модератором.\nПричина: ${reason}${comment ? `\nКомментарий: ${comment}` : ''}`,
+    //   type: 'vacancy_rejected'
     // });
 
-    // Mock success response
     return NextResponse.json({
       success: true,
       message: 'Vacancy rejected successfully',
       vacancyId,
-      rejectedBy: adminName,
+      rejectedBy: adminEmail,
       rejectedAt: new Date().toISOString(),
       reason,
-      comment
+      comment: comment || null
     });
 
   } catch (error) {

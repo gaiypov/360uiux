@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { db } from '@/lib/db';
 
 /**
  * Approve Vacancy API
@@ -17,46 +18,67 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // TODO: Get admin ID from JWT token
-    const adminId = 'admin-123';
-    const adminName = 'Иван Петров'; // TODO: Get from database
+    // Get admin ID from middleware headers
+    const adminId = request.headers.get('x-admin-id');
+    const adminEmail = request.headers.get('x-admin-email') || 'Admin';
 
-    // TODO: Replace with actual database update
-    // Example SQL:
-    // UPDATE vacancies
-    // SET status = 'approved',
-    //     approved_at = NOW(),
-    //     approved_by = $1
-    // WHERE id = $2
-    const updateQuery = `
-      UPDATE vacancies
-      SET status = 'approved',
-          approved_at = NOW(),
-          approved_by = $1
-      WHERE id = $2
-      RETURNING *
-    `;
+    if (!adminId) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+
+    // Check if vacancy exists and get employer info
+    const vacancy = await db.oneOrNone<{ id: string; employer_id: string; title: string }>(
+      'SELECT id, employer_id, title FROM vacancies WHERE id = $1',
+      [vacancyId]
+    );
+
+    if (!vacancy) {
+      return NextResponse.json(
+        { error: 'Vacancy not found' },
+        { status: 404 }
+      );
+    }
+
+    // Approve the vacancy
+    await db.none(
+      `UPDATE vacancies
+       SET moderation_status = 'approved',
+           approved_at = CURRENT_TIMESTAMP,
+           approved_by = $1
+       WHERE id = $2`,
+      [adminId, vacancyId]
+    );
 
     // Log admin action
-    // TODO: Replace with actual database insert
-    const logActionQuery = `
-      INSERT INTO admin_actions (admin_id, action_type, target_id, target_type, details)
-      VALUES ($1, 'vacancy_approve', $2, 'vacancy', $3)
-    `;
+    await db.none(
+      `INSERT INTO admin_actions (admin_id, action_type, target_id, target_type, details)
+       VALUES ($1, 'vacancy_approve', $2, 'vacancy', $3)`,
+      [
+        adminId,
+        vacancyId,
+        JSON.stringify({
+          title: vacancy.title,
+          employer_id: vacancy.employer_id
+        })
+      ]
+    );
 
     // TODO: Send notification to employer
-    // notificationService.notifyVacancyApproved({
-    //   recipientId: vacancy.employerId,
-    //   vacancyId,
-    //   vacancyTitle: vacancy.title
+    // await notificationService.send({
+    //   userId: vacancy.employer_id,
+    //   title: 'Вакансия одобрена',
+    //   body: `Ваша вакансия "${vacancy.title}" успешно прошла модерацию`,
+    //   type: 'vacancy_approved'
     // });
 
-    // Mock success response
     return NextResponse.json({
       success: true,
       message: 'Vacancy approved successfully',
       vacancyId,
-      approvedBy: adminName,
+      approvedBy: adminEmail,
       approvedAt: new Date().toISOString()
     });
 
