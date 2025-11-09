@@ -188,6 +188,24 @@ export class BillingController {
           });
         }
       } else if (system === 'alfabank') {
+        const alfabank = new AlfabankPaymentService();
+
+        // 🔴 КРИТИЧНО: Валидация webhook от Alfabank
+        const checksumSecret = process.env.ALFABANK_CHECKSUM_SECRET || '';
+
+        if (!checksumSecret) {
+          console.error('❌ ALFABANK_CHECKSUM_SECRET не установлен!');
+          return res.status(500).json({ error: 'Configuration error' });
+        }
+
+        const isValid = alfabank.validateWebhook(data, checksumSecret);
+
+        if (!isValid) {
+          console.error('❌ Invalid Alfabank webhook signature!');
+          console.error('Data:', JSON.stringify(data));
+          return res.status(401).json({ error: 'Invalid webhook signature' });
+        }
+
         // Обработать Alfabank webhook
         if (data.status === 1) {
           // Оплачено

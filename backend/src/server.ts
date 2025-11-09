@@ -7,6 +7,7 @@ import cors from 'cors';
 import helmet from 'helmet';
 import dotenv from 'dotenv';
 import { testConnection } from './config/database';
+import { apiLimiter } from './middleware/rateLimiter';
 
 // Load environment variables
 dotenv.config();
@@ -33,15 +34,32 @@ const PORT = process.env.PORT || 5000;
 // Security
 app.use(helmet());
 
-// CORS
+// CORS - Безопасная конфигурация
+const allowedOrigins = process.env.CORS_ORIGIN?.split(',') || [];
+
+// В development разрешаем localhost
+if (process.env.NODE_ENV === 'development' && allowedOrigins.length === 0) {
+  allowedOrigins.push('http://localhost:3000', 'http://localhost:8081');
+  console.warn('⚠️ CORS: Используются localhost для development');
+}
+
+if (process.env.NODE_ENV === 'production' && allowedOrigins.length === 0) {
+  console.error('🔴 КРИТИЧЕСКАЯ ОШИБКА: CORS_ORIGIN должен быть установлен в production!');
+  console.error('Добавьте в .env:');
+  console.error('  CORS_ORIGIN=https://yourdomain.com,https://app.yourdomain.com');
+  process.exit(1);
+}
+
 app.use(cors({
-  origin: process.env.CORS_ORIGIN?.split(',') || '*',
+  origin: allowedOrigins,
   credentials: true,
 }));
 
-// Body parsing
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+// Body parsing - Разумные лимиты
+// 1MB для обычных API запросов (не для загрузки файлов!)
+// Загрузка файлов должна идти через multer с отдельными лимитами
+app.use(express.json({ limit: '1mb' }));
+app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 
 // Request logging
 app.use((req: Request, res: Response, next: NextFunction) => {
@@ -52,6 +70,14 @@ app.use((req: Request, res: Response, next: NextFunction) => {
   });
   next();
 });
+
+// ===================================
+// RATE LIMITING (защита от DDoS и брутфорса)
+// ===================================
+
+// Применяем общий лимит ко всем API
+// Более специфические лимиты (SMS, auth, payments) настроены в отдельных routes
+app.use('/api/', apiLimiter);
 
 // ===================================
 // ROUTES

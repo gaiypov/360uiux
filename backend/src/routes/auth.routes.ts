@@ -5,6 +5,7 @@
 import { Router } from 'express';
 import { AuthController } from '../controllers/AuthController';
 import { authMiddleware } from '../middleware/auth';
+import { smsLimiter, authLimiter } from '../middleware/rateLimiter';
 
 const router = Router();
 
@@ -16,15 +17,17 @@ const router = Router();
  * Отправить SMS код
  * POST /api/v1/auth/send-code
  * Body: { phone: "+79991234567" }
+ * 🔴 КРИТИЧНО: Защищено строгим лимитом (1 SMS/минута)
  */
-router.post('/send-code', AuthController.sendCode);
+router.post('/send-code', smsLimiter, AuthController.sendCode);
 
 /**
  * Проверить SMS код
  * POST /api/v1/auth/verify-code
  * Body: { phone: "+79991234567", code: "1234" }
+ * 🛡️ Защита от брутфорса кодов
  */
-router.post('/verify-code', AuthController.verifyCode);
+router.post('/verify-code', authLimiter, AuthController.verifyCode);
 
 /**
  * Регистрация соискателя

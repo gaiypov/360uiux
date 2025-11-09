@@ -4,6 +4,7 @@
  */
 
 import axios, { AxiosInstance } from 'axios';
+import * as crypto from 'crypto';
 
 export interface AlfabankRegisterOrderParams {
   orderNumber: string;
@@ -206,6 +207,48 @@ export class AlfabankPaymentService {
       throw new Error(
         error instanceof Error ? error.message : 'Failed to get order info'
       );
+    }
+  }
+
+  /**
+   * 🔴 КРИТИЧНО: Валидация webhook от Alfabank
+   * Защита от подделки платежей!
+   *
+   * Alfabank отправляет checksum в поле 'checksum' для валидации
+   * Формат: MD5(orderNumber;status;checksum_secret)
+   */
+  validateWebhook(webhookData: any, checksumSecret: string): boolean {
+    try {
+      const receivedChecksum = webhookData.checksum;
+
+      if (!receivedChecksum) {
+        console.error('❌ Webhook validation failed: No checksum provided');
+        return false;
+      }
+
+      // Формируем строку для проверки
+      // Alfabank использует: orderNumber;status;secret
+      const dataToHash = `${webhookData.mdOrder};${webhookData.status};${checksumSecret}`;
+
+      // Вычисляем MD5 hash
+      const computedChecksum = crypto
+        .createHash('md5')
+        .update(dataToHash)
+        .digest('hex')
+        .toUpperCase();
+
+      const isValid = computedChecksum === receivedChecksum.toUpperCase();
+
+      if (!isValid) {
+        console.error('❌ Webhook validation failed: Invalid checksum');
+        console.error(`Expected: ${computedChecksum}`);
+        console.error(`Received: ${receivedChecksum}`);
+      }
+
+      return isValid;
+    } catch (error) {
+      console.error('❌ Webhook validation error:', error);
+      return false;
     }
   }
 }
