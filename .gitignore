@@ -72,3 +72,19 @@ yarn-error.log
 !.yarn/releases
 !.yarn/sdks
 !.yarn/versions
+
+# Environment variables (ВАЖНО: содержат секреты!)
+.env
+.env.local
+.env.*.local
+backend/.env
+backend/.env.local
+
+# Logs
+logs/
+*.log
+backend/logs/
+
+# Database
+*.db
+*.sqlite
