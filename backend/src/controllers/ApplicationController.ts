@@ -4,9 +4,11 @@
  */
 
 import { Request, Response } from 'express';
-import { db } from '../config/database';
-import { chatService } from '../services/ChatService';
+import { db } from '../services/database/DatabaseService';
+import { ChatService } from '../services/ChatService';
 import { v4 as uuidv4 } from 'uuid';
+
+const chatService = new ChatService();
 
 export class ApplicationController {
   /**
