@@ -562,4 +562,104 @@ export class VacancyController {
       });
     }
   }
+
+  /**
+   * Продлить вакансию на 7 дней
+   * POST /api/v1/vacancies/:id/extend
+   * Стоимость: 500₽
+   */
+  static async extendVacancy(req: Request, res: Response) {
+    try {
+      const user = req.user;
+      const { id } = req.params;
+
+      if (!user || user.role !== 'employer') {
+        return res.status(403).json({
+          error: 'Forbidden',
+          message: 'Only employers can extend vacancies',
+        });
+      }
+
+      // Проверка владения вакансией
+      const vacancy = await db.oneOrNone<Vacancy>(
+        'SELECT * FROM vacancies WHERE id = $1 AND employer_id = $2',
+        [id, user.userId]
+      );
+
+      if (!vacancy) {
+        return res.status(404).json({
+          error: 'Not Found',
+          message: 'Vacancy not found or access denied',
+        });
+      }
+
+      // Проверка баланса кошелька
+      const EXTEND_COST = 500;
+      const wallet = await db.oneOrNone(
+        'SELECT * FROM company_wallets WHERE employer_id = $1',
+        [user.userId]
+      );
+
+      if (!wallet || wallet.balance < EXTEND_COST) {
+        return res.status(402).json({
+          error: 'Payment Required',
+          message: `Insufficient funds. Need ${EXTEND_COST}₽ to extend vacancy`,
+          required: EXTEND_COST,
+          available: wallet?.balance || 0,
+        });
+      }
+
+      // Транзакция: списать деньги и продлить вакансию
+      await db.transaction(async (client) => {
+        // Списать средства
+        await client.query(
+          'UPDATE company_wallets SET balance = balance - $1, updated_at = NOW() WHERE employer_id = $2',
+          [EXTEND_COST, user.userId]
+        );
+
+        // Создать транзакцию
+        await client.query(
+          `INSERT INTO transactions (
+            id, wallet_id, type, amount, currency, status, description, created_at
+          ) VALUES (
+            gen_random_uuid(), $1, 'payment', $2, 'RUB', 'completed', 'Vacancy extend', NOW()
+          )`,
+          [wallet.id, EXTEND_COST]
+        );
+
+        // Продлить вакансию на 7 дней
+        await client.query(
+          `UPDATE vacancies SET
+            published_at = CASE
+              WHEN published_at > NOW() THEN published_at + INTERVAL '7 days'
+              ELSE NOW() + INTERVAL '7 days'
+            END,
+            updated_at = NOW()
+          WHERE id = $1`,
+          [id]
+        );
+      });
+
+      // Получить обновленную вакансию
+      const updated = await db.one<Vacancy>(
+        'SELECT * FROM vacancies WHERE id = $1',
+        [id]
+      );
+
+      console.log(`🔄 Vacancy extended: ${id} (+7 days, -${EXTEND_COST}₽)`);
+
+      return res.status(200).json({
+        success: true,
+        vacancy: updated,
+        message: 'Vacancy extended for 7 days',
+        cost: EXTEND_COST,
+      });
+    } catch (error: any) {
+      console.error('❌ Error extending vacancy:', error);
+      return res.status(500).json({
+        error: 'Internal Server Error',
+        message: 'Failed to extend vacancy',
+      });
+    }
+  }
 }

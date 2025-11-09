@@ -331,10 +331,12 @@ export class UserController {
   /**
    * Удалить аккаунт
    * DELETE /api/v1/users/me
+   * Body: { sms_code } - обязательная проверка SMS
    */
   static async deleteAccount(req: Request, res: Response) {
     try {
       const user = req.user;
+      const { sms_code } = req.body;
 
       if (!user) {
         return res.status(401).json({
@@ -342,6 +344,52 @@ export class UserController {
           message: 'Authentication required',
         });
       }
+
+      // КРИТИЧНО: Проверка SMS кода для подтверждения удаления
+      if (!sms_code) {
+        return res.status(400).json({
+          error: 'Bad Request',
+          message: 'SMS code is required for account deletion',
+        });
+      }
+
+      // Получить пользователя с phone
+      const fullUser = await db.oneOrNone(
+        'SELECT phone FROM users WHERE id = $1',
+        [user.userId]
+      );
+
+      if (!fullUser) {
+        return res.status(404).json({
+          error: 'Not Found',
+          message: 'User not found',
+        });
+      }
+
+      // Проверить SMS код
+      const smsRecord = await db.oneOrNone(
+        `SELECT * FROM sms_codes
+         WHERE phone = $1
+         AND code = $2
+         AND verified = false
+         AND expires_at > NOW()
+         ORDER BY created_at DESC
+         LIMIT 1`,
+        [fullUser.phone, sms_code]
+      );
+
+      if (!smsRecord) {
+        return res.status(401).json({
+          error: 'Unauthorized',
+          message: 'Invalid or expired SMS code',
+        });
+      }
+
+      // Отметить SMS код как использованный
+      await db.none(
+        'UPDATE sms_codes SET verified = true WHERE id = $1',
+        [smsRecord.id]
+      );
 
       // Мягкое удаление - архивация аккаунта
       await db.none(
@@ -354,7 +402,7 @@ export class UserController {
         [user.userId]
       );
 
-      console.log(`🗑️ Account deleted: ${user.userId}`);
+      console.log(`🗑️ Account deleted: ${user.userId} (verified with SMS)`);
 
       return res.status(200).json({
         success: true,

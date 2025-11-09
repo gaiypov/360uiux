@@ -28,6 +28,12 @@ router.get('/my/list', authMiddleware, requireEmployer, VacancyController.getMyV
 router.post('/:id/publish', authMiddleware, requireEmployer, VacancyController.publishVacancy);
 
 /**
+ * Продлить вакансию на 7 дней (500₽)
+ * POST /api/v1/vacancies/:id/extend
+ */
+router.post('/:id/extend', authMiddleware, requireEmployer, VacancyController.extendVacancy);
+
+/**
  * Получить список вакансий (каталог для всех)
  * GET /api/v1/vacancies
  */
