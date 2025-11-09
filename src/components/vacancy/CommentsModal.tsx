@@ -12,11 +12,11 @@ import {
   Modal,
   TouchableOpacity,
   TextInput,
-  FlatList,
   KeyboardAvoidingView,
   Dimensions,
   Keyboard,
 } from 'react-native';
+import { FlashList } from '@shopify/flash-list';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import Animated, {
   FadeIn,
@@ -245,8 +245,9 @@ export function CommentsModal({ visible, vacancyId, onClose }: CommentsModalProp
                 <LoadingSpinner size="large" variant="spinner" />
               </View>
             ) : (
-              <FlatList
+              <FlashList
                 data={comments}
+                estimatedItemSize={80}
                 renderItem={renderComment}
                 keyExtractor={(item) => item.id}
                 contentContainerStyle={styles.listContent}

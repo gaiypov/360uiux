@@ -12,8 +12,8 @@ import {
   Dimensions,
   StatusBar,
   TouchableOpacity,
-  FlatList,
 } from 'react-native';
+import { FlashList } from '@shopify/flash-list';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import LinearGradient from 'react-native-linear-gradient';
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
@@ -71,7 +71,7 @@ const slides = [
 
 export function OnboardingScreen({ navigation, onGetStarted }: OnboardingScreenProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
-  const flatListRef = useRef<FlatList>(null);
+  const flatListRef = useRef<FlashList<any>>(null);
 
   const handleComplete = () => {
     if (onGetStarted) {
@@ -165,9 +165,10 @@ export function OnboardingScreen({ navigation, onGetStarted }: OnboardingScreenP
       )}
 
       {/* Slides */}
-      <FlatList
+      <FlashList
         ref={flatListRef}
         data={slides}
+        estimatedItemSize={SCREEN_WIDTH}
         renderItem={renderSlide}
         keyExtractor={(item) => item.id}
         horizontal

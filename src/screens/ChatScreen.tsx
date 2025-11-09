@@ -8,7 +8,6 @@ import {
   View,
   Text,
   StyleSheet,
-  FlatList,
   TextInput,
   TouchableOpacity,
   KeyboardAvoidingView,
@@ -16,6 +15,7 @@ import {
   StatusBar,
   ActivityIndicator,
 } from 'react-native';
+import { FlashList } from '@shopify/flash-list';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import Animated, {
   FadeInLeft,
@@ -74,7 +74,7 @@ export function ChatScreen({ route, navigation }: ChatScreenProps) {
 
   const [inputText, setInputText] = useState('');
   const [isTyping, setIsTyping] = useState(false);
-  const flatListRef = useRef<FlatList>(null);
+  const flatListRef = useRef<FlashList<any>>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Get or create conversation
@@ -412,9 +412,10 @@ export function ChatScreen({ route, navigation }: ChatScreenProps) {
       </Animated.View>
 
       {/* Messages List */}
-      <FlatList
+      <FlashList
         ref={flatListRef}
         data={messages}
+        estimatedItemSize={70}
         renderItem={renderMessage}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.messagesList}

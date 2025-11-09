@@ -8,10 +8,10 @@ import {
   View,
   Text,
   StyleSheet,
-  FlatList,
   TouchableOpacity,
   StatusBar,
 } from 'react-native';
+import { FlashList } from '@shopify/flash-list';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import Animated, { FadeInDown, FadeInRight } from 'react-native-reanimated';
 import { Swipeable } from 'react-native-gesture-handler';
@@ -266,18 +266,13 @@ export function NotificationsScreen({ navigation }: any) {
       </Animated.View>
 
       {/* Notifications List */}
-      <FlatList
+      <FlashList
         data={notifications}
         renderItem={renderNotification}
         keyExtractor={keyExtractor}
+        estimatedItemSize={90}
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
-        // Performance optimizations
-        removeClippedSubviews={true}
-        maxToRenderPerBatch={10}
-        updateCellsBatchingPeriod={50}
-        initialNumToRender={10}
-        windowSize={21}
         // Pull to refresh
         refreshControl={<PullToRefresh refreshing={refreshing} onRefresh={handleRefresh} />}
         ListEmptyComponent={

@@ -5,8 +5,9 @@
  */
 
 import React, { useRef, useState, useEffect } from 'react';
-import { View, StyleSheet, Dimensions, StatusBar, FlatList } from 'react-native';
+import { View, StyleSheet, Dimensions, StatusBar } from 'react-native';
 import { GestureDetector, Gesture } from 'react-native-gesture-handler';
+import { FlashList } from '@shopify/flash-list';
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 import { colors, metalGradients } from "@/constants";
 import { PremiumVacancyCard, CommentsModal } from '@/components/vacancy';
@@ -24,7 +25,7 @@ import {
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 export function VacancyFeedScreen({ navigation }: any) {
-  const flatListRef = useRef<FlatList>(null);
+  const flatListRef = useRef<FlashList<any>>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
   const { vacancies, fetchMore } = useVacancyFeed();
   const { user } = useAuthStore();
@@ -288,9 +289,10 @@ export function VacancyFeedScreen({ navigation }: any) {
       />
       <GestureDetector gesture={gesture}>
         <View style={styles.container}>
-          <FlatList
+          <FlashList
             ref={flatListRef}
             data={vacancies}
+            estimatedItemSize={SCREEN_HEIGHT}
             renderItem={({ item, index }) => (
               <Animated.View
                 entering={FadeIn.duration(300)}
