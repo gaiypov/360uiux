@@ -20,14 +20,19 @@ export interface IDBProvider {
   query<T = any>(text: string, params?: any[]): Promise<QueryResult<T>>;
 
   /**
-   * Выполнить один запрос (вернуть одну строку или null)
+   * Выполнить один запрос (вернуть одну строку или выбросить ошибку)
    */
-  one<T = any>(text: string, params?: any[]): Promise<T | null>;
+  one<T = any>(text: string, params?: any[]): Promise<T>;
 
   /**
-   * Выполнить один запрос (вернуть одну строку или ошибку)
+   * Выполнить один запрос (вернуть одну строку или null)
    */
   oneOrNone<T = any>(text: string, params?: any[]): Promise<T | null>;
+
+  /**
+   * Выполнить запрос (вернуть массив строк или пустой массив)
+   */
+  manyOrNone<T = any>(text: string, params?: any[]): Promise<T[]>;
 
   /**
    * Выполнить запрос без возврата данных
@@ -112,9 +117,9 @@ export class DatabaseService implements IDBProvider {
   }
 
   /**
-   * Выполнить один запрос (вернуть одну строку или null)
+   * Выполнить один запрос (вернуть одну строку или выбросить ошибку)
    */
-  async one<T = any>(text: string, params?: any[]): Promise<T | null> {
+  async one<T = any>(text: string, params?: any[]): Promise<T> {
     return this.provider.one<T>(text, params);
   }
 
@@ -123,6 +128,13 @@ export class DatabaseService implements IDBProvider {
    */
   async oneOrNone<T = any>(text: string, params?: any[]): Promise<T | null> {
     return this.provider.oneOrNone<T>(text, params);
+  }
+
+  /**
+   * Выполнить запрос (вернуть массив строк или пустой массив)
+   */
+  async manyOrNone<T = any>(text: string, params?: any[]): Promise<T[]> {
+    return this.provider.manyOrNone<T>(text, params);
   }
 
   /**
@@ -186,5 +198,6 @@ export const db = DatabaseService.getInstance();
 // Алиасы для удобства (как в pg-promise)
 export const one = db.one.bind(db);
 export const oneOrNone = db.oneOrNone.bind(db);
+export const manyOrNone = db.manyOrNone.bind(db);
 export const none = db.none.bind(db);
 export const query = db.query.bind(db);

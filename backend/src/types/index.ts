@@ -6,7 +6,7 @@
 // USER TYPES
 // ===================================
 
-export type UserRole = 'jobseeker' | 'employer';
+export type UserRole = 'jobseeker' | 'employer' | 'moderator' | 'admin';
 
 export interface User {
   id: string;

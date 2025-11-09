@@ -38,7 +38,7 @@ export class YandexDBProvider implements IDBProvider {
     return this.pool.query<T>(text, params);
   }
 
-  async one<T = any>(text: string, params?: any[]): Promise<T | null> {
+  async one<T = any>(text: string, params?: any[]): Promise<T> {
     const result = await this.pool.query<T>(text, params);
     if (result.rows.length === 0) {
       throw new Error('No data returned from query');
@@ -49,6 +49,11 @@ export class YandexDBProvider implements IDBProvider {
   async oneOrNone<T = any>(text: string, params?: any[]): Promise<T | null> {
     const result = await this.pool.query<T>(text, params);
     return result.rows[0] || null;
+  }
+
+  async manyOrNone<T = any>(text: string, params?: any[]): Promise<T[]> {
+    const result = await this.pool.query<T>(text, params);
+    return result.rows || [];
   }
 
   async none(text: string, params?: any[]): Promise<void> {

@@ -312,7 +312,7 @@ export class ChatService {
    */
   async deleteMessage(messageId: string, userId: string): Promise<void> {
     try {
-      const result = await db.result(
+      const result = await db.query(
         `DELETE FROM chat_messages
          WHERE id = $1 AND sender_id = $2`,
         [messageId, userId]

@@ -6,7 +6,7 @@
 
 import { Router } from 'express';
 import { ModerationController } from '../controllers/ModerationController';
-import { authMiddleware } from '../middleware/auth.middleware';
+import { authMiddleware } from '../middleware/auth';
 
 const router = Router();
 
