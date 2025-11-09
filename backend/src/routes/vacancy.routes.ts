@@ -4,6 +4,7 @@
 
 import { Router } from 'express';
 import { authMiddleware, requireEmployer } from '../middleware/auth';
+import { VacancyController } from '../controllers/VacancyController';
 import { VacancyInteractionsController } from '../controllers/VacancyInteractionsController';
 
 const router = Router();
@@ -12,41 +13,43 @@ const router = Router();
  * Создать вакансию
  * POST /api/v1/vacancies
  */
-router.post('/', authMiddleware, requireEmployer, async (req, res) => {
-  res.json({ message: 'Create vacancy endpoint - Coming soon' });
-});
+router.post('/', authMiddleware, requireEmployer, VacancyController.createVacancy);
 
 /**
- * Получить список вакансий
+ * Получить мои вакансии (работодатель)
+ * GET /api/v1/vacancies/my/list
+ */
+router.get('/my/list', authMiddleware, requireEmployer, VacancyController.getMyVacancies);
+
+/**
+ * Опубликовать вакансию
+ * POST /api/v1/vacancies/:id/publish
+ */
+router.post('/:id/publish', authMiddleware, requireEmployer, VacancyController.publishVacancy);
+
+/**
+ * Получить список вакансий (каталог для всех)
  * GET /api/v1/vacancies
  */
-router.get('/', async (req, res) => {
-  res.json({ message: 'List vacancies endpoint - Coming soon' });
-});
+router.get('/', VacancyController.listVacancies);
 
 /**
  * Получить вакансию по ID
  * GET /api/v1/vacancies/:id
  */
-router.get('/:id', async (req, res) => {
-  res.json({ message: 'Get vacancy endpoint - Coming soon' });
-});
+router.get('/:id', VacancyController.getVacancy);
 
 /**
  * Обновить вакансию
  * PUT /api/v1/vacancies/:id
  */
-router.put('/:id', authMiddleware, requireEmployer, async (req, res) => {
-  res.json({ message: 'Update vacancy endpoint - Coming soon' });
-});
+router.put('/:id', authMiddleware, requireEmployer, VacancyController.updateVacancy);
 
 /**
- * Удалить вакансию
+ * Удалить вакансию (архивировать)
  * DELETE /api/v1/vacancies/:id
  */
-router.delete('/:id', authMiddleware, requireEmployer, async (req, res) => {
-  res.json({ message: 'Delete vacancy endpoint - Coming soon' });
-});
+router.delete('/:id', authMiddleware, requireEmployer, VacancyController.deleteVacancy);
 
 /**
  * Like a vacancy
