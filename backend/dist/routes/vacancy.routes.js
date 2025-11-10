@@ -6,7 +6,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
 const auth_1 = require("../middleware/auth");
 const VacancyController_1 = require("../controllers/VacancyController");
-// import { VacancyInteractionsController } from '../controllers/VacancyInteractionsController'; // Temporarily disabled - uses Prisma
+const VacancyInteractionsController_1 = require("../controllers/VacancyInteractionsController");
 const router = (0, express_1.Router)();
 /**
  * Создать вакансию
@@ -49,42 +49,47 @@ router.put('/:id', auth_1.authMiddleware, auth_1.requireEmployer, VacancyControl
  */
 router.delete('/:id', auth_1.authMiddleware, auth_1.requireEmployer, VacancyController_1.VacancyController.deleteVacancy);
 // ===================================
-// TEMPORARILY DISABLED - VacancyInteractionsController uses Prisma
+// VACANCY INTERACTIONS (Architecture v3)
 // ===================================
-// /**
-//  * Like a vacancy
-//  * POST /api/v1/vacancies/:id/like
-//  */
-// router.post('/:id/like', authMiddleware, VacancyInteractionsController.likeVacancy);
-// /**
-//  * Unlike a vacancy
-//  * DELETE /api/v1/vacancies/:id/like
-//  */
-// router.delete('/:id/like', authMiddleware, VacancyInteractionsController.unlikeVacancy);
-// /**
-//  * Favorite a vacancy
-//  * POST /api/v1/vacancies/:id/favorite
-//  */
-// router.post('/:id/favorite', authMiddleware, VacancyInteractionsController.favoriteVacancy);
-// /**
-//  * Unfavorite a vacancy
-//  * DELETE /api/v1/vacancies/:id/favorite
-//  */
-// router.delete('/:id/favorite', authMiddleware, VacancyInteractionsController.unfavoriteVacancy);
-// /**
-//  * Add a comment to a vacancy
-//  * POST /api/v1/vacancies/:id/comments
-//  */
-// router.post('/:id/comments', authMiddleware, VacancyInteractionsController.addComment);
-// /**
-//  * Get comments for a vacancy
-//  * GET /api/v1/vacancies/:id/comments
-//  */
-// router.get('/:id/comments', VacancyInteractionsController.getComments);
-// /**
-//  * Get user's favorite vacancies
-//  * GET /api/v1/favorites
-//  */
-// router.get('/user/favorites', authMiddleware, VacancyInteractionsController.getFavorites);
+/**
+ * Get my likes
+ * GET /api/v1/vacancies/likes/my
+ */
+router.get('/likes/my', auth_1.authMiddleware, VacancyInteractionsController_1.VacancyInteractionsController.getMyLikes);
+/**
+ * Get my favorites
+ * GET /api/v1/vacancies/favorites/my
+ */
+router.get('/favorites/my', auth_1.authMiddleware, VacancyInteractionsController_1.VacancyInteractionsController.getMyFavorites);
+/**
+ * Like a vacancy
+ * POST /api/v1/vacancies/:id/like
+ */
+router.post('/:id/like', auth_1.authMiddleware, VacancyInteractionsController_1.VacancyInteractionsController.likeVacancy);
+/**
+ * Unlike a vacancy
+ * DELETE /api/v1/vacancies/:id/like
+ */
+router.delete('/:id/like', auth_1.authMiddleware, VacancyInteractionsController_1.VacancyInteractionsController.unlikeVacancy);
+/**
+ * Favorite a vacancy
+ * POST /api/v1/vacancies/:id/favorite
+ */
+router.post('/:id/favorite', auth_1.authMiddleware, VacancyInteractionsController_1.VacancyInteractionsController.favoriteVacancy);
+/**
+ * Unfavorite a vacancy
+ * DELETE /api/v1/vacancies/:id/favorite
+ */
+router.delete('/:id/favorite', auth_1.authMiddleware, VacancyInteractionsController_1.VacancyInteractionsController.unfavoriteVacancy);
+/**
+ * Add a comment to a vacancy
+ * POST /api/v1/vacancies/:id/comments
+ */
+router.post('/:id/comments', auth_1.authMiddleware, VacancyInteractionsController_1.VacancyInteractionsController.addComment);
+/**
+ * Get comments for a vacancy
+ * GET /api/v1/vacancies/:id/comments
+ */
+router.get('/:id/comments', VacancyInteractionsController_1.VacancyInteractionsController.getComments);
 exports.default = router;
 //# sourceMappingURL=vacancy.routes.js.map

@@ -54,6 +54,31 @@ export function VacancyFeedScreen({ navigation }: any) {
     checkViewLimit();
   }, [user, navigation]);
 
+  // Load likes and favorites from API on mount (Priority 2: Sync)
+  useEffect(() => {
+    const loadLikesAndFavorites = async () => {
+      if (user) {
+        try {
+          const [likes, favorites] = await Promise.all([
+            api.getMyLikes(),
+            api.getMyFavorites(),
+          ]);
+
+          // Convert to Set of vacancy IDs
+          const likedIds = new Set(likes.map((like: any) => like.vacancy_id));
+          const favoritedIds = new Set(favorites.map((fav: any) => fav.vacancy_id));
+
+          setLikedVacancies(likedIds);
+          setFavoritedVacancies(favoritedIds);
+        } catch (error) {
+          console.error('Error loading likes/favorites:', error);
+        }
+      }
+    };
+
+    loadLikesAndFavorites();
+  }, [user]);
+
   // Track view when vacancy changes
   useEffect(() => {
     const trackView = async () => {
