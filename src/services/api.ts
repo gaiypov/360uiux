@@ -470,6 +470,53 @@ class APIService {
   }
 
   // ===================================
+  // GUEST VIEW TRACKING (Priority 3)
+  // ===================================
+
+  async trackGuestView(vacancyId: string, guestId?: string): Promise<{
+    success: boolean;
+    guestId: string;
+    count: number;
+    limit: number;
+    remaining: number;
+    limitReached: boolean;
+  }> {
+    const response = await this.client.post('/guests/views', {
+      vacancyId,
+      guestId,
+    });
+    return response.data;
+  }
+
+  async getGuestViewStatus(guestId: string): Promise<{
+    success: boolean;
+    count: number;
+    limit: number;
+    remaining: number;
+    limitReached: boolean;
+    vacancyIds: string[];
+    lastViewedAt?: string;
+  }> {
+    const response = await this.client.get(`/guests/views/${guestId}`);
+    return response.data;
+  }
+
+  async syncGuestViews(guestId: string, vacancyIds: string[]): Promise<{
+    success: boolean;
+    guestId: string;
+    count: number;
+    limit: number;
+    remaining: number;
+    limitReached: boolean;
+  }> {
+    const response = await this.client.post('/guests/views/sync', {
+      guestId,
+      vacancyIds,
+    });
+    return response.data;
+  }
+
+  // ===================================
   // Helper Methods
   // ===================================
 

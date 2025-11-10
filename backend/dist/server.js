@@ -12,6 +12,7 @@ const helmet_1 = __importDefault(require("helmet"));
 const dotenv_1 = __importDefault(require("dotenv"));
 const database_1 = require("./config/database");
 const rateLimiter_1 = require("./middleware/rateLimiter");
+const scheduler_1 = require("./services/scheduler");
 // Load environment variables
 dotenv_1.default.config();
 // Import routes
@@ -25,9 +26,12 @@ const video_routes_1 = __importDefault(require("./routes/video.routes"));
 const moderation_routes_1 = __importDefault(require("./routes/moderation.routes"));
 const analytics_routes_1 = __importDefault(require("./routes/analytics.routes"));
 const resume_routes_1 = __importDefault(require("./routes/resume.routes"));
+const guest_routes_1 = __importDefault(require("./routes/guest.routes"));
 // Initialize Express
 const app = (0, express_1.default)();
 const PORT = process.env.PORT || 5000;
+// Store scheduler tasks for graceful shutdown
+let schedulerTasks = null;
 // ===================================
 // MIDDLEWARE
 // ===================================
@@ -89,6 +93,7 @@ app.use('/api/v1/applications', application_routes_1.default);
 app.use('/api/v1/resumes', resume_routes_1.default); // Resume routes
 app.use('/api/v1/chats', chat_routes_1.default);
 app.use('/api/v1/users', user_routes_1.default);
+app.use('/api/v1/guests', guest_routes_1.default); // Guest tracking routes (public)
 app.use('/api/v1', video_routes_1.default); // Video routes
 app.use('/api/v1/moderation', moderation_routes_1.default); // Moderation routes
 app.use('/api/v1/analytics', analytics_routes_1.default); // Analytics routes
@@ -118,6 +123,8 @@ async function startServer() {
             console.error('❌ Failed to connect to database. Exiting...');
             process.exit(1);
         }
+        // Initialize scheduler for background tasks
+        schedulerTasks = (0, scheduler_1.initScheduler)();
         // Start listening
         app.listen(PORT, () => {
             console.log('\n' + '='.repeat(50));
@@ -126,6 +133,7 @@ async function startServer() {
             console.log(`📡 Server running on: http://localhost:${PORT}`);
             console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
             console.log(`📊 Database: Connected`);
+            console.log(`⏰ Scheduler: Running`);
             console.log('='.repeat(50) + '\n');
         });
     }
@@ -137,10 +145,16 @@ async function startServer() {
 // Handle graceful shutdown
 process.on('SIGTERM', () => {
     console.log('SIGTERM received. Shutting down gracefully...');
+    if (schedulerTasks) {
+        (0, scheduler_1.stopScheduler)(schedulerTasks);
+    }
     process.exit(0);
 });
 process.on('SIGINT', () => {
     console.log('\nSIGINT received. Shutting down gracefully...');
+    if (schedulerTasks) {
+        (0, scheduler_1.stopScheduler)(schedulerTasks);
+    }
     process.exit(0);
 });
 // Start the server

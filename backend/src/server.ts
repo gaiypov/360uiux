@@ -8,6 +8,7 @@ import helmet from 'helmet';
 import dotenv from 'dotenv';
 import { testConnection } from './config/database';
 import { apiLimiter } from './middleware/rateLimiter';
+import { initScheduler, stopScheduler } from './services/scheduler';
 
 // Load environment variables
 dotenv.config();
@@ -23,10 +24,14 @@ import videoRoutes from './routes/video.routes';
 import moderationRoutes from './routes/moderation.routes';
 import analyticsRoutes from './routes/analytics.routes';
 import resumeRoutes from './routes/resume.routes';
+import guestRoutes from './routes/guest.routes';
 
 // Initialize Express
 const app: Express = express();
 const PORT = process.env.PORT || 5000;
+
+// Store scheduler tasks for graceful shutdown
+let schedulerTasks: ReturnType<typeof initScheduler> | null = null;
 
 // ===================================
 // MIDDLEWARE
@@ -101,6 +106,7 @@ app.use('/api/v1/applications', applicationRoutes);
 app.use('/api/v1/resumes', resumeRoutes); // Resume routes
 app.use('/api/v1/chats', chatRoutes);
 app.use('/api/v1/users', userRoutes);
+app.use('/api/v1/guests', guestRoutes); // Guest tracking routes (public)
 app.use('/api/v1', videoRoutes); // Video routes
 app.use('/api/v1/moderation', moderationRoutes); // Moderation routes
 app.use('/api/v1/analytics', analyticsRoutes); // Analytics routes
@@ -137,6 +143,9 @@ async function startServer() {
       process.exit(1);
     }
 
+    // Initialize scheduler for background tasks
+    schedulerTasks = initScheduler();
+
     // Start listening
     app.listen(PORT, () => {
       console.log('\n' + '='.repeat(50));
@@ -145,6 +154,7 @@ async function startServer() {
       console.log(`📡 Server running on: http://localhost:${PORT}`);
       console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
       console.log(`📊 Database: Connected`);
+      console.log(`⏰ Scheduler: Running`);
       console.log('='.repeat(50) + '\n');
     });
   } catch (error) {
@@ -156,11 +166,17 @@ async function startServer() {
 // Handle graceful shutdown
 process.on('SIGTERM', () => {
   console.log('SIGTERM received. Shutting down gracefully...');
+  if (schedulerTasks) {
+    stopScheduler(schedulerTasks);
+  }
   process.exit(0);
 });
 
 process.on('SIGINT', () => {
   console.log('\nSIGINT received. Shutting down gracefully...');
+  if (schedulerTasks) {
+    stopScheduler(schedulerTasks);
+  }
   process.exit(0);
 });
 

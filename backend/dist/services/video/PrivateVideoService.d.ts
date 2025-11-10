@@ -61,10 +61,17 @@ export declare class PrivateVideoService {
         message: string;
     }>;
     /**
-     * Проверить валиден ли токен для просмотра видео
-     * TODO: Реализовать с Redis когда он будет доступен
+     * Auto-delete videos that have reached their 2-view limit
+     * This should be called by a cron job periodically
      */
-    validateVideoToken(_token: string): Promise<boolean>;
+    autoDeleteExpiredVideos(): Promise<{
+        deleted: number;
+        videoIds: string[];
+    }>;
+    /**
+     * Проверить валиден ли токен для просмотра видео
+     */
+    validateVideoToken(token: string): Promise<boolean>;
 }
 export declare const privateVideoService: PrivateVideoService;
 export {};

@@ -5,6 +5,7 @@
 
 import { db } from '../../config/database';
 import { videoService } from './VideoService';
+import { redisHelpers } from '../../config/redis';
 import crypto from 'crypto';
 
 interface UploadPrivateResumeVideoParams {
@@ -162,13 +163,17 @@ export class PrivateVideoService {
       const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
       const token = crypto.randomBytes(32).toString('hex');
 
-      // TODO: Сохранить токен в Redis с TTL 5 минут
-      // await redis.setex(`video_token:${token}`, 300, JSON.stringify({
-      //   videoId: params.videoId,
-      //   employerId: params.employerId,
-      //   applicationId: params.applicationId,
-      //   expiresAt
-      // }));
+      // Сохранить токен в Redis с TTL 5 минут (300 секунд)
+      await redisHelpers.setJSON(
+        `video_token:${token}`,
+        {
+          videoId: params.videoId,
+          employerId: params.employerId,
+          applicationId: params.applicationId,
+          expiresAt: expiresAt.toISOString(),
+        },
+        300 // 5 минут TTL
+      );
 
       // 5. Создать защищённую ссылку
       // Для api.video можно использовать их private token API
@@ -274,24 +279,105 @@ export class PrivateVideoService {
   }
 
   /**
-   * Проверить валиден ли токен для просмотра видео
-   * TODO: Реализовать с Redis когда он будет доступен
+   * Auto-delete videos that have reached their 2-view limit
+   * This should be called by a cron job periodically
    */
-  async validateVideoToken(_token: string): Promise<boolean> {
-    // TODO: Проверить токен в Redis
-    // const data = await redis.get(`video_token:${token}`);
-    // if (!data) return false;
-    //
-    // const { expiresAt } = JSON.parse(data);
-    // if (new Date(expiresAt) < new Date()) {
-    //   await redis.del(`video_token:${token}`);
-    //   return false;
-    // }
-    //
-    // return true;
+  async autoDeleteExpiredVideos(): Promise<{
+    deleted: number;
+    videoIds: string[];
+  }> {
+    try {
+      console.log('🗑️  Running auto-deletion of videos with exhausted view limits...');
 
-    // Временная заглушка
-    return true;
+      // Find all videos where ALL employers have exhausted their 2-view limit
+      // This query finds videos where every application has 2+ views
+      const expiredVideos = await db.manyOrNone<{ video_id: string; user_id: string }>(
+        `SELECT DISTINCT v.id as video_id, v.user_id
+         FROM videos v
+         WHERE v.type = 'resume'
+           AND v.is_public = false
+           AND NOT EXISTS (
+             -- Check if there are any applications with less than 2 views
+             SELECT 1
+             FROM applications a
+             LEFT JOIN video_views vv ON vv.video_id = v.id AND vv.application_id = a.id
+             WHERE a.resume_id IN (
+               SELECT r.id FROM resumes r WHERE r.video_id = v.id
+             )
+             GROUP BY a.id
+             HAVING COALESCE(COUNT(vv.id), 0) < 2
+           )
+           AND EXISTS (
+             -- Only delete if there's at least one application
+             SELECT 1
+             FROM applications a
+             WHERE a.resume_id IN (
+               SELECT r.id FROM resumes r WHERE r.video_id = v.id
+             )
+           )`
+      );
+
+      if (!expiredVideos || expiredVideos.length === 0) {
+        console.log('✅ No expired videos to delete');
+        return { deleted: 0, videoIds: [] };
+      }
+
+      const deletedIds: string[] = [];
+
+      // Delete each video
+      for (const video of expiredVideos) {
+        try {
+          await this.deletePrivateResumeVideo(video.video_id, video.user_id);
+          deletedIds.push(video.video_id);
+          console.log(`🗑️  Deleted video ${video.video_id} (view limit exhausted)`);
+        } catch (error) {
+          console.error(`Error deleting video ${video.video_id}:`, error);
+        }
+      }
+
+      console.log(`✅ Auto-deletion complete: ${deletedIds.length} videos deleted`);
+
+      return {
+        deleted: deletedIds.length,
+        videoIds: deletedIds,
+      };
+    } catch (error: any) {
+      console.error('Error in auto-delete expired videos:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Проверить валиден ли токен для просмотра видео
+   */
+  async validateVideoToken(token: string): Promise<boolean> {
+    try {
+      // Проверить токен в Redis
+      const data = await redisHelpers.getJSON<{
+        videoId: string;
+        employerId: string;
+        applicationId: string;
+        expiresAt: string;
+      }>(`video_token:${token}`);
+
+      if (!data) {
+        console.warn(`⚠️ Video token not found: ${token}`);
+        return false;
+      }
+
+      // Проверить срок действия
+      const expiresAt = new Date(data.expiresAt);
+      if (expiresAt < new Date()) {
+        console.warn(`⚠️ Video token expired: ${token}`);
+        await redisHelpers.deleteByPattern(`video_token:${token}`);
+        return false;
+      }
+
+      return true;
+    } catch (error) {
+      console.error('Error validating video token:', error);
+      return false;
+    }
   }
 }
 
