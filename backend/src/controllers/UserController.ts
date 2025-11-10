@@ -368,7 +368,6 @@ export class UserController {
       }
 
       // Сохранить в кэш на 15 минут
-      const cacheKey = `user:stats:${user.userId}`;
       await cacheService.cacheStats(cacheKey, stats);
 
       return res.status(200).json({
