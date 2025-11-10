@@ -7,6 +7,7 @@ const express_1 = require("express");
 const auth_1 = require("../middleware/auth");
 const VacancyController_1 = require("../controllers/VacancyController");
 const VacancyInteractionsController_1 = require("../controllers/VacancyInteractionsController");
+const EmployerAnalyticsController_1 = require("../controllers/EmployerAnalyticsController");
 const router = (0, express_1.Router)();
 /**
  * Создать вакансию
@@ -18,6 +19,11 @@ router.post('/', auth_1.authMiddleware, auth_1.requireEmployer, VacancyControlle
  * GET /api/v1/vacancies/my/list
  */
 router.get('/my/list', auth_1.authMiddleware, auth_1.requireEmployer, VacancyController_1.VacancyController.getMyVacancies);
+/**
+ * Получить аналитику работодателя
+ * GET /api/v1/vacancies/my/analytics
+ */
+router.get('/my/analytics', auth_1.authMiddleware, auth_1.requireEmployer, EmployerAnalyticsController_1.EmployerAnalyticsController.getDashboard);
 /**
  * Опубликовать вакансию
  * POST /api/v1/vacancies/:id/publish

@@ -6,6 +6,7 @@ import { Router } from 'express';
 import { authMiddleware, requireEmployer } from '../middleware/auth';
 import { VacancyController } from '../controllers/VacancyController';
 import { VacancyInteractionsController } from '../controllers/VacancyInteractionsController';
+import { EmployerAnalyticsController } from '../controllers/EmployerAnalyticsController';
 
 const router = Router();
 
@@ -20,6 +21,12 @@ router.post('/', authMiddleware, requireEmployer, VacancyController.createVacanc
  * GET /api/v1/vacancies/my/list
  */
 router.get('/my/list', authMiddleware, requireEmployer, VacancyController.getMyVacancies);
+
+/**
+ * Получить аналитику работодателя
+ * GET /api/v1/vacancies/my/analytics
+ */
+router.get('/my/analytics', authMiddleware, requireEmployer, EmployerAnalyticsController.getDashboard);
 
 /**
  * Опубликовать вакансию
