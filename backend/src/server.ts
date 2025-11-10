@@ -22,6 +22,7 @@ import userRoutes from './routes/user.routes';
 import videoRoutes from './routes/video.routes';
 import moderationRoutes from './routes/moderation.routes';
 import analyticsRoutes from './routes/analytics.routes';
+import resumeRoutes from './routes/resume.routes';
 
 // Initialize Express
 const app: Express = express();
@@ -97,6 +98,7 @@ app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/billing', billingRoutes);
 app.use('/api/v1/vacancies', vacancyRoutes);
 app.use('/api/v1/applications', applicationRoutes);
+app.use('/api/v1/resumes', resumeRoutes); // Resume routes
 app.use('/api/v1/chats', chatRoutes);
 app.use('/api/v1/users', userRoutes);
 app.use('/api/v1', videoRoutes); // Video routes

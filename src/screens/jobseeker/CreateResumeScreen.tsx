@@ -25,7 +25,7 @@ import LinearGradient from 'react-native-linear-gradient';
 import { GlassCard, GlassButton } from '@/components/ui';
 import { colors, metalGradients, typography, sizes } from '@/constants';
 import { useToastStore } from '@/stores';
-import { apiService } from '@/services/api.service';
+import { api } from '@/services/api';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -121,17 +121,14 @@ export function CreateResumeScreen({ navigation }: CreateResumeScreenProps) {
         showToast('success', '✅ Видео загружено!');
       }
 
-      // TODO: Send resume data to backend with video metadata
-      // await apiService.createResume({
-      //   ...form,
-      //   videoId: videoData?.videoId,
-      //   videoUrl: videoData?.playerUrl,
-      //   hlsUrl: videoData?.hlsUrl,
-      //   thumbnailUrl: videoData?.thumbnailUrl,
-      // });
-
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      // Send resume data to backend with video metadata
+      await api.createResume({
+        ...form,
+        videoId: videoData?.videoId,
+        videoUrl: videoData?.playerUrl,
+        hlsUrl: videoData?.hlsUrl,
+        thumbnailUrl: videoData?.thumbnailUrl,
+      });
 
       if (videoPath) {
         // Architecture v3: Private video with light AI moderation
@@ -141,11 +138,11 @@ export function CreateResumeScreen({ navigation }: CreateResumeScreenProps) {
         showToast('success', '🎉 Резюме опубликовано!');
       }
 
-      // Navigate back to main screen
-      navigation.navigate('VacancyFeed');
+      // Navigate back
+      navigation.goBack();
     } catch (error: any) {
       console.error('Error publishing resume:', error);
-      showToast('error', 'Ошибка при публикации резюме');
+      showToast('error', error.response?.data?.message || 'Ошибка при публикации резюме');
     } finally {
       setLoading(false);
     }

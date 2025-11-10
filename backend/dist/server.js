@@ -24,6 +24,7 @@ const user_routes_1 = __importDefault(require("./routes/user.routes"));
 const video_routes_1 = __importDefault(require("./routes/video.routes"));
 const moderation_routes_1 = __importDefault(require("./routes/moderation.routes"));
 const analytics_routes_1 = __importDefault(require("./routes/analytics.routes"));
+const resume_routes_1 = __importDefault(require("./routes/resume.routes"));
 // Initialize Express
 const app = (0, express_1.default)();
 const PORT = process.env.PORT || 5000;
@@ -85,6 +86,7 @@ app.use('/api/v1/auth', auth_routes_1.default);
 app.use('/api/v1/billing', billing_routes_1.default);
 app.use('/api/v1/vacancies', vacancy_routes_1.default);
 app.use('/api/v1/applications', application_routes_1.default);
+app.use('/api/v1/resumes', resume_routes_1.default); // Resume routes
 app.use('/api/v1/chats', chat_routes_1.default);
 app.use('/api/v1/users', user_routes_1.default);
 app.use('/api/v1', video_routes_1.default); // Video routes

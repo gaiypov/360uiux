@@ -377,6 +377,99 @@ class APIService {
   }
 
   // ===================================
+  // RESUME API (Architecture v3)
+  // ===================================
+
+  async getMyResumes(): Promise<any[]> {
+    const response = await this.client.get('/resumes/my');
+    return response.data.resumes;
+  }
+
+  async getMyResumeVideo(): Promise<{ video: any | null }> {
+    const response = await this.client.get('/resumes/video/my');
+    return response.data;
+  }
+
+  async createResume(data: {
+    name: string;
+    profession: string;
+    city: string;
+    salaryExpected?: string;
+    about?: string;
+    videoId?: string;
+    videoUrl?: string;
+    hlsUrl?: string;
+    thumbnailUrl?: string;
+  }): Promise<{ resume: any }> {
+    const response = await this.client.post('/resumes', data);
+    return response.data;
+  }
+
+  async updateResume(resumeId: string, data: {
+    name?: string;
+    profession?: string;
+    city?: string;
+    salaryExpected?: string;
+    about?: string;
+    videoId?: string;
+  }): Promise<{ resume: any }> {
+    const response = await this.client.put(`/resumes/${resumeId}`, data);
+    return response.data;
+  }
+
+  async deleteResume(resumeId: string): Promise<{ success: boolean }> {
+    const response = await this.client.delete(`/resumes/${resumeId}`);
+    return response.data;
+  }
+
+  // ===================================
+  // APPLICATION API (Architecture v3)
+  // ===================================
+
+  async createApplication(data: {
+    vacancyId: string;
+    message?: string;
+    attachResumeVideo: boolean;
+    resumeId?: string;
+  }): Promise<{ success: boolean; application: any }> {
+    const response = await this.client.post('/applications', data);
+    return response.data;
+  }
+
+  async getMyApplications(params?: {
+    limit?: number;
+    offset?: number;
+    status?: string;
+  }): Promise<any[]> {
+    const response = await this.client.get('/applications/my', { params });
+    return response.data.applications;
+  }
+
+  async getApplication(applicationId: string): Promise<any> {
+    const response = await this.client.get(`/applications/${applicationId}`);
+    return response.data.application;
+  }
+
+  async deleteApplication(applicationId: string): Promise<{ success: boolean }> {
+    const response = await this.client.delete(`/applications/${applicationId}`);
+    return response.data;
+  }
+
+  // ===================================
+  // LIKES & FAVORITES SYNC API
+  // ===================================
+
+  async getMyLikes(): Promise<any[]> {
+    const response = await this.client.get('/vacancies/likes/my');
+    return response.data.likes;
+  }
+
+  async getMyFavorites(): Promise<any[]> {
+    const response = await this.client.get('/vacancies/favorites/my');
+    return response.data.favorites;
+  }
+
+  // ===================================
   // Helper Methods
   // ===================================
 

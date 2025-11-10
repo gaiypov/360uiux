@@ -23,7 +23,7 @@ import LinearGradient from 'react-native-linear-gradient';
 import { GlassCard, GlassButton } from '@/components/ui';
 import { colors, metalGradients, typography, sizes } from '@/constants';
 import { useToastStore, useAuthStore } from '@/stores';
-import { apiService } from '@/services/api.service';
+import { api } from '@/services/api';
 
 interface ApplicationScreenProps {
   navigation: any;
@@ -53,13 +53,8 @@ export function ApplicationScreen({ navigation, route }: ApplicationScreenProps)
 
   const checkForResumeVideo = async () => {
     try {
-      // TODO: API call to check if user has resume video
-      // const result = await apiService.getMyResumeVideo();
-      // setHasResumeVideo(!!result.video);
-
-      // Имитация проверки
-      await new Promise((resolve) => setTimeout(resolve, 500));
-      setHasResumeVideo(false); // Меняем на true после реализации API
+      const result = await api.getMyResumeVideo();
+      setHasResumeVideo(!!result.video);
     } catch (error) {
       console.error('Error checking resume video:', error);
       setHasResumeVideo(false);
@@ -76,15 +71,11 @@ export function ApplicationScreen({ navigation, route }: ApplicationScreenProps)
 
     setLoading(true);
     try {
-      // TODO: API call to submit application
-      // const result = await apiService.createApplication({
-      //   vacancyId,
-      //   message,
-      //   attachResumeVideo: attachVideo,
-      // });
-
-      // Имитация отправки
-      await new Promise((resolve) => setTimeout(resolve, 1500));
+      const result = await api.createApplication({
+        vacancyId,
+        message,
+        attachResumeVideo: attachVideo,
+      });
 
       showToast('success', '🎉 Отклик отправлен!');
 
@@ -92,11 +83,19 @@ export function ApplicationScreen({ navigation, route }: ApplicationScreenProps)
         showToast('info', '📹 Работодатель сможет посмотреть ваше видео 2 раза');
       }
 
-      // Переход на экран чата или назад
-      navigation.goBack();
+      // Переход в чат если создан
+      if (result.application?.chat_room_id) {
+        navigation.navigate('Chat', {
+          chatRoomId: result.application.chat_room_id,
+          vacancyTitle,
+          companyName,
+        });
+      } else {
+        navigation.goBack();
+      }
     } catch (error: any) {
       console.error('Error submitting application:', error);
-      showToast('error', 'Ошибка при отправке отклика');
+      showToast('error', error.response?.data?.message || 'Ошибка при отправке отклика');
     } finally {
       setLoading(false);
     }
