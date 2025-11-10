@@ -526,6 +526,11 @@ class APIService {
     return response.data;
   }
 
+  async getApplicationById(id: string): Promise<{ success: boolean; application: any }> {
+    const response = await this.client.get(`/applications/${id}`);
+    return response.data;
+  }
+
   async updateApplicationStatus(id: string, data: {
     employerStatus: 'viewed' | 'interview' | 'rejected' | 'accepted';
     notes?: string;

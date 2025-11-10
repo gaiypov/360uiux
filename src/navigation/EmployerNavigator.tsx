@@ -12,6 +12,7 @@ import { BlurView } from '@react-native-community/blur';
 import { colors, sizes } from '@/constants';
 import { VacanciesListScreen } from '@/screens/employer/VacanciesListScreen';
 import { VacancyDetailScreen } from '@/screens/employer/VacancyDetailScreen';
+import { ApplicationDetailScreen } from '@/screens/employer/ApplicationDetailScreen';
 import { CreateVacancyScreen } from '@/screens/employer/CreateVacancyScreen';
 import { CreateVacancyScreenV2 } from '@/screens/employer/CreateVacancyScreenV2';
 import { CandidatesScreen } from '@/screens/employer/CandidatesScreen';
@@ -136,6 +137,7 @@ export function EmployerNavigator() {
     >
       <Stack.Screen name="Tabs" component={EmployerTabs} />
       <Stack.Screen name="VacancyDetail" component={VacancyDetailScreen} />
+      <Stack.Screen name="ApplicationDetail" component={ApplicationDetailScreen} />
       <Stack.Screen name="CreateVacancy" component={CreateVacancyScreen} />
       <Stack.Screen name="CreateVacancyV2" component={CreateVacancyScreenV2} />
       <Stack.Screen name="VideoRecord" component={VideoRecordScreen} />
