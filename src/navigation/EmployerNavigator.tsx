@@ -10,6 +10,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { BlurView } from '@react-native-community/blur';
 import { colors, sizes } from '@/constants';
+import { VacanciesListScreen } from '@/screens/employer/VacanciesListScreen';
 import { CreateVacancyScreen } from '@/screens/employer/CreateVacancyScreen';
 import { CreateVacancyScreenV2 } from '@/screens/employer/CreateVacancyScreenV2';
 import { CandidatesScreen } from '@/screens/employer/CandidatesScreen';
@@ -26,15 +27,6 @@ import { VideoRecordScreen, VideoPlayerScreen } from '@/screens/video';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
-
-// Placeholder screens
-function VacanciesListScreen() {
-  return <View style={styles.placeholder} />;
-}
-
-function EmployerProfileScreen() {
-  return <View style={styles.placeholder} />;
-}
 
 function EmployerTabs() {
   return (
@@ -193,9 +185,5 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     backgroundColor: colors.graphiteBlack,
-  },
-  placeholder: {
-    flex: 1,
-    backgroundColor: colors.primaryBlack,
   },
 });

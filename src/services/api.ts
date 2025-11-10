@@ -365,6 +365,47 @@ class APIService {
     return response.data;
   }
 
+  async getMyVacancies(params?: {
+    limit?: number;
+    offset?: number;
+    status?: string;
+  }): Promise<{ vacancies: any[]; total: number }> {
+    const response = await this.client.get('/vacancies/my/list', { params });
+    return response.data;
+  }
+
+  async getVacancyById(id: string): Promise<{ vacancy: any }> {
+    const response = await this.client.get(`/vacancies/${id}`);
+    return response.data;
+  }
+
+  async updateVacancy(id: string, data: Partial<{
+    title: string;
+    profession: string;
+    salary_min: number;
+    salary_max: number;
+    city: string;
+    metro: string;
+    schedule: string;
+    requires_experience: boolean;
+    benefits: string;
+    requirements: string;
+    tags: string[];
+  }>): Promise<{ success: boolean; vacancy: any }> {
+    const response = await this.client.put(`/vacancies/${id}`, data);
+    return response.data;
+  }
+
+  async deleteVacancy(id: string): Promise<{ success: boolean }> {
+    const response = await this.client.delete(`/vacancies/${id}`);
+    return response.data;
+  }
+
+  async publishVacancy(id: string): Promise<{ success: boolean }> {
+    const response = await this.client.post(`/vacancies/${id}/publish`);
+    return response.data;
+  }
+
   // ===================================
   // GUEST VIEWS SYNC API (Architecture v3)
   // ===================================
@@ -472,6 +513,24 @@ class APIService {
 
   async deleteApplication(applicationId: string): Promise<{ success: boolean }> {
     const response = await this.client.delete(`/applications/${applicationId}`);
+    return response.data;
+  }
+
+  // Employer application methods
+  async getVacancyApplications(vacancyId: string, params?: {
+    limit?: number;
+    offset?: number;
+    status?: string;
+  }): Promise<{ applications: any[]; total: number }> {
+    const response = await this.client.get(`/applications/vacancy/${vacancyId}`, { params });
+    return response.data;
+  }
+
+  async updateApplicationStatus(id: string, data: {
+    employerStatus: 'viewed' | 'interview' | 'rejected' | 'accepted';
+    notes?: string;
+  }): Promise<{ success: boolean; application: any }> {
+    const response = await this.client.put(`/applications/${id}/status`, data);
     return response.data;
   }
 
