@@ -3,7 +3,7 @@
  * Analytics Screen with Premium Charts
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -12,34 +12,66 @@ import {
   TouchableOpacity,
   StatusBar,
   Dimensions,
+  RefreshControl,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import { GlassCard } from '@/components/ui';
+import { GlassCard, LoadingSpinner } from '@/components/ui';
 import { StatCard } from '@/components/charts/StatCard';
 import { MiniLineChart } from '@/components/charts/MiniLineChart';
 import { colors, metalGradients, typography, sizes } from "@/constants";
+import { api } from '@/services/api';
+import { useToastStore } from '@/stores';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 export function AnalyticsScreen({ navigation }: any) {
+  const { showToast } = useToastStore();
   const [period, setPeriod] = useState<'week' | 'month' | 'year'>('week');
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [analytics, setAnalytics] = useState<any>(null);
 
-  // Mock data
-  const stats = {
-    views: 1247,
-    applications: 89,
-    hires: 12,
-    conversionRate: 7.2,
+  useEffect(() => {
+    loadAnalytics();
+  }, [period]);
+
+  const loadAnalytics = async () => {
+    try {
+      setLoading(true);
+      const result = await api.getEmployerAnalytics({ period });
+      setAnalytics(result.analytics);
+    } catch (error: any) {
+      console.error('Error loading analytics:', error);
+      showToast('error', 'Ошибка загрузки аналитики');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const viewsData = [45, 52, 48, 65, 71, 68, 82];
-  const applicationsData = [12, 15, 11, 18, 22, 19, 24];
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await loadAnalytics();
+    setRefreshing(false);
+  };
 
-  const topVacancies = [
-    { id: '1', title: 'Senior Frontend Developer', views: 324, applications: 28 },
-    { id: '2', title: 'Product Designer', views: 298, applications: 24 },
-    { id: '3', title: 'React Native Developer', views: 256, applications: 21 },
-  ];
+  if (loading && !analytics) {
+    return (
+      <View style={styles.loadingContainer}>
+        <StatusBar barStyle="light-content" backgroundColor={colors.primaryBlack} />
+        <LoadingSpinner />
+      </View>
+    );
+  }
+
+  if (!analytics) {
+    return null;
+  }
+
+  const { stats, changes, viewsData, applicationsData, topVacancies } = analytics;
+
+  // Convert data for charts
+  const viewsChartData = viewsData.map((d: any) => d.count);
+  const applicationsChartData = applicationsData.map((d: any) => d.count);
 
   return (
     <View style={styles.container}>
@@ -49,6 +81,14 @@ export function AnalyticsScreen({ navigation }: any) {
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.contentContainer}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={colors.platinumSilver}
+            colors={[colors.platinumSilver]}
+          />
+        }
       >
         {/* Header */}
         <View style={styles.header}>
@@ -96,8 +136,8 @@ export function AnalyticsScreen({ navigation }: any) {
                 icon="eye-outline"
                 label="Просмотры"
                 value={stats.views.toLocaleString('ru-RU')}
-                change={12.5}
-                trend="up"
+                change={changes.views}
+                trend={changes.views >= 0 ? 'up' : 'down'}
                 index={0}
               />
             </View>
@@ -106,8 +146,8 @@ export function AnalyticsScreen({ navigation }: any) {
                 icon="account-multiple"
                 label="Отклики"
                 value={stats.applications}
-                change={8.3}
-                trend="up"
+                change={changes.applications}
+                trend={changes.applications >= 0 ? 'up' : 'down'}
                 index={1}
               />
             </View>
@@ -118,8 +158,8 @@ export function AnalyticsScreen({ navigation }: any) {
                 icon="account-check"
                 label="Наймы"
                 value={stats.hires}
-                change={-2.1}
-                trend="down"
+                change={0}
+                trend="up"
                 index={2}
               />
             </View>
@@ -127,8 +167,8 @@ export function AnalyticsScreen({ navigation }: any) {
               <StatCard
                 icon="percent"
                 label="Конверсия"
-                value={`${stats.conversionRate}%`}
-                change={1.2}
+                value={`${stats.conversionRate.toFixed(1)}%`}
+                change={0}
                 trend="up"
                 index={3}
               />
@@ -145,10 +185,12 @@ export function AnalyticsScreen({ navigation }: any) {
               <Text style={styles.legendText}>За неделю</Text>
             </View>
           </View>
-          <MiniLineChart data={viewsData} height={150} />
+          <MiniLineChart data={viewsChartData} height={150} />
           <View style={styles.chartFooter}>
             <Text style={styles.chartFooterText}>
-              +{((viewsData[viewsData.length - 1] / viewsData[0] - 1) * 100).toFixed(1)}% за период
+              {viewsChartData.length > 1 && viewsChartData[0] > 0
+                ? `${viewsChartData[viewsChartData.length - 1] > viewsChartData[0] ? '+' : ''}${((viewsChartData[viewsChartData.length - 1] / viewsChartData[0] - 1) * 100).toFixed(1)}% за период`
+                : 'Нет данных за период'}
             </Text>
           </View>
         </GlassCard>
@@ -162,10 +204,12 @@ export function AnalyticsScreen({ navigation }: any) {
               <Text style={styles.legendText}>За неделю</Text>
             </View>
           </View>
-          <MiniLineChart data={applicationsData} height={150} />
+          <MiniLineChart data={applicationsChartData} height={150} />
           <View style={styles.chartFooter}>
             <Text style={styles.chartFooterText}>
-              Средний отклик: {(applicationsData.reduce((a, b) => a + b, 0) / applicationsData.length).toFixed(1)}/день
+              {applicationsChartData.length > 0
+                ? `Средний отклик: ${(applicationsChartData.reduce((a: number, b: number) => a + b, 0) / applicationsChartData.length).toFixed(1)}/день`
+                : 'Нет данных за период'}
             </Text>
           </View>
         </GlassCard>
@@ -239,6 +283,12 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.primaryBlack,
+  },
+  loadingContainer: {
+    flex: 1,
+    backgroundColor: colors.primaryBlack,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   scrollView: {
     flex: 1,

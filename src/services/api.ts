@@ -596,6 +596,39 @@ class APIService {
   }
 
   // ===================================
+  // ANALYTICS (Employer)
+  // ===================================
+
+  async getEmployerAnalytics(params?: {
+    period?: 'week' | 'month' | 'year';
+  }): Promise<{
+    success: boolean;
+    analytics: {
+      stats: {
+        views: number;
+        applications: number;
+        hires: number;
+        conversionRate: number;
+      };
+      changes: {
+        views: number;
+        applications: number;
+      };
+      viewsData: Array<{ date: string; count: number }>;
+      applicationsData: Array<{ date: string; count: number }>;
+      topVacancies: Array<{
+        id: string;
+        title: string;
+        views: number;
+        applications: number;
+      }>;
+    };
+  }> {
+    const response = await this.client.get('/vacancies/my/analytics', { params });
+    return response.data;
+  }
+
+  // ===================================
   // Helper Methods
   // ===================================
 
