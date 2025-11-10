@@ -14,16 +14,17 @@ export function authMiddleware(
   req: Request,
   res: Response,
   next: NextFunction
-) {
+): void {
   try {
     // Get token from Authorization header
     const authHeader = req.headers.authorization;
 
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({
+      res.status(401).json({
         error: 'Unauthorized',
         message: 'No token provided',
       });
+      return;
     }
 
     const token = authHeader.substring(7); // Remove 'Bearer ' prefix
@@ -36,10 +37,11 @@ export function authMiddleware(
 
     next();
   } catch (error) {
-    return res.status(401).json({
+    res.status(401).json({
       error: 'Unauthorized',
       message: error instanceof Error ? error.message : 'Invalid token',
     });
+    return;
   }
 }
 
@@ -50,19 +52,21 @@ export function requireEmployer(
   req: Request,
   res: Response,
   next: NextFunction
-) {
+): void {
   if (!req.user) {
-    return res.status(401).json({
+    res.status(401).json({
       error: 'Unauthorized',
       message: 'Authentication required',
     });
+    return;
   }
 
   if (req.user.role !== 'employer') {
-    return res.status(403).json({
+    res.status(403).json({
       error: 'Forbidden',
       message: 'This action is only available to employers',
     });
+    return;
   }
 
   next();
@@ -75,19 +79,21 @@ export function requireJobSeeker(
   req: Request,
   res: Response,
   next: NextFunction
-) {
+): void {
   if (!req.user) {
-    return res.status(401).json({
+    res.status(401).json({
       error: 'Unauthorized',
       message: 'Authentication required',
     });
+    return;
   }
 
   if (req.user.role !== 'jobseeker') {
-    return res.status(403).json({
+    res.status(403).json({
       error: 'Forbidden',
       message: 'This action is only available to job seekers',
     });
+    return;
   }
 
   next();
@@ -97,19 +103,21 @@ export function requireJobSeeker(
  * Middleware to check for specific roles
  */
 export function requireRole(roles: UserRole[]) {
-  return (req: Request, res: Response, next: NextFunction) => {
+  return (req: Request, res: Response, next: NextFunction): void => {
     if (!req.user) {
-      return res.status(401).json({
+      res.status(401).json({
         error: 'Unauthorized',
         message: 'Authentication required',
       });
+      return;
     }
 
     if (!roles.includes(req.user.role)) {
-      return res.status(403).json({
+      res.status(403).json({
         error: 'Forbidden',
         message: 'Insufficient permissions',
       });
+      return;
     }
 
     next();
@@ -122,7 +130,7 @@ export function requireRole(roles: UserRole[]) {
  */
 export function optionalAuth(
   req: Request,
-  res: Response,
+  _res: Response,
   next: NextFunction
 ) {
   try {

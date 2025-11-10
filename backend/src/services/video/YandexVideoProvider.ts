@@ -249,7 +249,7 @@ export class YandexVideoProvider implements IVideoProvider {
   /**
    * Получить статистику (Yandex Cloud Video не предоставляет встроенную аналитику)
    */
-  async getVideoStats(videoId: string) {
+  async getVideoStats(_videoId: string) {
     // Yandex Cloud Video не предоставляет аналитику просмотров
     // Можно интегрировать с Yandex Metrica
     return {

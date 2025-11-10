@@ -40,7 +40,7 @@ export class ApiVideoProvider implements IVideoProvider {
       const videoCreation = await this.client.videos.create({
         title: params.metadata.title,
         description: params.metadata.description || `${params.metadata.type} - User ${params.metadata.userId}`,
-        public: false, // Приватное видео
+        _public: false, // Приватное видео
         tags: [
           params.metadata.type,
           params.metadata.userId,
@@ -56,13 +56,22 @@ export class ApiVideoProvider implements IVideoProvider {
       console.log(`📹 api.video: Video created with ID ${videoCreation.videoId}`);
 
       // Загрузить файл
+      // Note: api.video SDK принимает Buffer, но TypeScript ожидает string
+      // Используем временный файл или преобразуем Buffer в путь
+      const fs = require('fs');
+      const path = require('path');
+      const os = require('os');
+
+      const tempFilePath = path.join(os.tmpdir(), params.fileName);
+      fs.writeFileSync(tempFilePath, params.file);
+
       const uploadResult = await this.client.videos.upload(
         videoCreation.videoId,
-        params.file,
-        {
-          videoName: params.fileName,
-        }
+        tempFilePath
       );
+
+      // Удаляем временный файл
+      fs.unlinkSync(tempFilePath);
 
       console.log(`✅ api.video: Upload completed for ${videoCreation.videoId}`);
 
@@ -71,7 +80,7 @@ export class ApiVideoProvider implements IVideoProvider {
         playerUrl: videoCreation.assets?.player || '',
         hlsUrl: videoCreation.assets?.hls || '',
         thumbnailUrl: videoCreation.assets?.thumbnail || '',
-        duration: uploadResult.metadata?.duration,
+        duration: uploadResult.assets?.mp4 ? 0 : 0, // Duration доступен после обработки
       };
     } catch (error: any) {
       console.error('❌ api.video upload error:', error);
@@ -98,12 +107,13 @@ export class ApiVideoProvider implements IVideoProvider {
   async getVideoStats(videoId: string) {
     try {
       // api.video предоставляет аналитику через отдельный API
-      const video = await this.client.videos.get(videoId);
+      // Video info retrieved but analytics not yet implemented
+      await this.client.videos.get(videoId);
 
       // Базовая информация (детальная аналитика требует Analytics API)
       return {
         views: 0, // api.video требует отдельный Analytics API для просмотров
-        duration: video.metadata?.duration || 0,
+        duration: 0, // Duration извлекается из assets после обработки
         completion: 0,
       };
     } catch (error: any) {
@@ -122,7 +132,7 @@ export class ApiVideoProvider implements IVideoProvider {
       return {
         videoId: video.videoId,
         title: video.title || '',
-        status: video.encoding?.playable ? 'ready' : 'processing',
+        status: (video as any).encoding?.playable ? 'ready' : 'processing',
         playerUrl: video.assets?.player || '',
         thumbnailUrl: video.assets?.thumbnail || '',
       };

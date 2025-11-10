@@ -14,25 +14,27 @@ export const requireModerator = (
   req: Request,
   res: Response,
   next: NextFunction
-) => {
+): void => {
   // @ts-ignore - req.user добавляется через JWT middleware
   const user = req.user;
 
   if (!user) {
-    return res.status(401).json({
+    res.status(401).json({
       error: 'Unauthorized',
       message: 'Authentication required',
     });
+    return;
   }
 
   const userRole = user.role;
 
   // Разрешаем доступ модераторам и админам
   if (userRole !== 'moderator' && userRole !== 'admin') {
-    return res.status(403).json({
+    res.status(403).json({
       error: 'Forbidden',
       message: 'Moderator or admin access required',
     });
+    return;
   }
 
   next();
@@ -46,22 +48,24 @@ export const requireAdmin = (
   req: Request,
   res: Response,
   next: NextFunction
-) => {
+): void => {
   // @ts-ignore
   const user = req.user;
 
   if (!user) {
-    return res.status(401).json({
+    res.status(401).json({
       error: 'Unauthorized',
       message: 'Authentication required',
     });
+    return;
   }
 
   if (user.role !== 'admin') {
-    return res.status(403).json({
+    res.status(403).json({
       error: 'Forbidden',
       message: 'Admin access required',
     });
+    return;
   }
 
   next();

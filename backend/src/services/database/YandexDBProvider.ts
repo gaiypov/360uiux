@@ -34,11 +34,11 @@ export class YandexDBProvider implements IDBProvider {
     });
   }
 
-  async query<T = any>(text: string, params?: any[]): Promise<QueryResult<T>> {
+  async query<T extends Record<string, any> = any>(text: string, params?: any[]): Promise<QueryResult<T>> {
     return this.pool.query<T>(text, params);
   }
 
-  async one<T = any>(text: string, params?: any[]): Promise<T> {
+  async one<T extends Record<string, any> = any>(text: string, params?: any[]): Promise<T> {
     const result = await this.pool.query<T>(text, params);
     if (result.rows.length === 0) {
       throw new Error('No data returned from query');
@@ -46,12 +46,12 @@ export class YandexDBProvider implements IDBProvider {
     return result.rows[0];
   }
 
-  async oneOrNone<T = any>(text: string, params?: any[]): Promise<T | null> {
+  async oneOrNone<T extends Record<string, any> = any>(text: string, params?: any[]): Promise<T | null> {
     const result = await this.pool.query<T>(text, params);
     return result.rows[0] || null;
   }
 
-  async manyOrNone<T = any>(text: string, params?: any[]): Promise<T[]> {
+  async manyOrNone<T extends Record<string, any> = any>(text: string, params?: any[]): Promise<T[]> {
     const result = await this.pool.query<T>(text, params);
     return result.rows || [];
   }

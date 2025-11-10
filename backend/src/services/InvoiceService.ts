@@ -144,10 +144,10 @@ export class InvoiceService {
     try {
       return await db.tx(async (t) => {
         // Получаем счёт
-        const invoice = await t.one<Invoice>(
+        const invoice = await t.one(
           'SELECT * FROM invoices WHERE id = $1 AND employer_id = $2 FOR UPDATE',
           [invoiceId, employerId]
-        );
+        ) as Invoice;
 
         if (invoice.status === 'paid') {
           throw new Error('Invoice already paid');
@@ -181,13 +181,13 @@ export class InvoiceService {
         );
 
         // Обновляем статус счёта
-        const updatedInvoice = await t.one<Invoice>(
+        const updatedInvoice = await t.one(
           `UPDATE invoices
            SET status = 'paid', paid_date = CURRENT_DATE, updated_at = CURRENT_TIMESTAMP
            WHERE id = $1
            RETURNING *`,
           [invoiceId]
-        );
+        ) as Invoice;
 
         return updatedInvoice;
       });

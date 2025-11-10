@@ -52,7 +52,7 @@ export const databaseConfig = {
 
 // Валидация конфигурации
 export function validateDatabaseConfig(): void {
-  const { provider, yandex, vk, supabase, local } = databaseConfig;
+  const { provider, yandex, vk, supabase, local: _local } = databaseConfig;
 
   switch (provider) {
     case 'yandex':

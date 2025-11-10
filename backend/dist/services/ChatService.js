@@ -1,0 +1,270 @@
+"use strict";
+/**
+ * 360° РАБОТА - Chat Service
+ * Architecture v3: Чат между соискателем и работодателем
+ */
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.chatService = exports.ChatService = void 0;
+const database_1 = require("../config/database");
+class ChatService {
+    /**
+     * Создать сообщение в чате
+     */
+    async createMessage(params) {
+        try {
+            console.log(`💬 Creating ${params.messageType} message in application ${params.applicationId}`);
+            // Валидация
+            if (params.messageType === 'text' && !params.content) {
+                throw new Error('Content is required for text messages');
+            }
+            if (params.messageType === 'video' && !params.videoId) {
+                throw new Error('Video ID is required for video messages');
+            }
+            // Создать сообщение
+            const message = await database_1.db.one(`INSERT INTO chat_messages (
+          application_id, sender_id, sender_type,
+          message_type, content, video_id,
+          is_read, created_at, updated_at
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, false, NOW(), NOW())
+        RETURNING *`, [
+                params.applicationId,
+                params.senderId,
+                params.senderType,
+                params.messageType,
+                params.content || null,
+                params.videoId || null,
+            ]);
+            // TODO: WebSocket уведомление
+            // this.sendWebSocketNotification(params.applicationId, message);
+            console.log(`✅ Message created: ${message.id}`);
+            return message;
+        }
+        catch (error) {
+            console.error('❌ Error creating message:', error);
+            throw error;
+        }
+    }
+    /**
+     * Получить все сообщения для отклика
+     */
+    async getMessages(applicationId, userId) {
+        try {
+            // Проверить доступ (пользователь должен быть jobseeker или employer этого отклика)
+            const application = await database_1.db.oneOrNone(`SELECT a.*, v.employer_id
+         FROM applications a
+         JOIN vacancies v ON v.id = a.vacancy_id
+         WHERE a.id = $1`, [applicationId]);
+            if (!application) {
+                throw new Error('Application not found');
+            }
+            const isJobseeker = application.jobseeker_id === userId;
+            const isEmployer = application.employer_id === userId;
+            if (!isJobseeker && !isEmployer) {
+                throw new Error('Access denied: you are not part of this conversation');
+            }
+            // Получить сообщения
+            const messages = await database_1.db.manyOrNone(`SELECT * FROM chat_messages
+         WHERE application_id = $1
+         ORDER BY created_at ASC`, [applicationId]);
+            // Обновить статус прочитанных для текущего пользователя
+            // Прочитать все сообщения от другой стороны
+            const otherSenderType = isJobseeker ? 'employer' : 'jobseeker';
+            await this.markAsRead(applicationId, otherSenderType);
+            return messages || [];
+        }
+        catch (error) {
+            console.error('❌ Error getting messages:', error);
+            throw error;
+        }
+    }
+    /**
+     * Отметить сообщения как прочитанные
+     */
+    async markAsRead(applicationId, senderType) {
+        try {
+            await database_1.db.none(`UPDATE chat_messages
+         SET is_read = true, read_at = NOW(), updated_at = NOW()
+         WHERE application_id = $1
+         AND sender_type = $2
+         AND is_read = false`, [applicationId, senderType]);
+            console.log(`✅ Messages marked as read in application ${applicationId}`);
+        }
+        catch (error) {
+            console.error('❌ Error marking messages as read:', error);
+            throw error;
+        }
+    }
+    /**
+     * Получить количество непрочитанных сообщений
+     */
+    async getUnreadCount(applicationId, userType) {
+        try {
+            // Подсчитать непрочитанные от другой стороны
+            const otherType = userType === 'jobseeker' ? 'employer' : 'jobseeker';
+            const result = await database_1.db.one(`SELECT COUNT(*) as count
+         FROM chat_messages
+         WHERE application_id = $1
+         AND sender_type = $2
+         AND is_read = false`, [applicationId, otherType]);
+            return parseInt(result.count, 10);
+        }
+        catch (error) {
+            console.error('❌ Error getting unread count:', error);
+            return 0;
+        }
+    }
+    /**
+     * Создать системное сообщение
+     * (например, "Соискатель откликнулся на вакансию")
+     */
+    async createSystemMessage(applicationId, content) {
+        return this.createMessage({
+            applicationId,
+            senderId: 'system',
+            senderType: 'system',
+            messageType: 'system',
+            content,
+        });
+    }
+    /**
+     * Создать сообщение с видео-резюме
+     * Architecture v3: Автоматически при создании отклика
+     */
+    async createVideoMessage(applicationId, senderId, videoId) {
+        return this.createMessage({
+            applicationId,
+            senderId,
+            senderType: 'jobseeker',
+            messageType: 'video',
+            content: '📹 Видео-резюме (доступно 2 просмотра)',
+            videoId,
+        });
+    }
+    /**
+     * Получить последнее сообщение для отклика
+     */
+    async getLastMessage(applicationId) {
+        try {
+            const message = await database_1.db.oneOrNone(`SELECT * FROM chat_messages
+         WHERE application_id = $1
+         ORDER BY created_at DESC
+         LIMIT 1`, [applicationId]);
+            return message;
+        }
+        catch (error) {
+            console.error('❌ Error getting last message:', error);
+            return null;
+        }
+    }
+    /**
+     * Получить все чаты для пользователя
+     * (список откликов с последними сообщениями)
+     */
+    async getUserChats(userId, userRole) {
+        try {
+            let query;
+            if (userRole === 'jobseeker') {
+                // Соискатель видит чаты по своим откликам
+                query = `
+          SELECT
+            a.id as application_id,
+            a.vacancy_id,
+            a.status,
+            a.created_at as applied_at,
+            v.title as vacancy_title,
+            u.company_name as employer_name,
+            u.id as employer_id,
+            (
+              SELECT COUNT(*)
+              FROM chat_messages cm
+              WHERE cm.application_id = a.id
+              AND cm.sender_type = 'employer'
+              AND cm.is_read = false
+            ) as unread_count,
+            (
+              SELECT cm.*
+              FROM chat_messages cm
+              WHERE cm.application_id = a.id
+              ORDER BY cm.created_at DESC
+              LIMIT 1
+            ) as last_message
+          FROM applications a
+          JOIN vacancies v ON v.id = a.vacancy_id
+          JOIN users u ON u.id = v.employer_id
+          WHERE a.jobseeker_id = $1
+          ORDER BY a.created_at DESC
+        `;
+            }
+            else {
+                // Работодатель видит чаты по откликам на свои вакансии
+                query = `
+          SELECT
+            a.id as application_id,
+            a.vacancy_id,
+            a.status,
+            a.created_at as applied_at,
+            v.title as vacancy_title,
+            u.name as jobseeker_name,
+            u.profession as jobseeker_profession,
+            u.id as jobseeker_id,
+            (
+              SELECT COUNT(*)
+              FROM chat_messages cm
+              WHERE cm.application_id = a.id
+              AND cm.sender_type = 'jobseeker'
+              AND cm.is_read = false
+            ) as unread_count,
+            (
+              SELECT row_to_json(cm.*)
+              FROM chat_messages cm
+              WHERE cm.application_id = a.id
+              ORDER BY cm.created_at DESC
+              LIMIT 1
+            ) as last_message
+          FROM applications a
+          JOIN vacancies v ON v.id = a.vacancy_id
+          JOIN users u ON u.id = a.jobseeker_id
+          WHERE v.employer_id = $1
+          ORDER BY a.created_at DESC
+        `;
+            }
+            const chats = await database_1.db.manyOrNone(query, [userId]);
+            return chats || [];
+        }
+        catch (error) {
+            console.error('❌ Error getting user chats:', error);
+            throw error;
+        }
+    }
+    /**
+     * Удалить сообщение (только свои)
+     */
+    async deleteMessage(messageId, userId) {
+        try {
+            const result = await database_1.db.query(`DELETE FROM chat_messages
+         WHERE id = $1 AND sender_id = $2`, [messageId, userId]);
+            if (result.rowCount === 0) {
+                throw new Error('Message not found or access denied');
+            }
+            console.log(`🗑️ Message deleted: ${messageId}`);
+        }
+        catch (error) {
+            console.error('❌ Error deleting message:', error);
+            throw error;
+        }
+    }
+    /**
+     * WebSocket notification (TODO)
+     * Currently unused - will be used when WebSocket is implemented
+     */
+    // @ts-ignore - Method reserved for future WebSocket implementation
+    sendWebSocketNotification(_applicationId, _message) {
+        // TODO: Implement WebSocket
+        console.log(`🔔 WebSocket notification for application ${_applicationId}`);
+    }
+}
+exports.ChatService = ChatService;
+// Singleton export
+exports.chatService = new ChatService();
+//# sourceMappingURL=ChatService.js.map

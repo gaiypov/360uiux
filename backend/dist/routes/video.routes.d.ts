@@ -1,0 +1,7 @@
+/**
+ * 360° РАБОТА - Video Routes
+ * Роуты для работы с видео (вакансии и резюме)
+ */
+declare const router: import("express-serve-static-core").Router;
+export default router;
+//# sourceMappingURL=video.routes.d.ts.map

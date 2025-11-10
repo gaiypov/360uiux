@@ -11,7 +11,7 @@ const router = Router();
  * Получить список чатов
  * GET /api/v1/chats
  */
-router.get('/', authMiddleware, async (req, res) => {
+router.get('/', authMiddleware, async (_req, res) => {
   res.json({ message: 'List chats endpoint - Coming soon' });
 });
 
@@ -19,7 +19,7 @@ router.get('/', authMiddleware, async (req, res) => {
  * Получить чат по ID
  * GET /api/v1/chats/:id
  */
-router.get('/:id', authMiddleware, async (req, res) => {
+router.get('/:id', authMiddleware, async (_req, res) => {
   res.json({ message: 'Get chat endpoint - Coming soon' });
 });
 
@@ -27,7 +27,7 @@ router.get('/:id', authMiddleware, async (req, res) => {
  * Отправить сообщение
  * POST /api/v1/chats/:id/messages
  */
-router.post('/:id/messages', authMiddleware, async (req, res) => {
+router.post('/:id/messages', authMiddleware, async (_req, res) => {
   res.json({ message: 'Send message endpoint - Coming soon' });
 });
 

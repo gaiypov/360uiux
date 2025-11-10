@@ -17,22 +17,22 @@ export interface IDBProvider {
   /**
    * Выполнить SQL запрос
    */
-  query<T = any>(text: string, params?: any[]): Promise<QueryResult<T>>;
+  query<T extends Record<string, any> = any>(text: string, params?: any[]): Promise<QueryResult<T>>;
 
   /**
    * Выполнить один запрос (вернуть одну строку или выбросить ошибку)
    */
-  one<T = any>(text: string, params?: any[]): Promise<T>;
+  one<T extends Record<string, any> = any>(text: string, params?: any[]): Promise<T>;
 
   /**
    * Выполнить один запрос (вернуть одну строку или null)
    */
-  oneOrNone<T = any>(text: string, params?: any[]): Promise<T | null>;
+  oneOrNone<T extends Record<string, any> = any>(text: string, params?: any[]): Promise<T | null>;
 
   /**
    * Выполнить запрос (вернуть массив строк или пустой массив)
    */
-  manyOrNone<T = any>(text: string, params?: any[]): Promise<T[]>;
+  manyOrNone<T extends Record<string, any> = any>(text: string, params?: any[]): Promise<T[]>;
 
   /**
    * Выполнить запрос без возврата данных
@@ -112,28 +112,28 @@ export class DatabaseService implements IDBProvider {
   /**
    * Выполнить SQL запрос
    */
-  async query<T = any>(text: string, params?: any[]): Promise<QueryResult<T>> {
+  async query<T extends Record<string, any> = any>(text: string, params?: any[]): Promise<QueryResult<T>> {
     return this.provider.query<T>(text, params);
   }
 
   /**
    * Выполнить один запрос (вернуть одну строку или выбросить ошибку)
    */
-  async one<T = any>(text: string, params?: any[]): Promise<T> {
+  async one<T extends Record<string, any> = any>(text: string, params?: any[]): Promise<T> {
     return this.provider.one<T>(text, params);
   }
 
   /**
    * Выполнить один запрос (вернуть одну строку или null)
    */
-  async oneOrNone<T = any>(text: string, params?: any[]): Promise<T | null> {
+  async oneOrNone<T extends Record<string, any> = any>(text: string, params?: any[]): Promise<T | null> {
     return this.provider.oneOrNone<T>(text, params);
   }
 
   /**
    * Выполнить запрос (вернуть массив строк или пустой массив)
    */
-  async manyOrNone<T = any>(text: string, params?: any[]): Promise<T[]> {
+  async manyOrNone<T extends Record<string, any> = any>(text: string, params?: any[]): Promise<T[]> {
     return this.provider.manyOrNone<T>(text, params);
   }
 
@@ -189,6 +189,39 @@ export class DatabaseService implements IDBProvider {
     } finally {
       client.release();
     }
+  }
+
+  /**
+   * Алиас для транзакции (совместимость с pg-promise)
+   */
+  async tx<T>(callback: (t: any) => Promise<T>): Promise<T> {
+    return this.transaction(async (client) => {
+      // Создаём pg-promise-подобный интерфейс
+      const t = {
+        one: async <R extends Record<string, any> = any>(text: string, params?: any[]): Promise<R> => {
+          const result = await client.query<R>(text, params);
+          if (result.rows.length === 0) {
+            throw new Error('No rows returned');
+          }
+          return result.rows[0];
+        },
+        oneOrNone: async <R extends Record<string, any> = any>(text: string, params?: any[]): Promise<R | null> => {
+          const result = await client.query<R>(text, params);
+          return result.rows.length > 0 ? result.rows[0] : null;
+        },
+        manyOrNone: async <R extends Record<string, any> = any>(text: string, params?: any[]): Promise<R[]> => {
+          const result = await client.query<R>(text, params);
+          return result.rows;
+        },
+        none: async (text: string, params?: any[]): Promise<void> => {
+          await client.query(text, params);
+        },
+        query: async <R extends Record<string, any> = any>(text: string, params?: any[]): Promise<QueryResult<R>> => {
+          return client.query<R>(text, params);
+        },
+      };
+      return callback(t);
+    });
   }
 }
 

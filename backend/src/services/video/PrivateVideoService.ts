@@ -277,7 +277,7 @@ export class PrivateVideoService {
    * Проверить валиден ли токен для просмотра видео
    * TODO: Реализовать с Redis когда он будет доступен
    */
-  async validateVideoToken(token: string): Promise<boolean> {
+  async validateVideoToken(_token: string): Promise<boolean> {
     // TODO: Проверить токен в Redis
     // const data = await redis.get(`video_token:${token}`);
     // if (!data) return false;

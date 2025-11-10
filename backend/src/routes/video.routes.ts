@@ -17,7 +17,7 @@ const upload = multer({
   limits: {
     fileSize: 500 * 1024 * 1024, // 500MB max file size
   },
-  fileFilter: (req, file, cb) => {
+  fileFilter: (_req, file, cb) => {
     // Проверка типа файла
     const allowedMimeTypes = [
       'video/mp4',
@@ -148,7 +148,7 @@ router.delete('/resumes/video', authMiddleware, ResumeVideoController.deleteVide
 router.patch('/resumes/video', authMiddleware, ResumeVideoController.updateVideoMetadata);
 
 // Обработка ошибок multer
-router.use((error: any, req: any, res: any, next: any) => {
+router.use((error: any, _req: any, res: any, next: any) => {
   if (error instanceof multer.MulterError) {
     if (error.code === 'LIMIT_FILE_SIZE') {
       return res.status(400).json({

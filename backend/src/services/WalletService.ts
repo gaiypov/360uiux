@@ -168,10 +168,10 @@ export class WalletService {
     try {
       return await db.tx(async (t) => {
         // Получаем транзакцию
-        const transaction = await t.one<Transaction>(
+        const transaction = await t.one(
           'SELECT * FROM transactions WHERE id = $1',
           [transactionId]
-        );
+        ) as Transaction;
 
         if (transaction.status === 'completed') {
           return transaction; // Уже завершена
@@ -180,13 +180,13 @@ export class WalletService {
         const amount = params?.amount || transaction.amount;
 
         // Обновляем статус транзакции
-        const updatedTransaction = await t.one<Transaction>(
+        const updatedTransaction = await t.one(
           `UPDATE transactions
            SET status = 'completed', completed_at = CURRENT_TIMESTAMP
            WHERE id = $1
            RETURNING *`,
           [transactionId]
-        );
+        ) as Transaction;
 
         // Обновляем баланс кошелька
         if (transaction.type === 'deposit') {
@@ -293,10 +293,10 @@ export class WalletService {
     try {
       return await db.tx(async (t) => {
         // Получаем кошелёк
-        const wallet = await t.one<Wallet>(
+        const wallet = await t.one(
           'SELECT * FROM company_wallets WHERE employer_id = $1 FOR UPDATE',
           [employerId]
-        );
+        ) as Wallet;
 
         // Проверяем баланс
         if (wallet.balance < amount) {
@@ -304,13 +304,13 @@ export class WalletService {
         }
 
         // Создаём транзакцию списания
-        const transaction = await t.one<Transaction>(
+        const transaction = await t.one(
           `INSERT INTO transactions (
             wallet_id, type, amount, currency, status, description
           ) VALUES ($1, 'payment', $2, 'RUB', 'completed', $3)
           RETURNING *`,
           [wallet.id, amount, description]
-        );
+        ) as Transaction;
 
         // Обновляем баланс
         await t.none(

@@ -215,7 +215,7 @@ export class VacancyController {
       };
 
       // Сохранить в кэш на 1 час
-      await cacheService.cacheVacancyList(filters, response);
+      await cacheService.cacheVacancyList(filters, response.data);
 
       return res.status(200).json(response);
     } catch (error: any) {

@@ -1,0 +1,200 @@
+"use strict";
+/**
+ * 360° РАБОТА - Vacancy Video Controller
+ * Управление видео для вакансий (только работодатели)
+ */
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.VacancyVideoController = void 0;
+const VideoService_1 = require("../services/video/VideoService");
+const database_1 = require("../config/database");
+// VideoStatus type available but not currently used
+class VacancyVideoController {
+    /**
+     * Загрузить видео для вакансии
+     * POST /api/v1/vacancies/:vacancyId/video
+     */
+    static async uploadVideo(req, res) {
+        try {
+            const { vacancyId } = req.params;
+            const { title, description } = req.body;
+            const userId = req.user.userId;
+            const role = req.user.role;
+            // Проверка роли
+            if (role !== 'employer') {
+                return res.status(403).json({ error: 'Only employers can upload vacancy videos' });
+            }
+            // Проверка файла
+            if (!req.file) {
+                return res.status(400).json({ error: 'Video file is required' });
+            }
+            // Проверка существования вакансии и владения
+            const vacancy = await database_1.db.oneOrNone('SELECT * FROM vacancies WHERE id = $1 AND employer_id = $2', [vacancyId, userId]);
+            if (!vacancy) {
+                return res.status(404).json({ error: 'Vacancy not found or access denied' });
+            }
+            console.log(`📹 Uploading vacancy video for vacancy ${vacancyId}...`);
+            // Загрузить видео через videoService
+            const uploadResult = await VideoService_1.videoService.uploadVideo({
+                file: req.file.buffer,
+                fileName: req.file.originalname,
+                metadata: {
+                    type: 'vacancy',
+                    userId,
+                    title: title || vacancy.title,
+                    description: description || `Видео вакансии: ${vacancy.title}`,
+                },
+            });
+            // Сохранить информацию о видео в БД
+            const video = await database_1.db.one(`INSERT INTO videos (
+          video_id, type, user_id, vacancy_id, title, description,
+          player_url, hls_url, thumbnail_url, duration,
+          status, views, provider, created_at, updated_at
+        )
+        VALUES ($1, 'vacancy', $2, $3, $4, $5, $6, $7, $8, $9, 'ready', 0, $10, NOW(), NOW())
+        RETURNING *`, [
+                uploadResult.videoId,
+                userId,
+                vacancyId,
+                title || vacancy.title,
+                description,
+                uploadResult.playerUrl,
+                uploadResult.hlsUrl,
+                uploadResult.thumbnailUrl,
+                uploadResult.duration,
+                VideoService_1.videoService.getProviderType(),
+            ]);
+            // Обновить вакансию с URL видео
+            await database_1.db.none('UPDATE vacancies SET video_url = $1, thumbnail_url = $2, updated_at = NOW() WHERE id = $3', [uploadResult.playerUrl, uploadResult.thumbnailUrl, vacancyId]);
+            console.log(`✅ Vacancy video uploaded successfully: ${video.id}`);
+            return res.status(201).json({
+                success: true,
+                video,
+            });
+        }
+        catch (error) {
+            console.error('Upload vacancy video error:', error);
+            return res.status(500).json({
+                error: 'Failed to upload video',
+                message: error.message,
+            });
+        }
+    }
+    /**
+     * Получить видео вакансии
+     * GET /api/v1/vacancies/:vacancyId/video
+     */
+    static async getVideo(req, res) {
+        try {
+            const { vacancyId } = req.params;
+            const video = await database_1.db.oneOrNone('SELECT * FROM videos WHERE vacancy_id = $1 AND type = $2', [vacancyId, 'vacancy']);
+            if (!video) {
+                return res.status(404).json({ error: 'Video not found' });
+            }
+            // Инкрементировать счетчик просмотров
+            await database_1.db.none('UPDATE videos SET views = views + 1 WHERE id = $1', [video.id]);
+            return res.json({ video });
+        }
+        catch (error) {
+            console.error('Get vacancy video error:', error);
+            return res.status(500).json({ error: 'Failed to get video' });
+        }
+    }
+    /**
+     * Удалить видео вакансии
+     * DELETE /api/v1/vacancies/:vacancyId/video
+     */
+    static async deleteVideo(req, res) {
+        try {
+            const { vacancyId } = req.params;
+            const userId = req.user.userId;
+            const role = req.user.role;
+            // Проверка роли
+            if (role !== 'employer') {
+                return res.status(403).json({ error: 'Only employers can delete vacancy videos' });
+            }
+            // Проверка владения вакансией
+            const vacancy = await database_1.db.oneOrNone('SELECT * FROM vacancies WHERE id = $1 AND employer_id = $2', [vacancyId, userId]);
+            if (!vacancy) {
+                return res.status(404).json({ error: 'Vacancy not found or access denied' });
+            }
+            // Найти видео
+            const video = await database_1.db.oneOrNone('SELECT * FROM videos WHERE vacancy_id = $1 AND type = $2', [vacancyId, 'vacancy']);
+            if (!video) {
+                return res.status(404).json({ error: 'Video not found' });
+            }
+            console.log(`🗑️  Deleting vacancy video: ${video.id}`);
+            // Удалить из провайдера
+            await VideoService_1.videoService.deleteVideo(video.video_id);
+            // Удалить из БД
+            await database_1.db.none('DELETE FROM videos WHERE id = $1', [video.id]);
+            // Очистить поля в вакансии
+            await database_1.db.none('UPDATE vacancies SET video_url = NULL, thumbnail_url = NULL, updated_at = NOW() WHERE id = $1', [vacancyId]);
+            console.log(`✅ Vacancy video deleted: ${video.id}`);
+            return res.json({ success: true, message: 'Video deleted successfully' });
+        }
+        catch (error) {
+            console.error('Delete vacancy video error:', error);
+            return res.status(500).json({
+                error: 'Failed to delete video',
+                message: error.message,
+            });
+        }
+    }
+    /**
+     * Получить статистику видео
+     * GET /api/v1/vacancies/:vacancyId/video/stats
+     */
+    static async getVideoStats(req, res) {
+        try {
+            const { vacancyId } = req.params;
+            const userId = req.user.userId;
+            // Проверка владения вакансией
+            const vacancy = await database_1.db.oneOrNone('SELECT * FROM vacancies WHERE id = $1 AND employer_id = $2', [vacancyId, userId]);
+            if (!vacancy) {
+                return res.status(404).json({ error: 'Vacancy not found or access denied' });
+            }
+            // Найти видео
+            const video = await database_1.db.oneOrNone('SELECT * FROM videos WHERE vacancy_id = $1 AND type = $2', [vacancyId, 'vacancy']);
+            if (!video) {
+                return res.status(404).json({ error: 'Video not found' });
+            }
+            // Получить статистику от провайдера
+            const providerStats = await VideoService_1.videoService.getVideoStats(video.video_id);
+            return res.json({
+                videoId: video.id,
+                views: video.views, // Наши просмотры из БД
+                providerViews: providerStats.views, // Просмотры от провайдера
+                duration: video.duration || providerStats.duration,
+                completion: providerStats.completion,
+                createdAt: video.created_at,
+            });
+        }
+        catch (error) {
+            console.error('Get video stats error:', error);
+            return res.status(500).json({ error: 'Failed to get video stats' });
+        }
+    }
+    /**
+     * Заменить видео вакансии
+     * PUT /api/v1/vacancies/:vacancyId/video
+     */
+    static async replaceVideo(req, res) {
+        try {
+            // Сначала удаляем старое видео
+            await VacancyVideoController.deleteVideo(req, res);
+            // Если удаление прошло успешно, загружаем новое
+            if (res.statusCode === 200) {
+                await VacancyVideoController.uploadVideo(req, res);
+            }
+        }
+        catch (error) {
+            console.error('Replace vacancy video error:', error);
+            res.status(500).json({
+                error: 'Failed to replace video',
+                message: error.message,
+            });
+        }
+    }
+}
+exports.VacancyVideoController = VacancyVideoController;
+//# sourceMappingURL=VacancyVideoController.js.map

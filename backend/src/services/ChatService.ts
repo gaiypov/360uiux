@@ -331,10 +331,12 @@ export class ChatService {
 
   /**
    * WebSocket notification (TODO)
+   * Currently unused - will be used when WebSocket is implemented
    */
-  private sendWebSocketNotification(applicationId: string, message: ChatMessage) {
+  // @ts-ignore - Method reserved for future WebSocket implementation
+  private sendWebSocketNotification(_applicationId: string, _message: ChatMessage) {
     // TODO: Implement WebSocket
-    console.log(`🔔 WebSocket notification for application ${applicationId}`);
+    console.log(`🔔 WebSocket notification for application ${_applicationId}`);
   }
 }
 

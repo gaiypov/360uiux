@@ -6,7 +6,8 @@
 import { Request, Response } from 'express';
 import { videoService } from '../services/video/VideoService';
 import { db } from '../config/database';
-import { Video, VideoStatus, ResumeVideoView, ViewLimitCheckResponse, SecureVideoUrlResponse } from '../types';
+import { Video, ViewLimitCheckResponse, SecureVideoUrlResponse } from '../types';
+// VideoStatus and ResumeVideoView types available but not currently used
 import crypto from 'crypto';
 
 export class ResumeVideoController {

@@ -396,7 +396,7 @@ export class BillingController {
    * Получить текущие тарифы
    * GET /api/v1/billing/pricing
    */
-  static async getPricing(req: Request, res: Response) {
+  static async getPricing(_req: Request, res: Response) {
     try {
       const { db } = require('../config/database');
 

@@ -6,7 +6,8 @@
 import { Request, Response } from 'express';
 import { videoService } from '../services/video/VideoService';
 import { db } from '../config/database';
-import { Video, VideoStatus } from '../types';
+import { Video } from '../types';
+// VideoStatus type available but not currently used
 
 export class VacancyVideoController {
   /**
@@ -236,10 +237,8 @@ export class VacancyVideoController {
    * Заменить видео вакансии
    * PUT /api/v1/vacancies/:vacancyId/video
    */
-  static async replaceVideo(req: Request, res: Response) {
+  static async replaceVideo(req: Request, res: Response): Promise<void> {
     try {
-      const { vacancyId } = req.params;
-
       // Сначала удаляем старое видео
       await VacancyVideoController.deleteVideo(req, res);
 
@@ -249,7 +248,7 @@ export class VacancyVideoController {
       }
     } catch (error: any) {
       console.error('Replace vacancy video error:', error);
-      return res.status(500).json({
+      res.status(500).json({
         error: 'Failed to replace video',
         message: error.message,
       });
