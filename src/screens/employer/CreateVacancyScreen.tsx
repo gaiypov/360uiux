@@ -17,6 +17,7 @@ import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { GlassCard, GlassButton } from '@/components/ui';
 import { colors, metalGradients, typography, sizes } from "@/constants";
 import { useToastStore } from '@/stores';
+import { api } from '@/services/api';
 
 export function CreateVacancyScreen({ navigation }: any) {
   const { showToast } = useToastStore();
@@ -34,6 +35,8 @@ export function CreateVacancyScreen({ navigation }: any) {
   });
   const [videoUrl, setVideoUrl] = useState('');
 
+  const [loading, setLoading] = useState(false);
+
   const handleCreate = async () => {
     // Validation
     if (!form.title || !form.salaryMin || !form.city) {
@@ -46,9 +49,36 @@ export function CreateVacancyScreen({ navigation }: any) {
       return;
     }
 
-    // TODO: API call
-    showToast('success', 'Вакансия создана!');
-    navigation.goBack();
+    setLoading(true);
+
+    try {
+      // Create vacancy via API
+      const result = await api.createVacancy({
+        title: form.title,
+        profession: form.title, // Using title as profession for now
+        video_url: videoUrl,
+        salary_min: parseInt(form.salaryMin) || undefined,
+        salary_max: parseInt(form.salaryMax) || undefined,
+        currency: 'RUB',
+        city: form.city,
+        metro: form.metro || undefined,
+        schedule: form.schedule,
+        requires_experience: form.experience !== 'any',
+        benefits: form.benefits || undefined,
+        requirements: form.requirements || undefined,
+      });
+
+      if (result.success) {
+        showToast('success', '✅ Вакансия создана!');
+        showToast('info', 'Не забудьте опубликовать вакансию');
+        navigation.goBack();
+      }
+    } catch (error: any) {
+      console.error('Error creating vacancy:', error);
+      showToast('error', error.message || 'Ошибка при создании вакансии');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const updateForm = (key: string, value: string) => {

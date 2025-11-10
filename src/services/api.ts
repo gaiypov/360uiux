@@ -345,6 +345,26 @@ class APIService {
     return response.data.vacancies;
   }
 
+  async createVacancy(data: {
+    title: string;
+    profession: string;
+    video_url: string;
+    thumbnail_url?: string;
+    salary_min?: number;
+    salary_max?: number;
+    currency?: string;
+    city: string;
+    metro?: string;
+    schedule?: string;
+    requires_experience?: boolean;
+    benefits?: string;
+    requirements?: string;
+    tags?: string[];
+  }): Promise<{ success: boolean; vacancy: any }> {
+    const response = await this.client.post('/vacancies', data);
+    return response.data;
+  }
+
   // ===================================
   // GUEST VIEWS SYNC API (Architecture v3)
   // ===================================

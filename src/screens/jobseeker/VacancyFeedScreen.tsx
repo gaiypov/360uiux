@@ -249,10 +249,21 @@ export function VacancyFeedScreen({ navigation }: any) {
       return;
     }
 
+    // Find vacancy data
+    const vacancy = vacancies.find((v) => v.id === vacancyId);
+    if (!vacancy) {
+      showToast('error', 'Вакансия не найдена');
+      return;
+    }
+
     haptics.success();
-    showToast('success', '✅ Отклик отправлен!');
-    // TODO: Navigate to ApplicationScreen or create application
-    console.log('Apply to', vacancyId);
+
+    // Navigate to ApplicationScreen
+    navigation.navigate('Application', {
+      vacancyId: vacancy.id,
+      vacancyTitle: vacancy.title,
+      companyName: vacancy.employer?.name || vacancy.company_name || 'Компания',
+    });
   };
 
   /**
