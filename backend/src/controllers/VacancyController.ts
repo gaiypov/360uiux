@@ -7,6 +7,7 @@ import { Request, Response } from 'express';
 import { db } from '../services/database/DatabaseService';
 import { Vacancy, VacancyStatus } from '../types';
 import { v4 as uuidv4 } from 'uuid';
+import { cacheService } from '../services/CacheService';
 
 export class VacancyController {
   /**
@@ -81,6 +82,9 @@ export class VacancyController {
 
       console.log(`✅ Vacancy created: ${vacancy.id} by employer ${user.userId}`);
 
+      // Инвалидация кэша списков вакансий
+      await cacheService.invalidateVacancies();
+
       return res.status(201).json({
         success: true,
         vacancy,
@@ -116,6 +120,14 @@ export class VacancyController {
       const pageNum = parseInt(page as string, 10);
       const limitNum = Math.min(parseInt(limit as string, 10), 100);
       const offset = (pageNum - 1) * limitNum;
+
+      // Попытка получить из кэша
+      const filters = { page, limit, city, profession, salary_min, salary_max, schedule, requires_experience, sort, order };
+      const cached = await cacheService.getVacancyList(filters);
+      if (cached) {
+        console.log('🚀 Vacancy list served from cache');
+        return res.status(200).json(cached);
+      }
 
       // Базовый запрос
       let query = `
@@ -191,7 +203,7 @@ export class VacancyController {
 
       const total = results.length > 0 ? parseInt(results[0].total_count, 10) : 0;
 
-      return res.status(200).json({
+      const response = {
         success: true,
         data: vacancies,
         pagination: {
@@ -200,7 +212,12 @@ export class VacancyController {
           total,
           totalPages: Math.ceil(total / limitNum),
         },
-      });
+      };
+
+      // Сохранить в кэш на 1 час
+      await cacheService.cacheVacancyList(filters, response);
+
+      return res.status(200).json(response);
     } catch (error: any) {
       console.error('❌ Error listing vacancies:', error);
       return res.status(500).json({
@@ -217,6 +234,24 @@ export class VacancyController {
   static async getVacancy(req: Request, res: Response) {
     try {
       const { id } = req.params;
+
+      // Попытка получить из кэша
+      const cached = await cacheService.getVacancy(id);
+      if (cached) {
+        console.log(`🚀 Vacancy ${id} served from cache`);
+
+        // Инкремент просмотров асинхронно (не блокируя ответ)
+        if (cached.status === 'active') {
+          db.none('UPDATE vacancies SET views = views + 1 WHERE id = $1', [id]).catch((err) =>
+            console.error('Failed to increment views:', err)
+          );
+        }
+
+        return res.status(200).json({
+          success: true,
+          vacancy: cached,
+        });
+      }
 
       const vacancy = await db.oneOrNone<Vacancy>(
         `SELECT
@@ -247,6 +282,9 @@ export class VacancyController {
         );
         vacancy.views = (vacancy.views || 0) + 1;
       }
+
+      // Сохранить в кэш на 1 час
+      await cacheService.cacheVacancy(id, vacancy);
 
       return res.status(200).json({
         success: true,
@@ -367,6 +405,9 @@ export class VacancyController {
 
       console.log(`✅ Vacancy updated: ${id}`);
 
+      // Инвалидация кэша конкретной вакансии и всех списков
+      await cacheService.invalidateVacancy(id);
+
       return res.status(200).json({
         success: true,
         vacancy: updated,
@@ -426,6 +467,9 @@ export class VacancyController {
       );
 
       console.log(`🗑️ Vacancy archived: ${id}`);
+
+      // Инвалидация кэша конкретной вакансии и всех списков
+      await cacheService.invalidateVacancy(id);
 
       return res.status(200).json({
         success: true,

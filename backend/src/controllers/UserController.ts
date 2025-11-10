@@ -6,6 +6,7 @@
 import { Request, Response } from 'express';
 import { db } from '../services/database/DatabaseService';
 import { User } from '../types';
+import { cacheService } from '../services/CacheService';
 
 export class UserController {
   /**
@@ -23,6 +24,17 @@ export class UserController {
         });
       }
 
+      // Попытка получить из кэша
+      const cached = await cacheService.getUserProfile(user.userId);
+      if (cached) {
+        console.log(`🚀 User profile ${user.userId} served from cache`);
+        const { refresh_token, ...safeProfile } = cached as any;
+        return res.status(200).json({
+          success: true,
+          user: safeProfile,
+        });
+      }
+
       const profile = await db.oneOrNone<User>(
         'SELECT * FROM users WHERE id = $1',
         [user.userId]
@@ -34,6 +46,9 @@ export class UserController {
           message: 'User not found',
         });
       }
+
+      // Сохранить в кэш на 30 минут
+      await cacheService.cacheUserProfile(user.userId, profile);
 
       // Удаляем чувствительные данные
       const { refresh_token, ...safeProfile } = profile as any;
@@ -59,6 +74,23 @@ export class UserController {
     try {
       const { id } = req.params;
 
+      // Попытка получить из кэша
+      const cached = await cacheService.getUserProfile(id);
+      if (cached) {
+        console.log(`🚀 User profile ${id} served from cache`);
+        const { refresh_token, phone, email, ...publicProfile } = cached as any;
+
+        // Если это работодатель, показываем email (публичный для связи)
+        if (cached.role === 'employer') {
+          (publicProfile as any).email = email;
+        }
+
+        return res.status(200).json({
+          success: true,
+          user: publicProfile,
+        });
+      }
+
       const user = await db.oneOrNone<User>(
         'SELECT * FROM users WHERE id = $1',
         [id]
@@ -70,6 +102,9 @@ export class UserController {
           message: 'User not found',
         });
       }
+
+      // Сохранить в кэш на 30 минут
+      await cacheService.cacheUserProfile(id, user);
 
       // Удаляем чувствительные данные
       const { refresh_token, phone, email, ...publicProfile } = user as any;
@@ -162,6 +197,9 @@ export class UserController {
 
       console.log(`✅ Profile updated: ${user.userId}`);
 
+      // Инвалидация кэша профиля
+      await cacheService.invalidateUserProfile(user.userId);
+
       return res.status(200).json({
         success: true,
         user: safeProfile,
@@ -213,6 +251,9 @@ export class UserController {
 
       console.log(`✅ Avatar uploaded: ${user.userId}`);
 
+      // Инвалидация кэша профиля
+      await cacheService.invalidateUserProfile(user.userId);
+
       return res.status(200).json({
         success: true,
         user: safeProfile,
@@ -238,6 +279,17 @@ export class UserController {
         return res.status(401).json({
           error: 'Unauthorized',
           message: 'Authentication required',
+        });
+      }
+
+      // Попытка получить из кэша
+      const cacheKey = `user:stats:${user.userId}`;
+      const cached = await cacheService.getStats(cacheKey);
+      if (cached) {
+        console.log(`🚀 User stats ${user.userId} served from cache`);
+        return res.status(200).json({
+          success: true,
+          stats: cached,
         });
       }
 
@@ -314,6 +366,10 @@ export class UserController {
           return acc;
         }, {});
       }
+
+      // Сохранить в кэш на 15 минут
+      const cacheKey = `user:stats:${user.userId}`;
+      await cacheService.cacheStats(cacheKey, stats);
 
       return res.status(200).json({
         success: true,
