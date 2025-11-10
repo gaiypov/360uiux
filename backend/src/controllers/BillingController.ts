@@ -513,28 +513,29 @@ export class BillingController {
 
       const { db } = require('../services/database/DatabaseService');
 
-      let interval = '1 day';
+      let intervalValue = '30 days';
       let groupFormat = 'YYYY-MM-DD';
 
       switch (period) {
         case 'day':
-          interval = '1 hour';
+          intervalValue = '1 day';
           groupFormat = 'YYYY-MM-DD HH24:00';
           break;
         case 'week':
-          interval = '1 day';
+          intervalValue = '7 days';
           groupFormat = 'YYYY-MM-DD';
           break;
         case 'month':
-          interval = '1 day';
+          intervalValue = '30 days';
           groupFormat = 'YYYY-MM-DD';
           break;
         case 'year':
-          interval = '1 month';
+          intervalValue = '12 months';
           groupFormat = 'YYYY-MM';
           break;
       }
 
+      // Используем интервал напрямую в запросе (безопасно, т.к. значения контролируются switch)
       const revenueByPeriod = await db.manyOrNone(`
         SELECT
           TO_CHAR(created_at, $1) as period,
@@ -542,10 +543,10 @@ export class BillingController {
           SUM(CASE WHEN type = 'payment' AND status = 'completed' THEN amount ELSE 0 END) as payments,
           COUNT(*) as transactions_count
         FROM transactions
-        WHERE created_at >= NOW() - INTERVAL $2
+        WHERE created_at >= NOW() - INTERVAL '${intervalValue}'
         GROUP BY TO_CHAR(created_at, $1)
         ORDER BY period ASC
-      `, [groupFormat, interval === '1 hour' ? '1 day' : (interval === '1 day' ? '30 days' : '12 months')]);
+      `, [groupFormat]);
 
       // Топ работодателей по тратам
       const topSpenders = await db.manyOrNone(`
