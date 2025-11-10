@@ -111,4 +111,20 @@ router.post(
  */
 router.get('/pricing', BillingController.getPricing);
 
+// ===================================
+// ADMIN ROUTES (moderators only)
+// ===================================
+
+/**
+ * ADMIN: Получить все транзакции всех пользователей
+ * GET /api/v1/billing/admin/transactions?limit=50&offset=0&type=deposit&status=completed
+ */
+router.get('/admin/transactions', authMiddleware, BillingController.getAllTransactions);
+
+/**
+ * ADMIN: Статистика по доходам
+ * GET /api/v1/billing/admin/revenue-stats?period=month
+ */
+router.get('/admin/revenue-stats', authMiddleware, BillingController.getRevenueStats);
+
 export default router;

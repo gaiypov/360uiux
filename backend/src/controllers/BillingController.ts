@@ -415,4 +415,167 @@ export class BillingController {
       });
     }
   }
+
+  /**
+   * ADMIN: Получить все транзакции всех пользователей
+   * GET /api/v1/billing/admin/transactions
+   */
+  static async getAllTransactions(req: Request, res: Response) {
+    try {
+      if (!req.user || req.user.role !== 'moderator') {
+        return res.status(403).json({ error: 'Forbidden: Admin access required' });
+      }
+
+      const { limit = '50', offset = '0', type, status, userId } = req.query;
+
+      const { db } = require('../services/database/DatabaseService');
+
+      let query = `
+        SELECT
+          t.*,
+          cw.employer_id,
+          u.company_name,
+          u.email,
+          u.phone
+        FROM transactions t
+        LEFT JOIN company_wallets cw ON cw.id = t.wallet_id
+        LEFT JOIN users u ON u.id = cw.employer_id
+        WHERE 1=1
+      `;
+
+      const params: any[] = [];
+      let paramIndex = 1;
+
+      if (type) {
+        query += ` AND t.type = $${paramIndex}`;
+        params.push(type);
+        paramIndex++;
+      }
+
+      if (status) {
+        query += ` AND t.status = $${paramIndex}`;
+        params.push(status);
+        paramIndex++;
+      }
+
+      if (userId) {
+        query += ` AND cw.employer_id = $${paramIndex}`;
+        params.push(userId);
+        paramIndex++;
+      }
+
+      query += ` ORDER BY t.created_at DESC LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
+      params.push(parseInt(limit as string), parseInt(offset as string));
+
+      const transactions = await db.manyOrNone(query, params);
+
+      // Получить общую статистику
+      const stats = await db.one(`
+        SELECT
+          COUNT(*) as total_count,
+          SUM(CASE WHEN t.type = 'deposit' AND t.status = 'completed' THEN t.amount ELSE 0 END) as total_deposits,
+          SUM(CASE WHEN t.type = 'payment' AND t.status = 'completed' THEN t.amount ELSE 0 END) as total_payments,
+          SUM(CASE WHEN t.status = 'pending' THEN t.amount ELSE 0 END) as pending_amount
+        FROM transactions t
+      `);
+
+      return res.json({
+        success: true,
+        transactions: transactions || [],
+        count: transactions?.length || 0,
+        stats: {
+          total_count: parseInt(stats.total_count || '0'),
+          total_deposits: parseFloat(stats.total_deposits || '0'),
+          total_payments: parseFloat(stats.total_payments || '0'),
+          pending_amount: parseFloat(stats.pending_amount || '0'),
+        },
+      });
+    } catch (error) {
+      console.error('Error in getAllTransactions:', error);
+      return res.status(500).json({
+        error: 'Internal Server Error',
+        message: 'Failed to get all transactions',
+      });
+    }
+  }
+
+  /**
+   * ADMIN: Получить статистику по доходам
+   * GET /api/v1/billing/admin/revenue-stats
+   */
+  static async getRevenueStats(req: Request, res: Response) {
+    try {
+      if (!req.user || req.user.role !== 'moderator') {
+        return res.status(403).json({ error: 'Forbidden: Admin access required' });
+      }
+
+      const { period = 'month' } = req.query; // day, week, month, year
+
+      const { db } = require('../services/database/DatabaseService');
+
+      let interval = '1 day';
+      let groupFormat = 'YYYY-MM-DD';
+
+      switch (period) {
+        case 'day':
+          interval = '1 hour';
+          groupFormat = 'YYYY-MM-DD HH24:00';
+          break;
+        case 'week':
+          interval = '1 day';
+          groupFormat = 'YYYY-MM-DD';
+          break;
+        case 'month':
+          interval = '1 day';
+          groupFormat = 'YYYY-MM-DD';
+          break;
+        case 'year':
+          interval = '1 month';
+          groupFormat = 'YYYY-MM';
+          break;
+      }
+
+      const revenueByPeriod = await db.manyOrNone(`
+        SELECT
+          TO_CHAR(created_at, $1) as period,
+          SUM(CASE WHEN type = 'deposit' AND status = 'completed' THEN amount ELSE 0 END) as deposits,
+          SUM(CASE WHEN type = 'payment' AND status = 'completed' THEN amount ELSE 0 END) as payments,
+          COUNT(*) as transactions_count
+        FROM transactions
+        WHERE created_at >= NOW() - INTERVAL $2
+        GROUP BY TO_CHAR(created_at, $1)
+        ORDER BY period ASC
+      `, [groupFormat, interval === '1 hour' ? '1 day' : (interval === '1 day' ? '30 days' : '12 months')]);
+
+      // Топ работодателей по тратам
+      const topSpenders = await db.manyOrNone(`
+        SELECT
+          u.id,
+          u.company_name,
+          u.email,
+          SUM(CASE WHEN t.type = 'payment' AND t.status = 'completed' THEN t.amount ELSE 0 END) as total_spent,
+          COUNT(CASE WHEN t.type = 'payment' AND t.status = 'completed' THEN 1 END) as transactions_count
+        FROM transactions t
+        LEFT JOIN company_wallets cw ON cw.id = t.wallet_id
+        LEFT JOIN users u ON u.id = cw.employer_id
+        WHERE t.created_at >= NOW() - INTERVAL '30 days'
+        GROUP BY u.id, u.company_name, u.email
+        HAVING SUM(CASE WHEN t.type = 'payment' AND t.status = 'completed' THEN t.amount ELSE 0 END) > 0
+        ORDER BY total_spent DESC
+        LIMIT 10
+      `);
+
+      return res.json({
+        success: true,
+        revenue_by_period: revenueByPeriod || [],
+        top_spenders: topSpenders || [],
+      });
+    } catch (error) {
+      console.error('Error in getRevenueStats:', error);
+      return res.status(500).json({
+        error: 'Internal Server Error',
+        message: 'Failed to get revenue stats',
+      });
+    }
+  }
 }

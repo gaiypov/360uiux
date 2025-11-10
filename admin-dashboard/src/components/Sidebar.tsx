@@ -9,6 +9,7 @@ import {
   Shield,
   Settings,
   LogOut,
+  DollarSign,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -16,6 +17,7 @@ const navigation = [
   { name: 'Обзор', href: '/', icon: LayoutDashboard },
   { name: 'Модерация вакансий', href: '/moderation/vacancies', icon: FileText },
   { name: 'Модерация пользователей', href: '/moderation/users', icon: Users },
+  { name: 'Биллинг', href: '/billing', icon: DollarSign },
   { name: 'Безопасность', href: '/security', icon: Shield },
   { name: 'Настройки', href: '/settings', icon: Settings },
 ];
