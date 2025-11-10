@@ -17,6 +17,7 @@ import {
   WelcomeBackScreen,
   RegistrationRequiredScreen,
   LoginScreen,
+  RoleSelectionScreen,
 } from '@/screens/auth';
 import { JobSeekerNavigator } from './JobSeekerNavigator';
 import { EmployerNavigator } from './EmployerNavigator';
@@ -115,6 +116,7 @@ export function RootNavigator() {
             name="SMSVerification"
             component={SMSVerificationScreen}
           />
+          <Stack.Screen name="RoleSelection" component={RoleSelectionScreen} />
           <Stack.Screen name="Registration" component={RegistrationScreen} />
           <Stack.Screen
             name="WelcomeBack"

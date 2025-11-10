@@ -31,25 +31,35 @@ interface Props {
     params: {
       phone: string;
       formattedPhone: string;
+      role: 'jobseeker' | 'employer';
     };
   };
   navigation: any;
 }
 
 export function RegistrationScreen({ route, navigation }: Props) {
-  const { phone, formattedPhone } = route.params;
+  const { phone, formattedPhone, role } = route.params;
   const { showToast } = useToastStore();
   const { login } = useAuthStore();
 
   const [loading, setLoading] = useState(false);
 
-  // Simplified fields
+  // Job Seeker fields
   const [name, setName] = useState('');
   const [age, setAge] = useState('');
+
+  // Employer fields
+  const [companyName, setCompanyName] = useState('');
+  const [inn, setInn] = useState('');
+  const [email, setEmail] = useState('');
+
+  // Common
   const [acceptTerms, setAcceptTerms] = useState(false);
   const [acceptPrivacy, setAcceptPrivacy] = useState(false);
 
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  const isEmployer = role === 'employer';
 
   /**
    * Валидация
@@ -57,14 +67,36 @@ export function RegistrationScreen({ route, navigation }: Props) {
   const validate = (): boolean => {
     const newErrors: Record<string, string> = {};
 
-    if (!name.trim()) {
-      newErrors.name = 'Введите имя';
-    } else if (name.trim().length < 2) {
-      newErrors.name = 'Имя слишком короткое';
-    }
+    if (isEmployer) {
+      // Employer validation
+      if (!companyName.trim()) {
+        newErrors.companyName = 'Введите название компании';
+      } else if (companyName.trim().length < 2) {
+        newErrors.companyName = 'Название слишком короткое';
+      }
 
-    if (age && (parseInt(age) < 14 || parseInt(age) > 100)) {
-      newErrors.age = 'Укажите корректный возраст';
+      if (!inn.trim()) {
+        newErrors.inn = 'Введите ИНН';
+      } else if (inn.trim().length !== 10 && inn.trim().length !== 12) {
+        newErrors.inn = 'ИНН должен содержать 10 или 12 цифр';
+      }
+
+      if (!email.trim()) {
+        newErrors.email = 'Введите email';
+      } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        newErrors.email = 'Неверный формат email';
+      }
+    } else {
+      // Job Seeker validation
+      if (!name.trim()) {
+        newErrors.name = 'Введите имя';
+      } else if (name.trim().length < 2) {
+        newErrors.name = 'Имя слишком короткое';
+      }
+
+      if (age && (parseInt(age) < 14 || parseInt(age) > 100)) {
+        newErrors.age = 'Укажите корректный возраст';
+      }
     }
 
     if (!acceptTerms) {
@@ -92,12 +124,24 @@ export function RegistrationScreen({ route, navigation }: Props) {
       setLoading(true);
       haptics.light();
 
-      // По умолчанию все новые пользователи - соискатели (jobseeker)
-      const response = await api.registerJobSeeker({
-        phone,
-        name: name.trim(),
-        age: age ? parseInt(age) : undefined,
-      });
+      let response;
+
+      if (isEmployer) {
+        // Register Employer
+        response = await api.registerEmployer({
+          phone,
+          email: email.trim(),
+          company_name: companyName.trim(),
+          inn: inn.trim(),
+        });
+      } else {
+        // Register Job Seeker
+        response = await api.registerJobSeeker({
+          phone,
+          name: name.trim(),
+          age: age ? parseInt(age) : undefined,
+        });
+      }
 
       // Сохраняем пользователя
       login(response.user);
@@ -105,7 +149,9 @@ export function RegistrationScreen({ route, navigation }: Props) {
       showToast('success', 'Добро пожаловать!');
 
       // Переходим на экран приветствия
-      navigation.replace('WelcomeBack', { name: name.trim() });
+      navigation.replace('WelcomeBack', {
+        name: isEmployer ? companyName.trim() : name.trim()
+      });
     } catch (error: any) {
       console.error('Register error:', error);
       haptics.error();
@@ -159,68 +205,155 @@ export function RegistrationScreen({ route, navigation }: Props) {
       >
         {/* Header */}
         <Animated.View entering={FadeInDown.duration(600)} style={styles.header}>
-          <MetalIcon name="account-plus" variant="platinum" size="large" glow />
-          <Text style={styles.title}>Расскажите о себе</Text>
+          <MetalIcon
+            name={isEmployer ? "office-building" : "account-plus"}
+            variant="platinum"
+            size="large"
+            glow
+          />
+          <Text style={styles.title}>
+            {isEmployer ? 'Данные компании' : 'Расскажите о себе'}
+          </Text>
           <Text style={styles.subtitle}>
-            Осталось совсем чуть-чуть!
+            {isEmployer ? 'Зарегистрируйте вашу компанию' : 'Осталось совсем чуть-чуть!'}
           </Text>
         </Animated.View>
 
         {/* Form */}
         <Animated.View entering={FadeInUp.delay(200).duration(600)}>
           <GlassCard variant="medium" style={styles.formCard}>
-            {/* Name Input */}
-            <View style={styles.inputContainer}>
-              <Text style={styles.label}>
-                Ваше имя <Text style={styles.required}>*</Text>
-              </Text>
-              <View style={[styles.inputWrapper, errors.name && styles.inputError]}>
-                <Icon name="account" size={20} color={colors.chromeSilver} />
-                <TextInput
-                  style={styles.input}
-                  value={name}
-                  onChangeText={(text) => {
-                    setName(text);
-                    if (errors.name) setErrors({ ...errors, name: '' });
-                  }}
-                  placeholder="Введите ваше имя"
-                  placeholderTextColor={colors.graphiteSilver}
-                  editable={!loading}
-                  autoFocus
-                  {...getTextSelectionProps(colors.platinumSilver)}
-                />
-              </View>
-              {errors.name && <Text style={styles.errorText}>{errors.name}</Text>}
-            </View>
+            {isEmployer ? (
+              <>
+                {/* Company Name Input */}
+                <View style={styles.inputContainer}>
+                  <Text style={styles.label}>
+                    Название компании <Text style={styles.required}>*</Text>
+                  </Text>
+                  <View style={[styles.inputWrapper, errors.companyName && styles.inputError]}>
+                    <Icon name="office-building" size={20} color={colors.chromeSilver} />
+                    <TextInput
+                      style={styles.input}
+                      value={companyName}
+                      onChangeText={(text) => {
+                        setCompanyName(text);
+                        if (errors.companyName) setErrors({ ...errors, companyName: '' });
+                      }}
+                      placeholder="ООО «Ваша компания»"
+                      placeholderTextColor={colors.graphiteSilver}
+                      editable={!loading}
+                      autoFocus
+                      {...getTextSelectionProps(colors.platinumSilver)}
+                    />
+                  </View>
+                  {errors.companyName && <Text style={styles.errorText}>{errors.companyName}</Text>}
+                </View>
 
-            {/* Age Input (optional) */}
-            <View style={styles.inputContainer}>
-              <Text style={styles.label}>
-                Возраст <Text style={styles.optional}>(рекомендуется)</Text>
-              </Text>
-              <View style={[styles.inputWrapper, errors.age && styles.inputError]}>
-                <Icon name="cake-variant" size={20} color={colors.chromeSilver} />
-                <TextInput
-                  style={styles.input}
-                  value={age}
-                  onChangeText={(text) => {
-                    const cleaned = text.replace(/\D/g, '').slice(0, 2);
-                    setAge(cleaned);
-                    if (errors.age) setErrors({ ...errors, age: '' });
-                  }}
-                  placeholder="Ваш возраст"
-                  placeholderTextColor={colors.graphiteSilver}
-                  keyboardType="number-pad"
-                  maxLength={2}
-                  editable={!loading}
-                  {...getTextSelectionProps(colors.platinumSilver)}
-                />
-              </View>
-              {errors.age && <Text style={styles.errorText}>{errors.age}</Text>}
-              <Text style={styles.hint}>
-                Работодатели предпочитают кандидатов с указанным возрастом
-              </Text>
-            </View>
+                {/* INN Input */}
+                <View style={styles.inputContainer}>
+                  <Text style={styles.label}>
+                    ИНН <Text style={styles.required}>*</Text>
+                  </Text>
+                  <View style={[styles.inputWrapper, errors.inn && styles.inputError]}>
+                    <Icon name="file-document" size={20} color={colors.chromeSilver} />
+                    <TextInput
+                      style={styles.input}
+                      value={inn}
+                      onChangeText={(text) => {
+                        const cleaned = text.replace(/\D/g, '').slice(0, 12);
+                        setInn(cleaned);
+                        if (errors.inn) setErrors({ ...errors, inn: '' });
+                      }}
+                      placeholder="1234567890"
+                      placeholderTextColor={colors.graphiteSilver}
+                      keyboardType="number-pad"
+                      editable={!loading}
+                      {...getTextSelectionProps(colors.platinumSilver)}
+                    />
+                  </View>
+                  {errors.inn && <Text style={styles.errorText}>{errors.inn}</Text>}
+                </View>
+
+                {/* Email Input */}
+                <View style={styles.inputContainer}>
+                  <Text style={styles.label}>
+                    Email <Text style={styles.required}>*</Text>
+                  </Text>
+                  <View style={[styles.inputWrapper, errors.email && styles.inputError]}>
+                    <Icon name="email" size={20} color={colors.chromeSilver} />
+                    <TextInput
+                      style={styles.input}
+                      value={email}
+                      onChangeText={(text) => {
+                        setEmail(text);
+                        if (errors.email) setErrors({ ...errors, email: '' });
+                      }}
+                      placeholder="company@example.com"
+                      placeholderTextColor={colors.graphiteSilver}
+                      keyboardType="email-address"
+                      autoCapitalize="none"
+                      editable={!loading}
+                      {...getTextSelectionProps(colors.platinumSilver)}
+                    />
+                  </View>
+                  {errors.email && <Text style={styles.errorText}>{errors.email}</Text>}
+                </View>
+              </>
+            ) : (
+              <>
+                {/* Name Input */}
+                <View style={styles.inputContainer}>
+                  <Text style={styles.label}>
+                    Ваше имя <Text style={styles.required}>*</Text>
+                  </Text>
+                  <View style={[styles.inputWrapper, errors.name && styles.inputError]}>
+                    <Icon name="account" size={20} color={colors.chromeSilver} />
+                    <TextInput
+                      style={styles.input}
+                      value={name}
+                      onChangeText={(text) => {
+                        setName(text);
+                        if (errors.name) setErrors({ ...errors, name: '' });
+                      }}
+                      placeholder="Введите ваше имя"
+                      placeholderTextColor={colors.graphiteSilver}
+                      editable={!loading}
+                      autoFocus
+                      {...getTextSelectionProps(colors.platinumSilver)}
+                    />
+                  </View>
+                  {errors.name && <Text style={styles.errorText}>{errors.name}</Text>}
+                </View>
+
+                {/* Age Input (optional) */}
+                <View style={styles.inputContainer}>
+                  <Text style={styles.label}>
+                    Возраст <Text style={styles.optional}>(рекомендуется)</Text>
+                  </Text>
+                  <View style={[styles.inputWrapper, errors.age && styles.inputError]}>
+                    <Icon name="cake-variant" size={20} color={colors.chromeSilver} />
+                    <TextInput
+                      style={styles.input}
+                      value={age}
+                      onChangeText={(text) => {
+                        const cleaned = text.replace(/\D/g, '').slice(0, 2);
+                        setAge(cleaned);
+                        if (errors.age) setErrors({ ...errors, age: '' });
+                      }}
+                      placeholder="Ваш возраст"
+                      placeholderTextColor={colors.graphiteSilver}
+                      keyboardType="number-pad"
+                      maxLength={2}
+                      editable={!loading}
+                      {...getTextSelectionProps(colors.platinumSilver)}
+                    />
+                  </View>
+                  {errors.age && <Text style={styles.errorText}>{errors.age}</Text>}
+                  <Text style={styles.hint}>
+                    Работодатели предпочитают кандидатов с указанным возрастом
+                  </Text>
+                </View>
+              </>
+            )}
 
             {/* Divider */}
             <View style={styles.divider} />

@@ -13,13 +13,30 @@ import {
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import { colors, metalGradients, metalGradients, typography, sizes } from "@/constants";
+import { colors, metalGradients, typography, sizes } from "@/constants";
+import { haptics } from '@/utils/haptics';
 
 interface RoleSelectionScreenProps {
-  onSelectRole: (role: 'jobseeker' | 'employer') => void;
+  navigation: any;
+  route: {
+    params: {
+      phone: string;
+      formattedPhone: string;
+    };
+  };
 }
 
-export function RoleSelectionScreen({ onSelectRole }: RoleSelectionScreenProps) {
+export function RoleSelectionScreen({ navigation, route }: RoleSelectionScreenProps) {
+  const { phone, formattedPhone } = route.params;
+
+  const handleSelectRole = (role: 'jobseeker' | 'employer') => {
+    haptics.light();
+    navigation.navigate('Registration', {
+      phone,
+      formattedPhone,
+      role,
+    });
+  };
   return (
     <View style={styles.container}>
       <StatusBar
@@ -40,7 +57,7 @@ export function RoleSelectionScreen({ onSelectRole }: RoleSelectionScreenProps) 
         <TouchableOpacity
           style={styles.card}
           activeOpacity={0.9}
-          onPress={() => onSelectRole('jobseeker')}
+          onPress={() => handleSelectRole('jobseeker')}
         >
           <LinearGradient
             colors={metalGradients.platinum}
@@ -62,7 +79,7 @@ export function RoleSelectionScreen({ onSelectRole }: RoleSelectionScreenProps) 
         <TouchableOpacity
           style={styles.card}
           activeOpacity={0.9}
-          onPress={() => onSelectRole('employer')}
+          onPress={() => handleSelectRole('employer')}
         >
           <View style={styles.cardSecondary}>
             <View style={styles.iconContainer}>
