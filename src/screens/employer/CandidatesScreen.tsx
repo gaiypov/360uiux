@@ -127,8 +127,6 @@ export function CandidatesScreen({ navigation }: any) {
     haptics.light();
     navigation.navigate('ApplicationDetail', {
       applicationId: application.id,
-      jobseekerName: application.jobseeker_name,
-      vacancyTitle: application.vacancy_title,
     });
   };
 

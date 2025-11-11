@@ -531,6 +531,17 @@ class APIService {
     return response.data;
   }
 
+  async getApplicationVideoUrl(id: string): Promise<{
+    success: boolean;
+    videoUrl: string;
+    expiresAt: string;
+    viewsRemaining: number;
+    maxViews: number;
+  }> {
+    const response = await this.client.post(`/applications/${id}/video-url`);
+    return response.data;
+  }
+
   async updateApplicationStatus(id: string, data: {
     employerStatus: 'viewed' | 'interview' | 'rejected' | 'accepted';
     notes?: string;

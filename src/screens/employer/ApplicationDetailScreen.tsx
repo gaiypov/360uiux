@@ -70,17 +70,32 @@ export function ApplicationDetailScreen({ route, navigation }: ApplicationDetail
     }
   };
 
-  const handleViewVideo = () => {
+  const handleViewVideo = async () => {
     if (!application.video_id) {
       showToast('error', 'Видео-резюме отсутствует');
       return;
     }
 
-    haptics.light();
-    navigation.navigate('VideoPlayer', {
-      videoId: application.video_id,
-      title: `Видео-резюме: ${application.candidate_name}`,
-    });
+    try {
+      haptics.light();
+
+      // Получить защищенный URL видео
+      const result = await api.getApplicationVideoUrl(applicationId);
+
+      navigation.navigate('VideoPlayer', {
+        videoUrl: result.videoUrl,
+        title: `Видео-резюме: ${application.candidate_name}`,
+        type: 'resume',
+      });
+    } catch (error: any) {
+      console.error('Error getting video URL:', error);
+      if (error.response?.data?.message?.includes('limit exceeded')) {
+        showToast('error', 'Превышен лимит просмотров (2/2)');
+      } else {
+        showToast('error', 'Ошибка загрузки видео');
+      }
+      haptics.error();
+    }
   };
 
   const getStatusColor = (status: string) => {
