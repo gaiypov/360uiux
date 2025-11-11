@@ -50,6 +50,23 @@ export class ApplicationController {
         return res.status(400).json({ error: 'You have already applied to this vacancy' });
       }
 
+      // Проверить лимит откликов в день (30)
+      const todayStart = new Date();
+      todayStart.setHours(0, 0, 0, 0);
+
+      const todayApplicationsCount = await db.one(
+        'SELECT COUNT(*) as count FROM applications WHERE jobseeker_id = $1 AND created_at >= $2',
+        [jobseekerId, todayStart],
+        (a: any) => parseInt(a.count)
+      );
+
+      if (todayApplicationsCount >= 30) {
+        return res.status(429).json({
+          error: 'Daily application limit reached',
+          message: 'Вы достигли дневного лимита откликов (30). Попробуйте завтра.',
+        });
+      }
+
       // Получить видео-резюме если прикрепляем
       let resumeVideoId = null;
       if (attachResumeVideo) {
@@ -419,6 +436,126 @@ export class ApplicationController {
       console.error('Delete application error:', error);
       return res.status(500).json({
         error: 'Failed to delete application',
+        message: error.message,
+      });
+    }
+  }
+
+  /**
+   * Архивация неактивных чатов (вызывается по расписанию)
+   * POST /api/applications/archive-inactive
+   *
+   * Архивирует чаты, в которых не было активности 30+ дней
+   */
+  static async archiveInactiveChats(req: Request, res: Response) {
+    try {
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+      // Найти чаты без активности 30+ дней
+      const inactiveApplications = await db.manyOrNone(
+        `SELECT a.id, a.chat_room_id
+         FROM applications a
+         LEFT JOIN (
+           SELECT application_id, MAX(created_at) as last_message_at
+           FROM chat_messages
+           GROUP BY application_id
+         ) cm ON cm.application_id = a.id
+         WHERE a.status != 'archived'
+         AND (cm.last_message_at < $1 OR cm.last_message_at IS NULL)
+         AND a.created_at < $1`,
+        [thirtyDaysAgo]
+      );
+
+      if (!inactiveApplications || inactiveApplications.length === 0) {
+        return res.json({
+          success: true,
+          message: 'No inactive chats found',
+          archived: 0,
+        });
+      }
+
+      // Архивировать
+      const applicationIds = inactiveApplications.map((a: any) => a.id);
+      await db.none(
+        `UPDATE applications
+         SET status = 'archived', updated_at = NOW()
+         WHERE id = ANY($1::uuid[])`,
+        [applicationIds]
+      );
+
+      console.log(`📦 Archived ${applicationIds.length} inactive chats`);
+
+      return res.json({
+        success: true,
+        message: `Archived ${applicationIds.length} inactive chats`,
+        archived: applicationIds.length,
+      });
+    } catch (error: any) {
+      console.error('Archive inactive chats error:', error);
+      return res.status(500).json({
+        error: 'Failed to archive inactive chats',
+        message: error.message,
+      });
+    }
+  }
+
+  /**
+   * Получить статистику откликов для соискателя
+   * GET /api/applications/stats
+   */
+  static async getApplicationStats(req: Request, res: Response) {
+    try {
+      const jobseekerId = req.user!.userId;
+      const role = req.user!.role;
+
+      if (role !== 'jobseeker') {
+        return res.status(403).json({ error: 'Only job seekers can access this endpoint' });
+      }
+
+      // Общее количество откликов
+      const totalCount = await db.one(
+        'SELECT COUNT(*) as count FROM applications WHERE jobseeker_id = $1',
+        [jobseekerId],
+        (a: any) => parseInt(a.count)
+      );
+
+      // Отклики сегодня
+      const todayStart = new Date();
+      todayStart.setHours(0, 0, 0, 0);
+
+      const todayCount = await db.one(
+        'SELECT COUNT(*) as count FROM applications WHERE jobseeker_id = $1 AND created_at >= $2',
+        [jobseekerId, todayStart],
+        (a: any) => parseInt(a.count)
+      );
+
+      // Отклики по статусам
+      const statusStats = await db.manyOrNone(
+        `SELECT employer_status, COUNT(*) as count
+         FROM applications
+         WHERE jobseeker_id = $1
+         GROUP BY employer_status`,
+        [jobseekerId]
+      );
+
+      // Осталось откликов сегодня
+      const remainingToday = Math.max(0, 30 - todayCount);
+
+      return res.json({
+        success: true,
+        stats: {
+          total: totalCount,
+          today: todayCount,
+          remainingToday,
+          dailyLimit: 30,
+          byStatus: statusStats || [],
+        },
+      });
+    } catch (error: any) {
+      console.error('Get application stats error:', error);
+      return res.status(500).json({
+        error: 'Failed to get application stats',
         message: error.message,
       });
     }
