@@ -21,12 +21,21 @@ export function VacancyCard({ vacancy, isActive, onApply }: VacancyCardProps) {
 
   // Управление воспроизведением
   useEffect(() => {
-    if (videoRef.current) {
-      if (isActive) {
-        videoRef.current.seek(0);
-      }
+    if (videoRef.current && isActive) {
+      videoRef.current.seek(0);
     }
   }, [isActive]);
+
+  // Обработка ошибок видео
+  const handleVideoError = (error: any) => {
+    console.error('Video playback error:', error);
+  };
+
+  // Безопасное получение первой буквы названия компании
+  const getCompanyInitial = () => {
+    const companyName = vacancy.employer?.companyName || '';
+    return companyName.trim().charAt(0).toUpperCase() || '?';
+  };
 
   return (
     <View style={styles.container}>
@@ -39,6 +48,7 @@ export function VacancyCard({ vacancy, isActive, onApply }: VacancyCardProps) {
         repeat
         paused={!isActive}
         muted={false}
+        onError={handleVideoError}
       />
 
       {/* Градиент для читаемости текста */}
@@ -67,15 +77,15 @@ export function VacancyCard({ vacancy, isActive, onApply }: VacancyCardProps) {
         {/* Компания */}
         <View style={styles.companyRow}>
           <View style={styles.companyAvatar}>
-            {vacancy.employer.logoUrl ? (
+            {vacancy.employer?.logoUrl ? (
               <Image source={{ uri: vacancy.employer.logoUrl }} style={styles.companyLogo} />
             ) : (
               <Text style={styles.companyInitial}>
-                {vacancy.employer.companyName[0]}
+                {getCompanyInitial()}
               </Text>
             )}
           </View>
-          <Text style={styles.companyName}>{vacancy.employer.companyName}</Text>
+          <Text style={styles.companyName}>{vacancy.employer?.companyName || 'Компания'}</Text>
         </View>
 
         {/* КНОПКА ОТКЛИКА - ГЛАВНАЯ ACTION */}

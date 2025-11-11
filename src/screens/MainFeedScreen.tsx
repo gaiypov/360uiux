@@ -84,12 +84,13 @@ export function MainFeedScreen({ navigation }: any) {
       console.error('Error liking vacancy:', error);
 
       // Откат при ошибке
+      const wasLikedBeforeError = likedVacancies.has(vacancyId);
       setLikedVacancies(prev => {
         const newSet = new Set(prev);
-        if (likedVacancies.has(vacancyId)) {
-          newSet.delete(vacancyId);
-        } else {
+        if (wasLikedBeforeError) {
           newSet.add(vacancyId);
+        } else {
+          newSet.delete(vacancyId);
         }
         return newSet;
       });
@@ -145,12 +146,13 @@ export function MainFeedScreen({ navigation }: any) {
       console.error('Error saving vacancy:', error);
 
       // Откат при ошибке
+      const wasSavedBeforeError = savedVacancies.has(vacancyId);
       setSavedVacancies(prev => {
         const newSet = new Set(prev);
-        if (savedVacancies.has(vacancyId)) {
-          newSet.delete(vacancyId);
-        } else {
+        if (wasSavedBeforeError) {
           newSet.add(vacancyId);
+        } else {
+          newSet.delete(vacancyId);
         }
         return newSet;
       });

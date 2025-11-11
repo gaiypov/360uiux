@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, ChangeEvent } from 'react';
+import { useState, useRef, useEffect, ChangeEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Plus,
@@ -47,6 +47,15 @@ export default function CreateVacancyPage() {
   });
 
   const [priorityModeration, setPriorityModeration] = useState(false);
+
+  // Cleanup video URL on unmount to prevent memory leaks
+  useEffect(() => {
+    return () => {
+      if (videoFile?.url) {
+        URL.revokeObjectURL(videoFile.url);
+      }
+    };
+  }, [videoFile?.url]);
 
   // Validation
   const MAX_VIDEO_SIZE = 100 * 1024 * 1024; // 100MB
@@ -123,21 +132,26 @@ export default function CreateVacancyPage() {
         return;
       }
 
-      // Get video duration
+      // Get video duration - use single URL creation to avoid memory leak
+      const videoUrl = URL.createObjectURL(file);
       const video = document.createElement('video');
       video.preload = 'metadata';
       video.onloadedmetadata = () => {
         const duration = Math.floor(video.duration);
         setVideoFile({
           file,
-          url: URL.createObjectURL(file),
+          url: videoUrl,  // Reuse the same URL
           duration,
           size: file.size,
         });
-        window.URL.revokeObjectURL(video.src);
         setLoading(false);
       };
-      video.src = URL.createObjectURL(file);
+      video.onerror = () => {
+        URL.revokeObjectURL(videoUrl);  // Clean up on error
+        setVideoError('Ошибка при загрузке видео');
+        setLoading(false);
+      };
+      video.src = videoUrl;
     } catch (error) {
       console.error('Error handling video:', error);
       setVideoError('Ошибка при обработке видео');
