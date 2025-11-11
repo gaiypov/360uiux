@@ -30,8 +30,9 @@ router.get('/stats', authMiddleware, requireJobSeeker, ApplicationController.get
 /**
  * Архивировать неактивные чаты (системный эндпоинт)
  * POST /api/v1/applications/archive-inactive
+ * TODO: Restrict to admin/system role only in production
  */
-router.post('/archive-inactive', ApplicationController.archiveInactiveChats);
+router.post('/archive-inactive', authMiddleware, ApplicationController.archiveInactiveChats);
 
 /**
  * Получить отклики на вакансию (для работодателя)
