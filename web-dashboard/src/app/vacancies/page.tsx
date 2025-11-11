@@ -1,3 +1,6 @@
+'use client';
+
+import Link from 'next/link';
 import { Plus, Eye, MessageSquare, Users, Edit, BarChart3, CheckCircle, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -49,10 +52,12 @@ export default function VacanciesPage() {
           <h1 className="text-display-lg font-bold text-foreground">Вакансии</h1>
           <p className="mt-2 text-foreground-secondary">Управление вашими вакансиями</p>
         </div>
-        <Button variant="gradient" className="gap-2">
-          <Plus className="h-5 w-5" />
-          Создать вакансию
-        </Button>
+        <Link href="/vacancies/create">
+          <Button variant="gradient" className="gap-2">
+            <Plus className="h-5 w-5" />
+            Создать вакансию
+          </Button>
+        </Link>
       </div>
 
       {/* Tabs */}
