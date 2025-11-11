@@ -6,6 +6,7 @@
 import { Request, Response } from 'express';
 import { db } from '../services/database/DatabaseService';
 import { ChatService } from '../services/ChatService';
+import { privateVideoService } from '../services/video/PrivateVideoService';
 import { v4 as uuidv4 } from 'uuid';
 
 const chatService = new ChatService();
@@ -421,6 +422,68 @@ export class ApplicationController {
       console.error('Delete application error:', error);
       return res.status(500).json({
         error: 'Failed to delete application',
+        message: error.message,
+      });
+    }
+  }
+
+  /**
+   * Получить защищенный URL для просмотра видео-резюме (для работодателя)
+   * POST /api/applications/:id/video-url
+   */
+  static async getVideoUrl(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+      const employerId = req.user!.userId;
+      const role = req.user!.role;
+
+      if (role !== 'employer') {
+        return res.status(403).json({ error: 'Only employers can view resume videos' });
+      }
+
+      // Получить отклик
+      const application = await db.oneOrNone(`
+        SELECT
+          a.*,
+          v.employer_id,
+          v.title as vacancy_title
+        FROM applications a
+        JOIN vacancies v ON a.vacancy_id = v.id
+        WHERE a.id = $1
+      `, [id]);
+
+      if (!application) {
+        return res.status(404).json({ error: 'Application not found' });
+      }
+
+      // Проверить что это вакансия этого работодателя
+      if (application.employer_id !== employerId) {
+        return res.status(403).json({ error: 'You can only view applications for your vacancies' });
+      }
+
+      // Проверить что есть видео
+      if (!application.video_id) {
+        return res.status(404).json({ error: 'No video resume attached to this application' });
+      }
+
+      // Генерировать secure URL
+      const secureUrlData = await privateVideoService.generateSecureUrl({
+        videoId: application.video_id,
+        employerId,
+        applicationId: id,
+      });
+
+      return res.json({
+        success: true,
+        videoUrl: secureUrlData.url,
+        expiresAt: secureUrlData.expires_at,
+        viewsRemaining: secureUrlData.views_remaining,
+        maxViews: secureUrlData.max_views,
+      });
+    } catch (error: any) {
+      console.error('Get video URL error:', error);
+      return res.status(500).json({
+        error: 'Failed to get video URL',
         message: error.message,
       });
     }

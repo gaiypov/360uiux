@@ -7,6 +7,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.ApplicationController = void 0;
 const DatabaseService_1 = require("../services/database/DatabaseService");
 const ChatService_1 = require("../services/ChatService");
+const PrivateVideoService_1 = require("../services/video/PrivateVideoService");
 const uuid_1 = require("uuid");
 const chatService = new ChatService_1.ChatService();
 class ApplicationController {
@@ -334,6 +335,61 @@ class ApplicationController {
             console.error('Delete application error:', error);
             return res.status(500).json({
                 error: 'Failed to delete application',
+                message: error.message,
+            });
+        }
+    }
+    /**
+     * Получить защищенный URL для просмотра видео-резюме (для работодателя)
+     * POST /api/applications/:id/video-url
+     */
+    static async getVideoUrl(req, res) {
+        try {
+            const { id } = req.params;
+            const employerId = req.user.userId;
+            const role = req.user.role;
+            if (role !== 'employer') {
+                return res.status(403).json({ error: 'Only employers can view resume videos' });
+            }
+            // Получить отклик
+            const application = await DatabaseService_1.db.oneOrNone(`
+        SELECT
+          a.*,
+          v.employer_id,
+          v.title as vacancy_title
+        FROM applications a
+        JOIN vacancies v ON a.vacancy_id = v.id
+        WHERE a.id = $1
+      `, [id]);
+            if (!application) {
+                return res.status(404).json({ error: 'Application not found' });
+            }
+            // Проверить что это вакансия этого работодателя
+            if (application.employer_id !== employerId) {
+                return res.status(403).json({ error: 'You can only view applications for your vacancies' });
+            }
+            // Проверить что есть видео
+            if (!application.video_id) {
+                return res.status(404).json({ error: 'No video resume attached to this application' });
+            }
+            // Генерировать secure URL
+            const secureUrlData = await PrivateVideoService_1.privateVideoService.generateSecureUrl({
+                videoId: application.video_id,
+                employerId,
+                applicationId: id,
+            });
+            return res.json({
+                success: true,
+                videoUrl: secureUrlData.url,
+                expiresAt: secureUrlData.expires_at,
+                viewsRemaining: secureUrlData.views_remaining,
+                maxViews: secureUrlData.max_views,
+            });
+        }
+        catch (error) {
+            console.error('Get video URL error:', error);
+            return res.status(500).json({
+                error: 'Failed to get video URL',
                 message: error.message,
             });
         }

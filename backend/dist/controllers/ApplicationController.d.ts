@@ -36,5 +36,10 @@ export declare class ApplicationController {
      * DELETE /api/applications/:id
      */
     static deleteApplication(req: Request, res: Response): Promise<Response<any, Record<string, any>>>;
+    /**
+     * Получить защищенный URL для просмотра видео-резюме (для работодателя)
+     * POST /api/applications/:id/video-url
+     */
+    static getVideoUrl(req: Request, res: Response): Promise<Response<any, Record<string, any>>>;
 }
 //# sourceMappingURL=ApplicationController.d.ts.map

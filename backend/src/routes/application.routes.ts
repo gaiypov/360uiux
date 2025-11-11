@@ -39,6 +39,12 @@ router.put('/:id/status', authMiddleware, requireEmployer, ApplicationController
 router.get('/:id', authMiddleware, ApplicationController.getApplication);
 
 /**
+ * Получить защищенный URL для просмотра видео-резюме (для работодателя)
+ * POST /api/v1/applications/:id/video-url
+ */
+router.post('/:id/video-url', authMiddleware, requireEmployer, ApplicationController.getVideoUrl);
+
+/**
  * Удалить отклик
  * DELETE /api/v1/applications/:id
  */
