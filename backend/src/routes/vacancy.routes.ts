@@ -41,6 +41,12 @@ router.post('/:id/publish', authMiddleware, requireEmployer, VacancyController.p
 router.post('/:id/extend', authMiddleware, requireEmployer, VacancyController.extendVacancy);
 
 /**
+ * Поиск вакансий с фильтрами
+ * GET /api/v1/vacancies/search
+ */
+router.get('/search', VacancyController.searchVacancies);
+
+/**
  * Получить список вакансий (каталог для всех)
  * GET /api/v1/vacancies
  */

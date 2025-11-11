@@ -379,6 +379,33 @@ class APIService {
     return response.data;
   }
 
+  async searchVacancies(params: {
+    query?: string;
+    page?: number;
+    limit?: number;
+    city?: string;
+    salary_min?: number;
+    salary_max?: number;
+    schedule?: string;
+    requires_experience?: boolean;
+    sort?: 'relevance' | 'created_at' | 'salary_min' | 'salary_max';
+  }): Promise<{
+    success: boolean;
+    vacancies: any[];
+    pagination: {
+      page: number;
+      limit: number;
+      total: number;
+      totalPages: number;
+      hasNext: boolean;
+      hasPrev: boolean;
+    };
+    query: string;
+  }> {
+    const response = await this.client.get('/vacancies/search', { params });
+    return response.data;
+  }
+
   async updateVacancy(id: string, data: Partial<{
     title: string;
     profession: string;

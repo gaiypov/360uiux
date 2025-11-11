@@ -45,5 +45,10 @@ export declare class VacancyController {
      * Стоимость: 500₽
      */
     static extendVacancy(req: Request, res: Response): Promise<Response<any, Record<string, any>>>;
+    /**
+     * Полнотекстовый поиск вакансий
+     * GET /api/v1/vacancies/search
+     */
+    static searchVacancies(req: Request, res: Response): Promise<Response<any, Record<string, any>>>;
 }
 //# sourceMappingURL=VacancyController.d.ts.map

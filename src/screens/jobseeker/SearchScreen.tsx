@@ -23,6 +23,7 @@ import { colors, metalGradients, typography, sizes } from '@/constants';
 import { useToastStore } from '@/stores/toastStore';
 import { haptics } from '@/utils/haptics';
 import { Vacancy } from '@/types';
+import { api } from '@/services/api';
 
 export function SearchScreen({ navigation }: any) {
   const { showToast } = useToastStore();
@@ -56,23 +57,28 @@ export function SearchScreen({ navigation }: any) {
     setSearching(true);
 
     try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1500));
+      // Real API call
+      const result = await api.searchVacancies({
+        query: searchQuery.trim() || undefined,
+        city: filters.cities.length > 0 ? filters.cities[0] : undefined,
+        salary_min: filters.salaryMin || undefined,
+        salary_max: filters.salaryMax || undefined,
+        schedule: filters.schedule.length > 0 ? filters.schedule[0] : undefined,
+        requires_experience: filters.experience.includes('required') || undefined,
+        sort: searchQuery.trim() ? 'relevance' : 'created_at',
+        limit: 20,
+      });
 
-      // Mock results
-      const mockResults: Vacancy[] = [
-        // Add mock vacancies here
-      ];
-
-      setResults(mockResults);
+      setResults(result.vacancies);
       haptics.success();
 
-      if (mockResults.length === 0) {
+      if (result.vacancies.length === 0) {
         showToast('info', 'Вакансии не найдены. Попробуйте изменить параметры поиска');
       } else {
-        showToast('success', `Найдено ${mockResults.length} вакансий`);
+        showToast('success', `Найдено ${result.vacancies.length} вакансий`);
       }
-    } catch (error) {
+    } catch (error: any) {
+      console.error('Search error:', error);
       haptics.error();
       showToast('error', 'Ошибка поиска');
     } finally {

@@ -539,6 +539,142 @@ class VacancyController {
             });
         }
     }
+    /**
+     * Полнотекстовый поиск вакансий
+     * GET /api/v1/vacancies/search
+     */
+    static async searchVacancies(req, res) {
+        try {
+            const { query = '', page = '1', limit = '20', city, salary_min, salary_max, schedule, requires_experience, sort = 'relevance', // relevance | created_at | salary_min | salary_max
+             } = req.query;
+            const pageNum = parseInt(page, 10);
+            const limitNum = Math.min(parseInt(limit, 10), 100);
+            const offset = (pageNum - 1) * limitNum;
+            // Приведение типов
+            const queryStr = String(query || '');
+            const cityStr = city ? String(city) : undefined;
+            const scheduleStr = schedule ? String(schedule) : undefined;
+            const requiresExpStr = requires_experience ? String(requires_experience) : undefined;
+            const sortStr = String(sort);
+            // Проверка кэша
+            const cacheKey = `search:${queryStr}:${page}:${limit}:${cityStr}:${salary_min}:${salary_max}:${scheduleStr}:${requiresExpStr}:${sortStr}`;
+            const cached = await CacheService_1.cacheService.get(cacheKey);
+            if (cached) {
+                console.log('🚀 Search results served from cache');
+                return res.status(200).json(JSON.parse(cached));
+            }
+            // Базовый запрос с полнотекстовым поиском
+            let sqlQuery = `
+        SELECT
+          v.*,
+          u.company_name,
+          u.verified as employer_verified,
+          u.rating as employer_rating,
+          COUNT(*) OVER() as total_count,
+          ts_rank(
+            to_tsvector('russian',
+              coalesce(v.title, '') || ' ' ||
+              coalesce(v.profession, '') || ' ' ||
+              coalesce(v.city, '') || ' ' ||
+              coalesce(v.requirements::text, '')
+            ),
+            plainto_tsquery('russian', $1)
+          ) as relevance
+        FROM vacancies v
+        LEFT JOIN users u ON u.id = v.employer_id
+        WHERE v.status = 'active'
+      `;
+            const params = [queryStr];
+            let paramIndex = 2;
+            // Если есть поисковый запрос, добавляем фильтр
+            if (queryStr && queryStr.trim()) {
+                sqlQuery += ` AND (
+          to_tsvector('russian', coalesce(v.title, '')) @@ plainto_tsquery('russian', $1)
+          OR to_tsvector('russian', coalesce(v.profession, '')) @@ plainto_tsquery('russian', $1)
+          OR to_tsvector('russian', coalesce(v.city, '')) @@ plainto_tsquery('russian', $1)
+          OR v.title ILIKE $${paramIndex}
+          OR v.profession ILIKE $${paramIndex}
+        )`;
+                params.push(`%${queryStr}%`);
+                paramIndex++;
+            }
+            // Фильтры
+            if (cityStr) {
+                sqlQuery += ` AND v.city = $${paramIndex}`;
+                params.push(cityStr);
+                paramIndex++;
+            }
+            if (salary_min) {
+                sqlQuery += ` AND v.salary_min >= $${paramIndex}`;
+                params.push(parseInt(salary_min, 10));
+                paramIndex++;
+            }
+            if (salary_max) {
+                sqlQuery += ` AND v.salary_max <= $${paramIndex}`;
+                params.push(parseInt(salary_max, 10));
+                paramIndex++;
+            }
+            if (scheduleStr) {
+                sqlQuery += ` AND v.schedule = $${paramIndex}`;
+                params.push(scheduleStr);
+                paramIndex++;
+            }
+            if (requiresExpStr !== undefined) {
+                sqlQuery += ` AND v.requires_experience = $${paramIndex}`;
+                params.push(requiresExpStr === 'true');
+                paramIndex++;
+            }
+            // Сортировка
+            if (sortStr === 'relevance' && queryStr && queryStr.trim()) {
+                sqlQuery += ` ORDER BY relevance DESC, v.created_at DESC`;
+            }
+            else if (sortStr === 'salary_min') {
+                sqlQuery += ` ORDER BY v.salary_min DESC NULLS LAST, v.created_at DESC`;
+            }
+            else if (sortStr === 'salary_max') {
+                sqlQuery += ` ORDER BY v.salary_max DESC NULLS LAST, v.created_at DESC`;
+            }
+            else {
+                sqlQuery += ` ORDER BY v.created_at DESC`;
+            }
+            // Pagination
+            sqlQuery += ` LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
+            params.push(limitNum, offset);
+            // Выполнение запроса
+            const results = await DatabaseService_1.db.manyOrNone(sqlQuery, params);
+            const totalCount = results.length > 0 ? parseInt(results[0].total_count, 10) : 0;
+            const totalPages = Math.ceil(totalCount / limitNum);
+            const response = {
+                success: true,
+                vacancies: results.map(v => ({
+                    ...v,
+                    benefits: v.benefits ? JSON.parse(v.benefits) : [],
+                    requirements: v.requirements ? JSON.parse(v.requirements) : [],
+                    tags: v.tags ? JSON.parse(v.tags) : [],
+                })),
+                pagination: {
+                    page: pageNum,
+                    limit: limitNum,
+                    total: totalCount,
+                    totalPages,
+                    hasNext: pageNum < totalPages,
+                    hasPrev: pageNum > 1,
+                },
+                query: queryStr,
+            };
+            // Кэшируем результаты на 5 минут
+            await CacheService_1.cacheService.set(cacheKey, JSON.stringify(response), 300);
+            console.log(`🔍 Search completed: "${queryStr}" - ${results.length} results`);
+            return res.status(200).json(response);
+        }
+        catch (error) {
+            console.error('❌ Error searching vacancies:', error);
+            return res.status(500).json({
+                error: 'Internal Server Error',
+                message: 'Failed to search vacancies',
+            });
+        }
+    }
 }
 exports.VacancyController = VacancyController;
 //# sourceMappingURL=VacancyController.js.map
