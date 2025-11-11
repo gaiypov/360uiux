@@ -3,7 +3,7 @@
  * Job Seeker Profile Screen
  */
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -18,9 +18,41 @@ import LinearGradient from 'react-native-linear-gradient';
 import { GlassCard, GlassButton } from '@/components/ui';
 import { colors, metalGradients, typography, sizes } from "@/constants";
 import { useAuthStore } from '@/stores/authStore';
+import { api } from '@/services/api';
 
 export function ProfileScreen() {
   const { user, logout } = useAuthStore();
+  const [stats, setStats] = useState({
+    applicationsCount: 0,
+    interviewsCount: 0,
+    favoritesCount: 0,
+  });
+
+  useEffect(() => {
+    loadStats();
+  }, []);
+
+  const loadStats = async () => {
+    try {
+      const [applicationsResult, favoritesResult] = await Promise.all([
+        api.getMyApplications(),
+        api.getMyFavorites(),
+      ]);
+
+      const applications = applicationsResult.applications || [];
+      const interviews = applications.filter(
+        (app: any) => app.employer_status === 'interview' || app.employer_status === 'accepted'
+      ).length;
+
+      setStats({
+        applicationsCount: applications.length,
+        interviewsCount: interviews,
+        favoritesCount: favoritesResult.length || 0,
+      });
+    } catch (error) {
+      console.error('Error loading stats:', error);
+    }
+  };
 
   if (!user || user.role !== 'jobseeker') {
     return null;
@@ -72,17 +104,17 @@ export function ProfileScreen() {
 
           <View style={styles.statsRow}>
             <View style={styles.statItem}>
-              <Text style={styles.statValue}>12</Text>
+              <Text style={styles.statValue}>{stats.applicationsCount}</Text>
               <Text style={styles.statLabel}>Откликов</Text>
             </View>
             <View style={styles.statDivider} />
             <View style={styles.statItem}>
-              <Text style={styles.statValue}>3</Text>
+              <Text style={styles.statValue}>{stats.interviewsCount}</Text>
               <Text style={styles.statLabel}>Приглашений</Text>
             </View>
             <View style={styles.statDivider} />
             <View style={styles.statItem}>
-              <Text style={styles.statValue}>8</Text>
+              <Text style={styles.statValue}>{stats.favoritesCount}</Text>
               <Text style={styles.statLabel}>Избранных</Text>
             </View>
           </View>

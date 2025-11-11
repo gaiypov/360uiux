@@ -3,7 +3,7 @@
  * Applications History Screen
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -11,78 +11,75 @@ import {
   ScrollView,
   TouchableOpacity,
   StatusBar,
+  RefreshControl,
+  ActivityIndicator,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import LinearGradient from 'react-native-linear-gradient';
-import { GlassCard } from '@/components/ui';
+import { GlassCard, LoadingSpinner } from '@/components/ui';
 import { colors, metalGradients, typography, sizes } from "@/constants";
 import { Application, Vacancy } from '@/types';
+import { api } from '@/services/api';
+import { useToastStore } from '@/stores';
+import { haptics } from '@/utils/haptics';
 
-// Mock data
-const MOCK_APPLICATIONS: (Application & { vacancy: Vacancy })[] = [
-  {
-    id: '1',
-    vacancyId: '1',
-    userId: '1',
-    status: 'viewed',
-    createdAt: new Date(Date.now() - 86400000).toISOString(),
-    vacancy: {
-      id: '1',
-      title: 'Senior Frontend Developer',
-      employer: {
-        id: 'e1',
-        companyName: 'Yandex',
-        rating: 4.8,
-        verified: true,
-      },
-      salaryMin: 250000,
-      city: 'Москва',
-      videoUrl: '',
-      benefits: ['ДМС', 'Удаленка'],
-      applications: 128,
-      createdAt: new Date().toISOString(),
-    },
-  },
-  {
-    id: '2',
-    vacancyId: '2',
-    userId: '1',
-    status: 'accepted',
-    createdAt: new Date(Date.now() - 172800000).toISOString(),
-    vacancy: {
-      id: '2',
-      title: 'Product Designer',
-      employer: {
-        id: 'e2',
-        companyName: 'VK',
-        rating: 4.6,
-        verified: true,
-      },
-      salaryMin: 200000,
-      city: 'Санкт-Петербург',
-      videoUrl: '',
-      benefits: ['ДМС', 'Обучение'],
-      applications: 89,
-      createdAt: new Date().toISOString(),
-    },
-  },
-];
+interface ApplicationWithVacancy {
+  id: string;
+  vacancy_id: string;
+  jobseeker_id: string;
+  employer_status: string;
+  created_at: string;
+  cover_letter?: string;
+  vacancy_title?: string;
+  company_name?: string;
+  salary_min?: number;
+  salary_max?: number;
+  city?: string;
+}
 
-export function ApplicationsScreen() {
-  const [filter, setFilter] = useState<
-    'all' | 'pending' | 'viewed' | 'accepted' | 'rejected'
-  >('all');
+export function ApplicationsScreen({ navigation }: any) {
+  const { showToast } = useToastStore();
+  const [filter, setFilter] = useState<'all' | 'pending' | 'viewed' | 'interview' | 'accepted' | 'rejected'>('all');
+  const [applications, setApplications] = useState<ApplicationWithVacancy[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
-  const filteredApplications = MOCK_APPLICATIONS.filter(
-    (app) => filter === 'all' || app.status === filter
+  useEffect(() => {
+    loadApplications();
+  }, []);
+
+  const loadApplications = async () => {
+    try {
+      setLoading(true);
+      const result = await api.getMyApplications();
+      setApplications(result.applications || []);
+    } catch (error: any) {
+      console.error('Error loading applications:', error);
+      showToast('error', 'Ошибка загрузки откликов');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await loadApplications();
+    setRefreshing(false);
+  };
+
+  const filteredApplications = applications.filter(
+    (app) => filter === 'all' || app.employer_status === filter
   );
 
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'pending':
+      case 'new':
         return 'clock-outline';
       case 'viewed':
         return 'eye-outline';
+      case 'interview':
+        return 'calendar-clock';
       case 'accepted':
         return 'check-circle';
       case 'rejected':
@@ -95,13 +92,16 @@ export function ApplicationsScreen() {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'pending':
-        return colors.warning;
+      case 'new':
+        return '#FFB800';
       case 'viewed':
-        return colors.platinumSilver;
+        return '#5AC8FA';
+      case 'interview':
+        return '#FFD60A';
       case 'accepted':
-        return colors.success;
+        return '#30D158';
       case 'rejected':
-        return colors.error;
+        return '#FF453A';
       default:
         return colors.liquidSilver;
     }
@@ -110,9 +110,12 @@ export function ApplicationsScreen() {
   const getStatusText = (status: string) => {
     switch (status) {
       case 'pending':
-        return 'Ожидает';
+      case 'new':
+        return 'Новый';
       case 'viewed':
         return 'Просмотрено';
+      case 'interview':
+        return 'Собеседование';
       case 'accepted':
         return 'Приглашение';
       case 'rejected':
@@ -134,6 +137,15 @@ export function ApplicationsScreen() {
     return date.toLocaleDateString('ru-RU');
   };
 
+  if (loading && applications.length === 0) {
+    return (
+      <View style={styles.loadingContainer}>
+        <StatusBar barStyle="light-content" backgroundColor={colors.primaryBlack} />
+        <LoadingSpinner />
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor={colors.primaryBlack} />
@@ -142,12 +154,20 @@ export function ApplicationsScreen() {
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.contentContainer}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={colors.platinumSilver}
+            colors={[colors.platinumSilver]}
+          />
+        }
       >
         {/* Header */}
         <View style={styles.header}>
           <Text style={styles.title}>Мои отклики</Text>
           <Text style={styles.subtitle}>
-            Всего откликов: {MOCK_APPLICATIONS.length}
+            Всего откликов: {applications.length}
           </Text>
         </View>
 
@@ -160,8 +180,9 @@ export function ApplicationsScreen() {
         >
           {[
             { key: 'all', label: 'Все' },
-            { key: 'pending', label: 'Ожидают' },
+            { key: 'new', label: 'Новые' },
             { key: 'viewed', label: 'Просмотрены' },
+            { key: 'interview', label: 'Собеседование' },
             { key: 'accepted', label: 'Приглашения' },
             { key: 'rejected', label: 'Отказы' },
           ].map((item) => (
@@ -192,30 +213,31 @@ export function ApplicationsScreen() {
               <TouchableOpacity
                 key={application.id}
                 activeOpacity={0.8}
-                onPress={() =>
-                  console.log('Open vacancy', application.vacancy.id)
-                }
+                onPress={() => {
+                  haptics.light();
+                  console.log('Open vacancy', application.vacancy_id);
+                }}
               >
                 <GlassCard style={styles.applicationCard}>
                   {/* Status Badge */}
                   <View
                     style={[
                       styles.statusBadge,
-                      { backgroundColor: `${getStatusColor(application.status)}20` },
+                      { backgroundColor: `${getStatusColor(application.employer_status)}20` },
                     ]}
                   >
                     <Icon
-                      name={getStatusIcon(application.status)}
+                      name={getStatusIcon(application.employer_status)}
                       size={16}
-                      color={getStatusColor(application.status)}
+                      color={getStatusColor(application.employer_status)}
                     />
                     <Text
                       style={[
                         styles.statusText,
-                        { color: getStatusColor(application.status) },
+                        { color: getStatusColor(application.employer_status) },
                       ]}
                     >
-                      {getStatusText(application.status)}
+                      {getStatusText(application.employer_status)}
                     </Text>
                   </View>
 
@@ -229,46 +251,43 @@ export function ApplicationsScreen() {
                       />
                     </View>
                     <Text style={styles.companyName}>
-                      {application.vacancy.employer.companyName}
+                      {application.company_name || 'Компания'}
                     </Text>
-                    {application.vacancy.employer.verified && (
-                      <Icon
-                        name="check-decagram"
-                        size={16}
-                        color={colors.platinumSilver}
-                      />
-                    )}
                   </View>
 
                   {/* Title */}
                   <Text style={styles.vacancyTitle} numberOfLines={2}>
-                    {application.vacancy.title}
+                    {application.vacancy_title || 'Вакансия'}
                   </Text>
 
                   {/* Salary */}
-                  <View style={styles.salaryContainer}>
-                    <LinearGradient
-                      colors={metalGradients.platinum}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 0 }}
-                      style={styles.salaryGradient}
-                    >
-                      <Text style={styles.salary}>
-                        от {application.vacancy.salaryMin.toLocaleString('ru-RU')} ₽
-                      </Text>
+                  {application.salary_min && (
+                    <View style={styles.salaryContainer}>
+                      <LinearGradient
+                        colors={metalGradients.platinum}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 0 }}
+                        style={styles.salaryGradient}
+                      >
+                        <Text style={styles.salary}>
+                          от {application.salary_min.toLocaleString('ru-RU')} ₽
+                        </Text>
                     </LinearGradient>
                   </View>
+                  )}
 
                   {/* Footer */}
                   <View style={styles.cardFooter}>
-                    <View style={styles.locationRow}>
-                      <Icon name="map-marker" size={14} color={colors.liquidSilver} />
-                      <Text style={styles.location}>
-                        {application.vacancy.city}
-                      </Text>
-                    </View>
+                    {application.city && (
+                      <View style={styles.locationRow}>
+                        <Icon name="map-marker" size={14} color={colors.liquidSilver} />
+                        <Text style={styles.location}>
+                          {application.city}
+                        </Text>
+                      </View>
+                    )}
                     <Text style={styles.date}>
-                      {formatDate(application.createdAt)}
+                      {formatDate(application.created_at)}
                     </Text>
                   </View>
                 </GlassCard>
@@ -294,6 +313,12 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.primaryBlack,
+  },
+  loadingContainer: {
+    flex: 1,
+    backgroundColor: colors.primaryBlack,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   scrollView: {
     flex: 1,
