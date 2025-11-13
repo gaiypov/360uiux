@@ -13,6 +13,7 @@ import { colors, sizes } from '@/constants';
 import {
   AdminDashboardScreen,
   AdminUsersScreen,
+  AdminEmployersScreen,
   AdminVacanciesScreen,
   AdminReportsScreen,
   AdminSettingsScreen,
@@ -67,6 +68,20 @@ function AdminTabs() {
           tabBarIcon: ({ focused, color, size }) => (
             <Icon
               name={focused ? 'account-group' : 'account-group-outline'}
+              size={size}
+              color={color}
+            />
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="AdminEmployers"
+        component={AdminEmployersScreen}
+        options={{
+          title: 'КОМПАНИИ',
+          tabBarIcon: ({ focused, color, size }) => (
+            <Icon
+              name={focused ? 'office-building' : 'office-building-outline'}
               size={size}
               color={color}
             />
