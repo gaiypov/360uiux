@@ -783,38 +783,53 @@ export class AdminController {
         }),
       ]);
 
-      // Получаем информацию о топ работодателях
-      const walletIds = topSpenders.map(s => s.walletId);
-      const wallets = await prisma.wallet.findMany({
-        where: { id: { in: walletIds } },
-        include: {
-          employerId: true,
-        },
-      });
+      // Получаем информацию о топ работодателях (оптимизировано: убрали N+1 проблему)
+      let topSpendersWithDetails: any[] = [];
 
-      const topSpendersWithDetails = await Promise.all(
-        topSpenders.map(async (spender) => {
-          const wallet = wallets.find(w => w.id === spender.walletId);
-          if (!wallet) return null;
+      if (topSpenders.length > 0) {
+        const walletIds = topSpenders.map(s => s.walletId);
+        const wallets = await prisma.wallet.findMany({
+          where: { id: { in: walletIds } },
+          select: {
+            id: true,
+            employerId: true,
+          },
+        });
 
-          const employer = await prisma.user.findUnique({
-            where: { id: wallet.employerId },
-            select: {
-              id: true,
-              companyName: true,
-              name: true,
-              verified: true,
-            },
-          });
+        // Получаем всех работодателей одним запросом
+        const employerIds = wallets.map(w => w.employerId);
+        const employers = employerIds.length > 0
+          ? await prisma.user.findMany({
+              where: { id: { in: employerIds } },
+              select: {
+                id: true,
+                companyName: true,
+                name: true,
+                verified: true,
+              },
+            })
+          : [];
 
-          return {
-            employerId: wallet.employerId,
-            employerName: employer?.companyName || employer?.name || 'Unknown',
-            verified: employer?.verified || false,
-            totalSpent: spender._sum.amount || 0,
-          };
-        })
-      );
+        // Создаем Map для быстрого доступа
+        const employerMap = new Map(employers.map(e => [e.id, e]));
+
+        topSpendersWithDetails = topSpenders
+          .map((spender) => {
+            const wallet = wallets.find(w => w.id === spender.walletId);
+            if (!wallet) return null;
+
+            const employer = employerMap.get(wallet.employerId);
+            if (!employer) return null;
+
+            return {
+              employerId: wallet.employerId,
+              employerName: employer.companyName || employer.name || 'Unknown',
+              verified: employer.verified || false,
+              totalSpent: spender._sum.amount || 0,
+            };
+          })
+          .filter(Boolean);
+      }
 
       // Группируем транзакции по датам для графика
       const transactionsByDate = this.groupByDate(
@@ -969,8 +984,11 @@ export class AdminController {
         where: { id },
         include: {
           wallet: {
-            include: {
+            select: {
+              id: true,
               employerId: true,
+              balance: true,
+              currency: true,
             },
           },
         },

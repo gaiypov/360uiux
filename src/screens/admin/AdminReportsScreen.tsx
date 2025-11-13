@@ -3,7 +3,7 @@
  * Admin Reports Screen - Complaints Management
  */
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -37,7 +37,7 @@ export function AdminReportsScreen({ navigation }: any) {
   const [blockVideo, setBlockVideo] = useState(false);
   const { showToast } = useToastStore();
 
-  const loadComplaints = async () => {
+  const loadComplaints = useCallback(async () => {
     try {
       const params: any = { page: 1, limit: 50 };
       if (filter !== 'ALL') {
@@ -53,11 +53,40 @@ export function AdminReportsScreen({ navigation }: any) {
       setLoading(false);
       setRefreshing(false);
     }
-  };
+  }, [filter, showToast]);
 
   useEffect(() => {
-    loadComplaints();
-  }, [filter]);
+    let mounted = true;
+
+    const fetchData = async () => {
+      try {
+        const params: any = { page: 1, limit: 50 };
+        if (filter !== 'ALL') {
+          params.status = filter;
+        }
+
+        const data = await adminApi.getComplaints(params);
+        if (mounted) {
+          setComplaints(data.complaints);
+        }
+      } catch (error: any) {
+        console.error('Failed to load complaints:', error);
+        if (mounted) {
+          showToast('error', 'Ошибка загрузки жалоб');
+        }
+      } finally {
+        if (mounted) {
+          setLoading(false);
+        }
+      }
+    };
+
+    fetchData();
+
+    return () => {
+      mounted = false;
+    };
+  }, [filter, showToast]);
 
   const onRefresh = () => {
     haptics.light();

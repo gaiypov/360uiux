@@ -3,7 +3,7 @@
  * Admin Users Screen - User Management
  */
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -36,7 +36,7 @@ export function AdminUsersScreen({ navigation }: any) {
   const [modalVisible, setModalVisible] = useState(false);
   const { showToast } = useToastStore();
 
-  const loadUsers = async () => {
+  const loadUsers = useCallback(async () => {
     try {
       const params: any = { page: 1, limit: 50 };
       if (filter !== 'ALL') {
@@ -55,11 +55,43 @@ export function AdminUsersScreen({ navigation }: any) {
       setLoading(false);
       setRefreshing(false);
     }
-  };
+  }, [filter, searchQuery, showToast]);
 
   useEffect(() => {
-    loadUsers();
-  }, [filter, searchQuery]);
+    let mounted = true;
+
+    const fetchData = async () => {
+      try {
+        const params: any = { page: 1, limit: 50 };
+        if (filter !== 'ALL') {
+          params.role = filter;
+        }
+        if (searchQuery) {
+          params.search = searchQuery;
+        }
+
+        const data = await adminApi.getUsers(params);
+        if (mounted) {
+          setUsers(data.users);
+        }
+      } catch (error: any) {
+        console.error('Failed to load users:', error);
+        if (mounted) {
+          showToast('error', 'Ошибка загрузки пользователей');
+        }
+      } finally {
+        if (mounted) {
+          setLoading(false);
+        }
+      }
+    };
+
+    fetchData();
+
+    return () => {
+      mounted = false;
+    };
+  }, [filter, searchQuery, showToast]);
 
   const onRefresh = () => {
     haptics.light();

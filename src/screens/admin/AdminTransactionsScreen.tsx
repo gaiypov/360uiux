@@ -3,7 +3,7 @@
  * Admin Transactions Screen - Financial Management
  */
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -36,7 +36,7 @@ export function AdminTransactionsScreen({ navigation }: any) {
   const [modalVisible, setModalVisible] = useState(false);
   const { showToast } = useToastStore();
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       const [transactionsData, statsData] = await Promise.all([
         adminApi.getTransactions({
@@ -57,11 +57,45 @@ export function AdminTransactionsScreen({ navigation }: any) {
       setLoading(false);
       setRefreshing(false);
     }
-  };
+  }, [typeFilter, statusFilter, showToast]);
 
   useEffect(() => {
-    loadData();
-  }, [typeFilter, statusFilter]);
+    let mounted = true;
+
+    const fetchData = async () => {
+      try {
+        const [transactionsData, statsData] = await Promise.all([
+          adminApi.getTransactions({
+            page: 1,
+            limit: 50,
+            ...(typeFilter !== 'ALL' && { type: typeFilter }),
+            ...(statusFilter !== 'ALL' && { status: statusFilter }),
+          }),
+          adminApi.getFinancialStats({ period: '7d' }),
+        ]);
+
+        if (mounted) {
+          setTransactions(transactionsData.transactions);
+          setStats(statsData);
+        }
+      } catch (error: any) {
+        console.error('Failed to load transactions:', error);
+        if (mounted) {
+          showToast('error', 'Ошибка загрузки транзакций');
+        }
+      } finally {
+        if (mounted) {
+          setLoading(false);
+        }
+      }
+    };
+
+    fetchData();
+
+    return () => {
+      mounted = false;
+    };
+  }, [typeFilter, statusFilter, showToast]);
 
   const onRefresh = () => {
     haptics.light();

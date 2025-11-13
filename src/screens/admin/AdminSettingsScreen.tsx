@@ -3,7 +3,7 @@
  * Admin Settings Screen - System Configuration
  */
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -35,11 +35,7 @@ export function AdminSettingsScreen({ navigation }: any) {
   const [saving, setSaving] = useState(false);
   const { showToast } = useToastStore();
 
-  useEffect(() => {
-    loadSettings();
-  }, []);
-
-  const loadSettings = async () => {
+  const loadSettings = useCallback(async () => {
     try {
       const data = await adminApi.getSettings();
       setSettings(data.settings);
@@ -49,9 +45,37 @@ export function AdminSettingsScreen({ navigation }: any) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [showToast]);
 
-  const handleSave = async () => {
+  useEffect(() => {
+    let mounted = true;
+
+    const fetchData = async () => {
+      try {
+        const data = await adminApi.getSettings();
+        if (mounted) {
+          setSettings(data.settings);
+        }
+      } catch (error: any) {
+        console.error('Failed to load settings:', error);
+        if (mounted) {
+          showToast('error', 'Ошибка загрузки настроек');
+        }
+      } finally {
+        if (mounted) {
+          setLoading(false);
+        }
+      }
+    };
+
+    fetchData();
+
+    return () => {
+      mounted = false;
+    };
+  }, [showToast]);
+
+  const handleSave = useCallback(async () => {
     haptics.medium();
     setSaving(true);
 
@@ -64,12 +88,12 @@ export function AdminSettingsScreen({ navigation }: any) {
     } finally {
       setSaving(false);
     }
-  };
+  }, [settings, showToast]);
 
-  const updateSetting = (key: keyof AdminSettings, value: any) => {
+  const updateSetting = useCallback((key: keyof AdminSettings, value: any) => {
     haptics.light();
-    setSettings({ ...settings, [key]: value });
-  };
+    setSettings((prev) => ({ ...prev, [key]: value }));
+  }, []);
 
   if (loading) {
     return (

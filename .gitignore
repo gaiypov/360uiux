@@ -88,3 +88,4 @@ backend/logs/
 # Database
 *.db
 *.sqlite
+backend/dist/

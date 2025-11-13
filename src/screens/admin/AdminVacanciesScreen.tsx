@@ -3,7 +3,7 @@
  * Admin Vacancies Screen - Vacancy Moderation
  */
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -36,7 +36,7 @@ export function AdminVacanciesScreen({ navigation }: any) {
   const [modalVisible, setModalVisible] = useState(false);
   const { showToast } = useToastStore();
 
-  const loadVacancies = async () => {
+  const loadVacancies = useCallback(async () => {
     try {
       const params: any = { page: 1, limit: 50 };
       if (filter !== 'ALL') {
@@ -55,11 +55,43 @@ export function AdminVacanciesScreen({ navigation }: any) {
       setLoading(false);
       setRefreshing(false);
     }
-  };
+  }, [filter, searchQuery, showToast]);
 
   useEffect(() => {
-    loadVacancies();
-  }, [filter, searchQuery]);
+    let mounted = true;
+
+    const fetchData = async () => {
+      try {
+        const params: any = { page: 1, limit: 50 };
+        if (filter !== 'ALL') {
+          params.status = filter;
+        }
+        if (searchQuery) {
+          params.search = searchQuery;
+        }
+
+        const data = await adminApi.getVacancies(params);
+        if (mounted) {
+          setVacancies(data.vacancies);
+        }
+      } catch (error: any) {
+        console.error('Failed to load vacancies:', error);
+        if (mounted) {
+          showToast('error', 'Ошибка загрузки вакансий');
+        }
+      } finally {
+        if (mounted) {
+          setLoading(false);
+        }
+      }
+    };
+
+    fetchData();
+
+    return () => {
+      mounted = false;
+    };
+  }, [filter, searchQuery, showToast]);
 
   const onRefresh = () => {
     haptics.light();

@@ -3,7 +3,7 @@
  * Admin Dashboard Screen - Revolut Style
  */
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -12,27 +12,25 @@ import {
   TouchableOpacity,
   StatusBar,
   RefreshControl,
-  Dimensions,
+  useWindowDimensions,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import Animated, { FadeInDown, FadeIn } from 'react-native-reanimated';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 import { GlassCard, MetalIcon } from '@/components/ui';
 import { colors, typography, sizes } from '@/constants';
 import { AdminDashboardStats } from '@/types';
 import { adminApi } from '@/services/adminApi';
 import { useToastStore } from '@/stores/toastStore';
 import { haptics } from '@/utils/haptics';
-import { LineChart } from 'react-native-chart-kit';
-
-const { width } = Dimensions.get('window');
 
 export function AdminDashboardScreen({ navigation }: any) {
   const [stats, setStats] = useState<AdminDashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const { showToast } = useToastStore();
+  const { width } = useWindowDimensions();
 
-  const loadDashboard = async () => {
+  const loadDashboard = useCallback(async () => {
     try {
       const data = await adminApi.getDashboardStats();
       setStats(data);
@@ -43,11 +41,35 @@ export function AdminDashboardScreen({ navigation }: any) {
       setLoading(false);
       setRefreshing(false);
     }
-  };
+  }, [showToast]);
 
   useEffect(() => {
-    loadDashboard();
-  }, []);
+    let mounted = true;
+
+    const fetchData = async () => {
+      try {
+        const data = await adminApi.getDashboardStats();
+        if (mounted) {
+          setStats(data);
+        }
+      } catch (error: any) {
+        console.error('Failed to load dashboard:', error);
+        if (mounted) {
+          showToast('error', 'Ошибка загрузки дашборда');
+        }
+      } finally {
+        if (mounted) {
+          setLoading(false);
+        }
+      }
+    };
+
+    fetchData();
+
+    return () => {
+      mounted = false;
+    };
+  }, [showToast]);
 
   const onRefresh = () => {
     haptics.light();
@@ -255,8 +277,8 @@ export function AdminDashboardScreen({ navigation }: any) {
   );
 }
 
-// Stat Card Component
-const StatCard = ({ icon, label, value, color, delay }: any) => (
+// Stat Card Component (memoized for performance)
+const StatCard = React.memo(({ icon, label, value, color, delay }: any) => (
   <Animated.View
     entering={FadeInDown.delay(delay).duration(400)}
     style={styles.statCardWrapper}
@@ -267,10 +289,10 @@ const StatCard = ({ icon, label, value, color, delay }: any) => (
       <Text style={styles.statLabel}>{label}</Text>
     </GlassCard>
   </Animated.View>
-);
+));
 
-// Action Item Component
-const ActionItem = ({ icon, title, subtitle, onPress, color, badge }: any) => (
+// Action Item Component (memoized for performance)
+const ActionItem = React.memo(({ icon, title, subtitle, onPress, color, badge }: any) => (
   <TouchableOpacity
     style={styles.actionItem}
     onPress={onPress}
@@ -283,14 +305,14 @@ const ActionItem = ({ icon, title, subtitle, onPress, color, badge }: any) => (
       <Text style={styles.actionTitle}>{title}</Text>
       <Text style={styles.actionSubtitle}>{subtitle}</Text>
     </View>
-    {badge > 0 && (
+    {badge !== undefined && badge > 0 && (
       <View style={styles.badge}>
         <Text style={styles.badgeText}>{badge}</Text>
       </View>
     )}
     <Icon name="chevron-right" size={20} color={colors.textSecondary} />
   </TouchableOpacity>
-);
+));
 
 const styles = StyleSheet.create({
   container: {
