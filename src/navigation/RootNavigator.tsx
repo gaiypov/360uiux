@@ -20,6 +20,7 @@ import {
 } from '@/screens/auth';
 import { JobSeekerNavigator } from './JobSeekerNavigator';
 import { EmployerNavigator } from './EmployerNavigator';
+import { AdminNavigator } from './AdminNavigator';
 import { useAuthStore } from '@/stores/authStore';
 
 const Stack = createNativeStackNavigator();
@@ -93,6 +94,8 @@ export function RootNavigator() {
             isAuthenticated
               ? user?.role === 'employer'
                 ? EmployerNavigator
+                : user?.role === 'moderator'
+                ? AdminNavigator
                 : JobSeekerNavigator
               : JobSeekerNavigator // Guest mode: access to Feed with 20-video limit
           }
