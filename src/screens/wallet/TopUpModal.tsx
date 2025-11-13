@@ -26,7 +26,7 @@ const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 interface Props {
   route: {
     params: {
-      onConfirm: (amount: number, paymentSystem: 'tinkoff' | 'alfabank') => void;
+      onConfirm: (amount: number, paymentSystem: 'alfabank' | 'invoice') => void;
     };
   };
   navigation: any;
@@ -39,7 +39,7 @@ export function TopUpModal({ route, navigation }: Props) {
 
   const [amount, setAmount] = useState('');
   const [selectedAmount, setSelectedAmount] = useState<number | null>(null);
-  const [paymentSystem, setPaymentSystem] = useState<'tinkoff' | 'alfabank' | null>(null);
+  const [paymentSystem, setPaymentSystem] = useState<'alfabank' | 'invoice' | null>(null);
 
   /**
    * Закрыть модал
@@ -177,31 +177,6 @@ export function TopUpModal({ route, navigation }: Props) {
               <TouchableOpacity
                 style={[
                   styles.paymentCard,
-                  paymentSystem === 'tinkoff' && styles.paymentCardActive,
-                ]}
-                onPress={() => {
-                  setPaymentSystem('tinkoff');
-                  haptics.light();
-                }}
-                activeOpacity={0.7}
-              >
-                <View style={styles.paymentIcon}>
-                  <Icon name="credit-card" size={24} color={colors.platinumSilver} />
-                </View>
-                <View style={styles.paymentInfo}>
-                  <Text style={styles.paymentName}>Тинькофф</Text>
-                  <Text style={styles.paymentDescription}>
-                    Карты, Apple Pay, Google Pay
-                  </Text>
-                </View>
-                {paymentSystem === 'tinkoff' && (
-                  <Icon name="check-circle" size={24} color={colors.success} />
-                )}
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[
-                  styles.paymentCard,
                   paymentSystem === 'alfabank' && styles.paymentCardActive,
                 ]}
                 onPress={() => {
@@ -211,16 +186,41 @@ export function TopUpModal({ route, navigation }: Props) {
                 activeOpacity={0.7}
               >
                 <View style={styles.paymentIcon}>
-                  <Icon name="credit-card-outline" size={24} color={colors.platinumSilver} />
+                  <Icon name="credit-card" size={24} color={colors.platinumSilver} />
                 </View>
                 <View style={styles.paymentInfo}>
                   <Text style={styles.paymentName}>Альфа-Банк</Text>
                   <Text style={styles.paymentDescription}>
-                    Карты Visa, Mastercard, МИР
+                    Интернет-эквайринг (Visa, Mastercard, МИР)
                   </Text>
                 </View>
                 {paymentSystem === 'alfabank' && (
-                  <Icon name="check-circle" size={24} color={colors.success} />
+                  <Icon name="check-circle" size={24} color={colors.accentGreen} />
+                )}
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.paymentCard,
+                  paymentSystem === 'invoice' && styles.paymentCardActive,
+                ]}
+                onPress={() => {
+                  setPaymentSystem('invoice');
+                  haptics.light();
+                }}
+                activeOpacity={0.7}
+              >
+                <View style={styles.paymentIcon}>
+                  <Icon name="file-document-outline" size={24} color={colors.platinumSilver} />
+                </View>
+                <View style={styles.paymentInfo}>
+                  <Text style={styles.paymentName}>Оплата по счёту</Text>
+                  <Text style={styles.paymentDescription}>
+                    Безналичный платёж по реквизитам
+                  </Text>
+                </View>
+                {paymentSystem === 'invoice' && (
+                  <Icon name="check-circle" size={24} color={colors.accentGreen} />
                 )}
               </TouchableOpacity>
             </View>

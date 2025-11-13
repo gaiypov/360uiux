@@ -68,7 +68,7 @@ export function WalletScreen({ navigation }: any) {
   /**
    * Инициация пополнения кошелька
    */
-  const handleTopUp = async (amount: number, paymentSystem: 'tinkoff' | 'alfabank') => {
+  const handleTopUp = async (amount: number, paymentSystem: 'alfabank' | 'invoice') => {
     try {
       setLoadingPayment(true);
       haptics.light();
@@ -79,11 +79,15 @@ export function WalletScreen({ navigation }: any) {
         cardType: 'business',
       });
 
-      // Открываем URL оплаты в браузере
+      // Открываем URL оплаты в браузере (или скачиваем PDF счета)
       const supported = await Linking.canOpenURL(response.paymentUrl);
       if (supported) {
         await Linking.openURL(response.paymentUrl);
-        showToast('success', 'Перенаправление на оплату...');
+        if (paymentSystem === 'invoice') {
+          showToast('success', 'Счёт успешно сформирован');
+        } else {
+          showToast('success', 'Перенаправление на оплату...');
+        }
       } else {
         showToast('error', 'Не удалось открыть страницу оплаты');
       }

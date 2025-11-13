@@ -3,7 +3,6 @@
  */
 
 import { Request, Response } from 'express';
-import { TinkoffPaymentService } from '../services/TinkoffPaymentService';
 import { AlfabankPaymentService } from '../services/AlfabankPaymentService';
 import { InvoiceService } from '../services/InvoiceService';
 import { WalletService } from '../services/WalletService';
@@ -86,10 +85,10 @@ export class BillingController {
         });
       }
 
-      if (!paymentSystem || !['tinkoff', 'alfabank'].includes(paymentSystem)) {
+      if (!paymentSystem || !['alfabank', 'invoice'].includes(paymentSystem)) {
         return res.status(400).json({
           error: 'Bad Request',
-          message: 'Invalid payment system. Use "tinkoff" or "alfabank"',
+          message: 'Invalid payment system. Use "alfabank" or "invoice"',
         });
       }
 
@@ -108,26 +107,11 @@ export class BillingController {
         description: `Deposit ${amount} RUB`,
       });
 
-      // Выбираем платёжную систему
-      let paymentUrl: string;
+      // Выбираем способ оплаты
+      let paymentUrl: string | null = null;
 
-      if (paymentSystem === 'tinkoff') {
-        const tinkoff = new TinkoffPaymentService();
-        const payment = await tinkoff.initPayment({
-          orderId: transaction.id,
-          amount,
-          description: `Пополнение кошелька на ${amount} ₽`,
-          email: user.email || '',
-          phone: user.phone,
-        });
-
-        paymentUrl = payment.paymentUrl;
-
-        // Сохраняем paymentId
-        await WalletService.updateTransaction(transaction.id, {
-          paymentId: payment.paymentId,
-        });
-      } else {
+      if (paymentSystem === 'alfabank') {
+        // Альфа-Банк интернет-эквайринг
         const alfa = new AlfabankPaymentService();
         const payment = await alfa.registerOrder({
           orderNumber: transaction.id,
@@ -143,6 +127,30 @@ export class BillingController {
         await WalletService.updateTransaction(transaction.id, {
           paymentId: payment.orderId,
         });
+      } else if (paymentSystem === 'invoice') {
+        // Оплата по счету - создаем счет
+        const invoice = await InvoiceService.createInvoice({
+          employerId: req.user.userId,
+          amount,
+          description: `Пополнение кошелька на ${amount} ₽`,
+          items: [
+            {
+              name: 'Пополнение баланса',
+              quantity: 1,
+              price: amount,
+              total: amount,
+            },
+          ],
+        });
+
+        // Генерируем PDF счета
+        const pdfUrl = await InvoiceService.generateInvoicePDF(invoice.id);
+
+        await WalletService.updateTransaction(transaction.id, {
+          paymentId: invoice.id,
+        });
+
+        paymentUrl = pdfUrl;
       }
 
       return res.json({
@@ -168,26 +176,7 @@ export class BillingController {
       const { system } = req.params;
       const data = req.body;
 
-      if (system === 'tinkoff') {
-        const tinkoff = new TinkoffPaymentService();
-
-        // Проверяем токен
-        const isValid = tinkoff.validateWebhookToken(data);
-        if (!isValid) {
-          return res.status(400).json({ error: 'Invalid token' });
-        }
-
-        // Обрабатываем статус
-        if (data.Status === 'CONFIRMED') {
-          await WalletService.completeTransaction(data.OrderId, {
-            amount: data.Amount / 100,
-          });
-        } else if (data.Status === 'REJECTED' || data.Status === 'CANCELED') {
-          await WalletService.updateTransaction(data.OrderId, {
-            status: 'failed',
-          });
-        }
-      } else if (system === 'alfabank') {
+      if (system === 'alfabank') {
         const alfabank = new AlfabankPaymentService();
 
         // 🔴 КРИТИЧНО: Валидация webhook от Alfabank

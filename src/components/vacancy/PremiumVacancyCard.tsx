@@ -1,9 +1,10 @@
 /**
  * 360° РАБОТА - ULTRA EDITION
  * Ultra Vacancy Card Component (TikTok-style)
+ * Optimized for Expo Dev + Memory Efficiency
  */
 
-import React, { useRef, useEffect, memo } from 'react';
+import React, { useEffect, memo } from 'react';
 import {
   View,
   Text,
@@ -11,7 +12,6 @@ import {
   StyleSheet,
   Dimensions,
 } from 'react-native';
-import Video from 'react-native-video';
 import LinearGradient from 'react-native-linear-gradient';
 import { BlurView } from '@react-native-community/blur';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -20,6 +20,7 @@ import Animated, {
   useAnimatedStyle,
   withSpring,
 } from 'react-native-reanimated';
+import { VideoPlayer } from '@/components/video';
 import { colors, metalGradients, glassVariants, typography, sizes } from '@/constants';
 import { Vacancy } from '@/types';
 
@@ -28,6 +29,8 @@ const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 interface PremiumVacancyCardProps {
   vacancy: Vacancy;
   isActive: boolean;
+  shouldPreload?: boolean;
+  shouldRender?: boolean;
   onApply?: () => void;
   onCompanyPress?: () => void;
   onLike?: () => void;
@@ -42,6 +45,8 @@ interface PremiumVacancyCardProps {
 const PremiumVacancyCardComponent = ({
   vacancy,
   isActive,
+  shouldPreload = false,
+  shouldRender = true,
   onApply,
   onCompanyPress,
   onLike,
@@ -52,17 +57,18 @@ const PremiumVacancyCardComponent = ({
   isLiked = false,
   isFavorited = false,
 }: PremiumVacancyCardProps) => {
-  const videoRef = useRef<Video>(null);
   const scale = useSharedValue(1);
 
+  /**
+   * Animate card scale based on active state
+   */
   useEffect(() => {
     if (isActive) {
-      videoRef.current?.seek(0);
       scale.value = withSpring(1, { damping: 15 });
     } else {
       scale.value = withSpring(0.95, { damping: 15 });
     }
-  }, [isActive]);
+  }, [isActive, scale]);
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
@@ -70,15 +76,13 @@ const PremiumVacancyCardComponent = ({
 
   return (
     <Animated.View style={[styles.container, animatedStyle]}>
-      {/* Полноэкранное видео */}
-      <Video
-        ref={videoRef}
-        source={{ uri: vacancy.videoUrl }}
-        style={styles.video}
-        resizeMode="cover"
-        repeat
-        paused={!isActive}
-        muted={false}
+      {/* Optimized Video Player with smart loading */}
+      <VideoPlayer
+        videoUrl={vacancy.videoUrl}
+        isActive={isActive}
+        shouldPreload={shouldPreload}
+        shouldRender={shouldRender}
+        testID={`vacancy-video-${vacancy.id}`}
       />
 
       {/* Темный градиент снизу */}
@@ -266,14 +270,20 @@ const PremiumVacancyCardComponent = ({
   );
 };
 
-// Memoized export with custom comparison
+/**
+ * Memoized export with optimized comparison
+ * Only re-render when critical props change
+ */
 export const PremiumVacancyCard = memo(
   PremiumVacancyCardComponent,
   (prevProps, nextProps) => {
-    // Only re-render if vacancy ID or isActive changes
     return (
       prevProps.vacancy.id === nextProps.vacancy.id &&
-      prevProps.isActive === nextProps.isActive
+      prevProps.isActive === nextProps.isActive &&
+      prevProps.shouldPreload === nextProps.shouldPreload &&
+      prevProps.shouldRender === nextProps.shouldRender &&
+      prevProps.isLiked === nextProps.isLiked &&
+      prevProps.isFavorited === nextProps.isFavorited
     );
   }
 );

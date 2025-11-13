@@ -1,10 +1,17 @@
 /**
  * 360° РАБОТА - ULTRA EDITION
  * Vacancy Feed Screen (TikTok-style vertical swipe)
- * Architecture v3: Guest view tracking with 20-video limit + API integration
+ * Architecture v4: Optimized with preloading, memory cleanup, sound isolation
+ *
+ * Optimizations:
+ * - Preloading: N+1 while playing N
+ * - Memory cleanup: Only N-1, N, N+1 rendered (window = 3)
+ * - Sound isolation: Only active video plays sound
+ * - Smart caching: Expo-av with optimized loading
+ * - Minimal re-renders: useCallback, React.memo
  */
 
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect, useCallback, useMemo } from 'react';
 import { View, StyleSheet, Dimensions, StatusBar, FlatList } from 'react-native';
 import { GestureDetector, Gesture } from 'react-native-gesture-handler';
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
@@ -22,6 +29,12 @@ import {
 } from '@/utils/guestViewCounter';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
+
+/**
+ * Memory optimization: Only render videos within this window
+ * N-1, N, N+1 where N is current index
+ */
+const RENDER_WINDOW_SIZE = 1; // Render current +/- 1
 
 export function VacancyFeedScreen({ navigation }: any) {
   const flatListRef = useRef<FlatList>(null);
@@ -76,9 +89,26 @@ export function VacancyFeedScreen({ navigation }: any) {
   }, [currentIndex, user, vacancies, navigation]);
 
   /**
-   * Handle Like/Unlike with API
+   * Calculate which videos should be rendered (memory optimization)
+   * Only render videos within window: [currentIndex - 1, currentIndex + 1]
    */
-  const handleLike = async (vacancyId: string) => {
+  const shouldRenderVideo = useCallback((index: number): boolean => {
+    return Math.abs(index - currentIndex) <= RENDER_WINDOW_SIZE;
+  }, [currentIndex]);
+
+  /**
+   * Calculate which videos should be preloaded
+   * Preload N+1 while playing N
+   */
+  const shouldPreloadVideo = useCallback((index: number): boolean => {
+    return index === currentIndex + 1;
+  }, [currentIndex]);
+
+  /**
+   * Handle Like/Unlike with API
+   * Wrapped in useCallback to prevent re-renders
+   */
+  const handleLike = useCallback(async (vacancyId: string) => {
     if (!user) {
       navigation.navigate('RegistrationRequired');
       return;
@@ -135,12 +165,13 @@ export function VacancyFeedScreen({ navigation }: any) {
         return newSet;
       });
     }
-  };
+  }, [user, navigation, likedVacancies, loadingActions, showToast]);
 
   /**
    * Handle Favorite/Unfavorite with API
+   * Wrapped in useCallback to prevent re-renders
    */
-  const handleFavorite = async (vacancyId: string) => {
+  const handleFavorite = useCallback(async (vacancyId: string) => {
     if (!user) {
       navigation.navigate('RegistrationRequired');
       return;
@@ -198,12 +229,13 @@ export function VacancyFeedScreen({ navigation }: any) {
         return newSet;
       });
     }
-  };
+  }, [user, navigation, favoritedVacancies, loadingActions, showToast]);
 
   /**
    * Handle Comment - open modal
+   * Wrapped in useCallback to prevent re-renders
    */
-  const handleComment = (vacancyId: string) => {
+  const handleComment = useCallback((vacancyId: string) => {
     if (!user) {
       navigation.navigate('RegistrationRequired');
       return;
@@ -212,12 +244,14 @@ export function VacancyFeedScreen({ navigation }: any) {
     haptics.light();
     setSelectedVacancyId(vacancyId);
     setCommentsModalVisible(true);
-  };
+  }, [user, navigation]);
 
   /**
    * Handle Apply to vacancy
+   * Wrapped in useCallback to prevent re-renders
+   * НЕ МЕНЯТЬ: Это логика "Откликнуться"!
    */
-  const handleApply = (vacancyId: string) => {
+  const handleApply = useCallback((vacancyId: string) => {
     if (!user) {
       navigation.navigate('RegistrationRequired');
       return;
@@ -227,26 +261,31 @@ export function VacancyFeedScreen({ navigation }: any) {
     showToast('success', '✅ Отклик отправлен!');
     // TODO: Navigate to ApplicationScreen or create application
     console.log('Apply to', vacancyId);
-  };
+  }, [user, navigation, showToast]);
 
   /**
    * Handle Share
+   * Wrapped in useCallback to prevent re-renders
    */
-  const handleShare = (vacancyId: string) => {
+  const handleShare = useCallback((vacancyId: string) => {
     haptics.light();
     showToast('info', 'Функция "Поделиться" скоро будет доступна');
     console.log('Share', vacancyId);
-  };
+  }, [showToast]);
 
   /**
    * Handle Sound/Music info
+   * Wrapped in useCallback to prevent re-renders
    */
-  const handleSoundPress = (vacancyId: string) => {
+  const handleSoundPress = useCallback((vacancyId: string) => {
     haptics.light();
     console.log('Sound info', vacancyId);
-  };
+  }, []);
 
-  const gesture = Gesture.Pan().onEnd((event) => {
+  /**
+   * Optimized gesture handler with useCallback
+   */
+  const gesture = useMemo(() => Gesture.Pan().onEnd((event) => {
     const threshold = 500;
 
     // Swipe up - next vacancy
@@ -267,17 +306,98 @@ export function VacancyFeedScreen({ navigation }: any) {
       });
       setCurrentIndex(prevIndex);
     }
-  });
+  }), [currentIndex, vacancies.length]);
 
+  /**
+   * Handle viewable items changed - updates current index
+   * Memoized with useRef to maintain stable reference
+   */
   const handleViewableItemsChanged = useRef(({ viewableItems }: any) => {
     if (viewableItems.length > 0) {
       setCurrentIndex(viewableItems[0].index || 0);
     }
   }).current;
 
+  /**
+   * Viewability configuration for FlatList
+   * Stable reference with useRef
+   */
   const viewabilityConfig = useRef({
     itemVisiblePercentThreshold: 50,
   }).current;
+
+  /**
+   * Optimized renderItem with useCallback
+   * Prevents unnecessary re-renders
+   */
+  const renderItem = useCallback(({ item, index }: any) => {
+    const isActive = index === currentIndex;
+    const shouldPreload = shouldPreloadVideo(index);
+    const shouldRender = shouldRenderVideo(index);
+
+    return (
+      <Animated.View
+        entering={FadeIn.duration(300)}
+        exiting={FadeOut.duration(300)}
+      >
+        <PremiumVacancyCard
+          vacancy={item}
+          isActive={isActive}
+          shouldPreload={shouldPreload}
+          shouldRender={shouldRender}
+          isLiked={likedVacancies.has(item.id)}
+          isFavorited={favoritedVacancies.has(item.id)}
+          onApply={() => handleApply(item.id)}
+          onCompanyPress={() => console.log('Company', item.employer.id)}
+          onLike={() => handleLike(item.id)}
+          onComment={() => handleComment(item.id)}
+          onFavorite={() => handleFavorite(item.id)}
+          onShare={() => handleShare(item.id)}
+          onSoundPress={() => handleSoundPress(item.id)}
+        />
+      </Animated.View>
+    );
+  }, [
+    currentIndex,
+    shouldPreloadVideo,
+    shouldRenderVideo,
+    likedVacancies,
+    favoritedVacancies,
+    handleApply,
+    handleLike,
+    handleComment,
+    handleFavorite,
+    handleShare,
+    handleSoundPress,
+  ]);
+
+  /**
+   * Optimized keyExtractor with useCallback
+   * Returns stable unique key for each item
+   */
+  const keyExtractor = useCallback((item: any) => item.id, []);
+
+  /**
+   * Handle end reached for infinite scroll
+   * Wrapped in useCallback
+   */
+  const handleEndReached = useCallback(() => {
+    console.log('📥 Fetching more vacancies...');
+    fetchMore();
+  }, [fetchMore]);
+
+  /**
+   * Optimized getItemLayout for better scrolling performance
+   * Prevents layout calculations on every scroll
+   */
+  const getItemLayout = useCallback(
+    (_data: any, index: number) => ({
+      length: SCREEN_HEIGHT,
+      offset: SCREEN_HEIGHT * index,
+      index,
+    }),
+    []
+  );
 
   return (
     <>
@@ -291,40 +411,22 @@ export function VacancyFeedScreen({ navigation }: any) {
           <FlatList
             ref={flatListRef}
             data={vacancies}
-            renderItem={({ item, index }) => (
-              <Animated.View
-                entering={FadeIn.duration(300)}
-                exiting={FadeOut.duration(300)}
-              >
-                <PremiumVacancyCard
-                  vacancy={item}
-                  isActive={index === currentIndex}
-                  isLiked={likedVacancies.has(item.id)}
-                  isFavorited={favoritedVacancies.has(item.id)}
-                  onApply={() => handleApply(item.id)}
-                  onCompanyPress={() => console.log('Company', item.employer.id)}
-                  onLike={() => handleLike(item.id)}
-                  onComment={() => handleComment(item.id)}
-                  onFavorite={() => handleFavorite(item.id)}
-                  onShare={() => handleShare(item.id)}
-                  onSoundPress={() => handleSoundPress(item.id)}
-                />
-              </Animated.View>
-            )}
-            keyExtractor={(item) => item.id}
+            renderItem={renderItem}
+            keyExtractor={keyExtractor}
             pagingEnabled
             showsVerticalScrollIndicator={false}
             snapToInterval={SCREEN_HEIGHT}
             decelerationRate="fast"
-            onEndReached={fetchMore}
+            onEndReached={handleEndReached}
             onEndReachedThreshold={0.5}
             onViewableItemsChanged={handleViewableItemsChanged}
             viewabilityConfig={viewabilityConfig}
-            getItemLayout={(data, index) => ({
-              length: SCREEN_HEIGHT,
-              offset: SCREEN_HEIGHT * index,
-              index,
-            })}
+            getItemLayout={getItemLayout}
+            removeClippedSubviews={true} // Memory optimization
+            maxToRenderPerBatch={3} // Render only 3 items per batch
+            windowSize={3} // Keep 3 screens in memory
+            initialNumToRender={2} // Start with 2 items
+            updateCellsBatchingPeriod={100} // Batch updates every 100ms
           />
         </View>
       </GestureDetector>

@@ -17,6 +17,9 @@ import { AnalyticsScreen } from '@/screens/employer/AnalyticsScreen';
 import { MassMailingScreen } from '@/screens/employer/MassMailingScreen';
 import { AutomationScreen } from '@/screens/employer/AutomationScreen';
 import { ABTestingScreen } from '@/screens/employer/ABTestingScreen';
+import { EmployerVacanciesListScreen } from '@/screens/employer/EmployerVacanciesListScreen';
+import { EmployerProfileScreen } from '@/screens/employer/EmployerProfileScreen';
+import { EmployerPricingScreen } from '@/screens/employer/EmployerPricingScreen';
 import { DetailedAnalyticsScreen } from '@/screens/DetailedAnalyticsScreen';
 import { SettingsScreen } from '@/screens/SettingsScreen';
 import { NotificationsScreen } from '@/screens/NotificationsScreen';
@@ -26,15 +29,6 @@ import { VideoRecordScreen, VideoPlayerScreen } from '@/screens/video';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
-
-// Placeholder screens
-function VacanciesListScreen() {
-  return <View style={styles.placeholder} />;
-}
-
-function EmployerProfileScreen() {
-  return <View style={styles.placeholder} />;
-}
 
 function EmployerTabs() {
   return (
@@ -61,7 +55,7 @@ function EmployerTabs() {
     >
       <Tab.Screen
         name="Vacancies"
-        component={VacanciesListScreen}
+        component={EmployerVacanciesListScreen}
         options={{
           title: 'ВАКАНСИИ',
           tabBarIcon: ({ focused, color, size }) => (
@@ -116,13 +110,13 @@ function EmployerTabs() {
         }}
       />
       <Tab.Screen
-        name="Settings"
-        component={SettingsScreen}
+        name="Profile"
+        component={EmployerProfileScreen}
         options={{
-          title: 'НАСТРОЙКИ',
+          title: 'ПРОФИЛЬ',
           tabBarIcon: ({ focused, color, size }) => (
             <Icon
-              name={focused ? 'cog' : 'cog-outline'}
+              name={focused ? 'account-circle' : 'account-circle-outline'}
               size={size}
               color={color}
             />
@@ -152,6 +146,8 @@ export function EmployerNavigator() {
       <Stack.Screen name="DetailedAnalytics" component={DetailedAnalyticsScreen} />
       <Stack.Screen name="Chat" component={ChatScreen} />
       <Stack.Screen name="Wallet" component={WalletScreen} />
+      <Stack.Screen name="EmployerPricing" component={EmployerPricingScreen} />
+      <Stack.Screen name="EmployerWallet" component={WalletScreen} />
       <Stack.Screen
         name="TopUpModal"
         component={TopUpModal}
@@ -193,9 +189,5 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     backgroundColor: colors.graphiteBlack,
-  },
-  placeholder: {
-    flex: 1,
-    backgroundColor: colors.primaryBlack,
   },
 });

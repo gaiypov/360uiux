@@ -8,6 +8,7 @@ import multer from 'multer';
 import { authMiddleware, requireEmployer } from '../middleware/auth';
 import { VacancyVideoController } from '../controllers/VacancyVideoController';
 import { ResumeVideoController } from '../controllers/ResumeVideoController';
+import { VideoCallbackController } from '../controllers/VideoCallbackController';
 
 const router = Router();
 
@@ -34,6 +35,24 @@ const upload = multer({
     }
   },
 });
+
+// ===================================
+// WEBHOOK & STATUS ROUTES
+// ===================================
+
+/**
+ * @route   POST /api/v1/video/yandex-callback
+ * @desc    Handle Yandex Cloud transcoding callback
+ * @access  Public (called by Yandex Cloud)
+ */
+router.post('/yandex-callback', VideoCallbackController.handleYandexCallback);
+
+/**
+ * @route   GET /api/v1/video/:videoId/status
+ * @desc    Get video transcoding status
+ * @access  Private
+ */
+router.get('/:videoId/status', authMiddleware, VideoCallbackController.getVideoStatus);
 
 // ===================================
 // VACANCY VIDEO ROUTES (Работодатели)
