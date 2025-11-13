@@ -30,7 +30,7 @@ export interface User {
   id: string;
   phone: string;
   email?: string;
-  role: 'jobseeker' | 'employer';
+  role: 'jobseeker' | 'employer' | 'moderator';
   name?: string;
   company_name?: string;
   verified?: boolean;
