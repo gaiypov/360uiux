@@ -103,6 +103,7 @@ export function SMSVerificationScreen({ route, navigation }: Props) {
 
   /**
    * Проверка кода
+   * Fixed: Added await for login() to prevent race conditions
    */
   const handleVerifyCode = async (codeToVerify?: string) => {
     try {
@@ -118,11 +119,14 @@ export function SMSVerificationScreen({ route, navigation }: Props) {
       setLoading(true);
       haptics.light();
 
+      console.log('🔐 Verifying code for phone:', phone);
+
       // Проверяем код
       const response = await api.verifyCode(phone, fullCode);
 
       if (response.requiresRegistration) {
         // Нужна регистрация - показываем выбор роли
+        console.log('📝 User needs registration');
         haptics.success();
         showToast('success', 'Код подтверждён');
 
@@ -133,16 +137,25 @@ export function SMSVerificationScreen({ route, navigation }: Props) {
       } else {
         // Пользователь уже существует - входим
         if (response.user && response.tokens) {
-          login(response.user);
+          console.log('✅ Existing user found, logging in...');
+
+          // CRITICAL FIX: Await login to prevent race condition
+          await login(response.user);
+
           haptics.success();
           showToast('success', 'Добро пожаловать!');
 
-          // Переходим в приложение
+          console.log('✅ Login complete, navigating to Main');
+
+          // Переходим в приложение (теперь безопасно - login завершен)
           navigation.replace('Main');
+        } else {
+          console.error('❌ Invalid response: missing user or tokens');
+          throw new Error('Invalid server response');
         }
       }
     } catch (error: any) {
-      console.error('Verify code error:', error);
+      console.error('❌ Verify code error:', error);
       haptics.error();
 
       const message = error.response?.data?.message || 'Неверный код';
