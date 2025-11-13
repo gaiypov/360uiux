@@ -10,3 +10,4 @@ export { AdminVacanciesScreen } from './AdminVacanciesScreen';
 export { AdminReportsScreen } from './AdminReportsScreen';
 export { AdminSettingsScreen } from './AdminSettingsScreen';
 export { AdminTransactionsScreen } from './AdminTransactionsScreen';
+export { AdminInvoicesScreen } from './AdminInvoicesScreen';

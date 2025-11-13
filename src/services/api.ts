@@ -81,7 +81,7 @@ export interface Transaction {
 
 export interface InitPaymentRequest {
   amount: number;
-  paymentSystem: 'tinkoff' | 'alfabank';
+  paymentSystem: 'alfabank' | 'invoice';
   cardType?: 'business' | 'mir' | 'regular';
 }
 

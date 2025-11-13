@@ -77,7 +77,7 @@ export interface Wallet {
 
 export type TransactionType = 'deposit' | 'withdrawal' | 'payment' | 'refund';
 export type TransactionStatus = 'pending' | 'completed' | 'failed' | 'cancelled';
-export type PaymentSystem = 'tinkoff' | 'alfabank' | 'internal';
+export type PaymentSystem = 'alfabank' | 'invoice' | 'internal';
 export type CardType = 'business' | 'mir' | 'regular';
 
 export interface Transaction {
