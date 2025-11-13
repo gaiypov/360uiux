@@ -1,10 +1,11 @@
 /**
  * 360° РАБОТА - Revolut Ultra Edition
  * Root Navigator - Production Ready
- * Architecture v3: TikTok-style navigation with guest mode
+ * Architecture v3: TikTok-style navigation with guest mode + role-based routing
+ * Optimized for Expo Dev + EAS Build
  */
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, createRef } from 'react';
 import {
   NavigationContainer,
   NavigationContainerRef,
@@ -33,7 +34,44 @@ const Stack = createNativeStackNavigator();
 const ONBOARDING_KEY = '@360rabota:onboarding_completed';
 
 /**
- * Deep linking configuration (optional, готово к использованию)
+ * Global navigation ref for programmatic navigation
+ * Use createRef (not useRef) for module-level exports
+ */
+export const navigationRef = createRef<NavigationContainerRef<any>>();
+
+/**
+ * Programmatic navigation helpers
+ * Use these from outside React components (e.g., services, utils)
+ */
+export function navigate(name: string, params?: any) {
+  if (navigationRef.current) {
+    navigationRef.current.navigate(name, params);
+  } else {
+    console.warn('Navigation attempted before NavigationContainer is ready');
+  }
+}
+
+export function goBack() {
+  if (navigationRef.current?.canGoBack()) {
+    navigationRef.current.goBack();
+  } else {
+    console.warn('Cannot go back: navigation stack is empty');
+  }
+}
+
+export function resetRoot(name: string, params?: any) {
+  if (navigationRef.current) {
+    navigationRef.current.reset({
+      index: 0,
+      routes: [{ name, params }],
+    });
+  } else {
+    console.warn('Reset attempted before NavigationContainer is ready');
+  }
+}
+
+/**
+ * Deep linking configuration
  */
 const linking = {
   prefixes: ['360rabota://', 'https://360rabota.ru'],
@@ -67,32 +105,37 @@ LoadingScreen.displayName = 'LoadingScreen';
  * Root Navigator Component
  */
 export function RootNavigator() {
-  const navigationRef = useRef<NavigationContainerRef<any>>(null);
   const [showSplash, setShowSplash] = useState(true);
   const [showOnboarding, setShowOnboarding] = useState<boolean | null>(null);
-  const [isReady, setIsReady] = useState(false);
+  const [isNavigationReady, setIsNavigationReady] = useState(false);
   const { isAuthenticated, user, initialize } = useAuthStore();
 
   /**
-   * Initialize app: load auth state and check onboarding
+   * Initialize app: load auth state and check onboarding status
+   * Runs once on mount
    */
   useEffect(() => {
     let mounted = true;
 
     const initializeApp = async () => {
       try {
-        // Initialize auth state from storage
-        await initialize();
+        console.log('🔄 Initializing app state...');
 
-        // Check if onboarding has been completed
+        // Step 1: Initialize auth state from AsyncStorage
+        await initialize();
+        console.log('✅ Auth state initialized');
+
+        // Step 2: Check if onboarding has been completed
         const completed = await AsyncStorage.getItem(ONBOARDING_KEY);
+        console.log('📱 Onboarding status:', completed === 'true' ? 'Completed' : 'Not completed');
 
         if (mounted) {
           setShowOnboarding(completed !== 'true');
         }
       } catch (error) {
-        console.error('Error initializing app:', error);
+        console.error('❌ Error initializing app:', error);
         if (mounted) {
+          // On error, show onboarding to be safe
           setShowOnboarding(true);
         }
       }
@@ -107,36 +150,50 @@ export function RootNavigator() {
 
   /**
    * Handle onboarding completion
+   * Marks onboarding as done in storage and hides the screen
    */
   const handleOnboardingComplete = useCallback(async () => {
     try {
+      console.log('✅ Onboarding completed, saving to storage...');
       await AsyncStorage.setItem(ONBOARDING_KEY, 'true');
       setShowOnboarding(false);
     } catch (error) {
-      console.error('Error saving onboarding state:', error);
+      console.error('❌ Error saving onboarding state:', error);
+      // Still proceed even if storage fails
+      setShowOnboarding(false);
     }
   }, []);
 
   /**
-   * Handle splash screen completion
+   * Handle custom splash screen completion
+   * Transitions from splash to onboarding or main app
    */
   const handleSplashComplete = useCallback(() => {
+    console.log('✅ Custom splash screen complete');
     setShowSplash(false);
   }, []);
 
   /**
-   * Handle navigation ready
+   * Handle navigation ready event
+   * Fired when NavigationContainer is fully initialized
    */
   const handleNavigationReady = useCallback(() => {
-    setIsReady(true);
-    console.log('Navigation is ready');
+    setIsNavigationReady(true);
+    console.log('✅ React Navigation is ready');
   }, []);
 
   /**
-   * Determine main navigator based on user role
+   * Role-based navigator selection
+   * Returns the appropriate navigator based on user authentication and role
+   *
+   * Guest mode (not authenticated): JobSeekerNavigator with 20-video limit
+   * JobSeeker: JobSeekerNavigator (full access to feed + applications)
+   * Employer: EmployerNavigator (post vacancies, view applicants)
+   * Moderator: AdminNavigator (content moderation, analytics)
    */
   const getMainNavigator = useCallback(() => {
     if (isAuthenticated && user) {
+      console.log('👤 User role:', user.role);
       switch (user.role) {
         case 'employer':
           return EmployerNavigator;
@@ -147,11 +204,12 @@ export function RootNavigator() {
           return JobSeekerNavigator;
       }
     }
-    // Guest mode: access to Feed with 20-video limit
+    // Guest mode: access to Feed with 20-video limit before registration required
+    console.log('👤 Guest mode: Limited feed access');
     return JobSeekerNavigator;
   }, [isAuthenticated, user]);
 
-  // Show splash screen
+  // Show custom splash screen
   if (showSplash) {
     return <SplashScreen onComplete={handleSplashComplete} />;
   }
@@ -231,30 +289,6 @@ export function RootNavigator() {
       </Stack.Navigator>
     </NavigationContainer>
   );
-}
-
-/**
- * Export navigation ref for external navigation
- * Usage: navigationRef.current?.navigate('ScreenName')
- */
-export const navigationRef = React.createRef<NavigationContainerRef<any>>();
-
-/**
- * Navigate from outside of React components
- */
-export function navigate(name: string, params?: any) {
-  navigationRef.current?.navigate(name, params);
-}
-
-export function goBack() {
-  navigationRef.current?.goBack();
-}
-
-export function resetRoot(name: string, params?: any) {
-  navigationRef.current?.reset({
-    index: 0,
-    routes: [{ name, params }],
-  });
 }
 
 const styles = StyleSheet.create({
