@@ -306,6 +306,19 @@ class APIService {
     return response.data;
   }
 
+  async getPricing(): Promise<{ plans: any[] }> {
+    const response = await this.client.get('/billing/pricing');
+    return response.data;
+  }
+
+  async purchaseService(data: {
+    service: string;
+    amount: number;
+  }): Promise<{ success: boolean; transaction: any }> {
+    const response = await this.client.post('/billing/purchase-service', data);
+    return response.data;
+  }
+
   // ===================================
   // VACANCY INTERACTIONS API (Architecture v3)
   // ===================================

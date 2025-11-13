@@ -219,6 +219,11 @@ export function EmployerVacanciesListScreen({ navigation }: any) {
     showToast('info', 'Редактирование вакансии - в разработке');
   };
 
+  const handleBoostVacancy = (vacancy: Vacancy) => {
+    haptics.medium();
+    navigation.navigate('EmployerPricing');
+  };
+
   const VacancyCard = React.memo(({ item, index }: { item: Vacancy; index: number }) => {
     const statusConfig = {
       published: { label: 'Опубликована', color: colors.accentGreen, icon: 'check-circle' },
@@ -306,6 +311,35 @@ export function EmployerVacanciesListScreen({ navigation }: any) {
                 </View>
               )}
             </View>
+
+            {/* Actions - только для опубликованных вакансий */}
+            {item.status === 'published' && (
+              <View style={styles.actionsRow}>
+                <TouchableOpacity
+                  onPress={(e) => {
+                    e.stopPropagation();
+                    handleBoostVacancy(item);
+                  }}
+                  style={styles.boostButton}
+                  activeOpacity={0.7}
+                >
+                  <Icon name="rocket-launch" size={16} color={colors.accentGreen} />
+                  <Text style={styles.boostButtonText}>Буст</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  onPress={(e) => {
+                    e.stopPropagation();
+                    navigation.navigate('EmployerPricing');
+                  }}
+                  style={styles.servicesButton}
+                  activeOpacity={0.7}
+                >
+                  <Icon name="star" size={16} color={colors.accentBlue} />
+                  <Text style={styles.servicesButtonText}>Доп. услуги</Text>
+                </TouchableOpacity>
+              </View>
+            )}
           </GlassCard>
         </TouchableOpacity>
       </Animated.View>
@@ -709,6 +743,46 @@ const styles = StyleSheet.create({
     ...typography.caption,
     color: colors.accentOrange,
     fontSize: 11,
+  },
+  actionsRow: {
+    flexDirection: 'row',
+    gap: sizes.sm,
+    marginTop: sizes.sm,
+    paddingTop: sizes.sm,
+    borderTopWidth: 1,
+    borderTopColor: colors.glassBorder,
+  },
+  boostButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: sizes.sm,
+    backgroundColor: `${colors.accentGreen}20`,
+    borderRadius: sizes.radiusSmall,
+  },
+  boostButtonText: {
+    ...typography.caption,
+    color: colors.accentGreen,
+    fontWeight: '600',
+    fontSize: 12,
+  },
+  servicesButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: sizes.sm,
+    backgroundColor: `${colors.accentBlue}20`,
+    borderRadius: sizes.radiusSmall,
+  },
+  servicesButtonText: {
+    ...typography.caption,
+    color: colors.accentBlue,
+    fontWeight: '600',
+    fontSize: 12,
   },
   emptyContainer: {
     alignItems: 'center',

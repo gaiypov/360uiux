@@ -50,4 +50,18 @@ router.get('/financial-stats', authenticateToken, AdminController.getFinancialSt
 router.get('/transactions', authenticateToken, AdminController.getTransactions);
 router.get('/transactions/:id', authenticateToken, AdminController.getTransactionDetails);
 
+/**
+ * Управление тарифами
+ */
+router.get('/pricing', authenticateToken, AdminController.getPricingPlans);
+router.post('/pricing', authenticateToken, AdminController.createPricingPlan);
+router.put('/pricing/:id', authenticateToken, AdminController.updatePricingPlan);
+router.delete('/pricing/:id', authenticateToken, AdminController.deletePricingPlan);
+
+/**
+ * Управление счетами
+ */
+router.get('/invoices', authenticateToken, AdminController.getInvoices);
+router.put('/invoices/:id', authenticateToken, AdminController.updateInvoice);
+
 export default router;

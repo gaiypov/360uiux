@@ -19,6 +19,7 @@ import {
   AdminSettingsScreen,
   AdminTransactionsScreen,
   AdminInvoicesScreen,
+  AdminPricingScreen,
 } from '@/screens/admin';
 
 const Tab = createBottomTabNavigator();
@@ -147,6 +148,7 @@ export function AdminNavigator() {
       <Stack.Screen name="AdminTabs" component={AdminTabs} />
       <Stack.Screen name="AdminTransactions" component={AdminTransactionsScreen} />
       <Stack.Screen name="AdminInvoices" component={AdminInvoicesScreen} />
+      <Stack.Screen name="AdminPricing" component={AdminPricingScreen} />
     </Stack.Navigator>
   );
 }

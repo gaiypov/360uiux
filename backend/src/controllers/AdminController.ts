@@ -1024,6 +1024,247 @@ export class AdminController {
   }
 
   /**
+   * Получить все тарифные планы
+   */
+  static async getPricingPlans(req: Request, res: Response) {
+    try {
+      const userId = (req as any).user?.userId;
+      const user = await prisma.user.findUnique({ where: { id: userId } });
+
+      if (!user || user.role !== UserRole.MODERATOR) {
+        return res.status(403).json({ error: 'Access denied. Admin only.' });
+      }
+
+      const plans = await prisma.pricingPlan.findMany({
+        orderBy: { createdAt: 'desc' },
+      });
+
+      res.json({ plans });
+
+    } catch (error) {
+      console.error('Error fetching pricing plans:', error);
+      res.status(500).json({ error: 'Failed to fetch pricing plans' });
+    }
+  }
+
+  /**
+   * Создать тарифный план
+   */
+  static async createPricingPlan(req: Request, res: Response) {
+    try {
+      const userId = (req as any).user?.userId;
+      const user = await prisma.user.findUnique({ where: { id: userId } });
+
+      if (!user || user.role !== UserRole.MODERATOR) {
+        return res.status(403).json({ error: 'Access denied. Admin only.' });
+      }
+
+      const {
+        name,
+        description,
+        vacancy_post_price,
+        vacancy_top_price,
+        vacancy_boost_price,
+        application_view_price,
+        is_active,
+      } = req.body;
+
+      const plan = await prisma.pricingPlan.create({
+        data: {
+          name,
+          description,
+          vacancyPostPrice: vacancy_post_price,
+          vacancyTopPrice: vacancy_top_price,
+          vacancyBoostPrice: vacancy_boost_price,
+          applicationViewPrice: application_view_price,
+          isActive: is_active ?? true,
+        },
+      });
+
+      res.json({
+        message: 'Pricing plan created successfully',
+        plan,
+      });
+
+    } catch (error) {
+      console.error('Error creating pricing plan:', error);
+      res.status(500).json({ error: 'Failed to create pricing plan' });
+    }
+  }
+
+  /**
+   * Обновить тарифный план
+   */
+  static async updatePricingPlan(req: Request, res: Response) {
+    try {
+      const userId = (req as any).user?.userId;
+      const user = await prisma.user.findUnique({ where: { id: userId } });
+
+      if (!user || user.role !== UserRole.MODERATOR) {
+        return res.status(403).json({ error: 'Access denied. Admin only.' });
+      }
+
+      const { id } = req.params;
+      const {
+        name,
+        description,
+        vacancy_post_price,
+        vacancy_top_price,
+        vacancy_boost_price,
+        application_view_price,
+        is_active,
+      } = req.body;
+
+      const plan = await prisma.pricingPlan.update({
+        where: { id },
+        data: {
+          ...(name !== undefined && { name }),
+          ...(description !== undefined && { description }),
+          ...(vacancy_post_price !== undefined && { vacancyPostPrice: vacancy_post_price }),
+          ...(vacancy_top_price !== undefined && { vacancyTopPrice: vacancy_top_price }),
+          ...(vacancy_boost_price !== undefined && { vacancyBoostPrice: vacancy_boost_price }),
+          ...(application_view_price !== undefined && { applicationViewPrice: application_view_price }),
+          ...(is_active !== undefined && { isActive: is_active }),
+        },
+      });
+
+      res.json({
+        message: 'Pricing plan updated successfully',
+        plan,
+      });
+
+    } catch (error) {
+      console.error('Error updating pricing plan:', error);
+      res.status(500).json({ error: 'Failed to update pricing plan' });
+    }
+  }
+
+  /**
+   * Удалить тарифный план
+   */
+  static async deletePricingPlan(req: Request, res: Response) {
+    try {
+      const userId = (req as any).user?.userId;
+      const user = await prisma.user.findUnique({ where: { id: userId } });
+
+      if (!user || user.role !== UserRole.MODERATOR) {
+        return res.status(403).json({ error: 'Access denied. Admin only.' });
+      }
+
+      const { id } = req.params;
+
+      await prisma.pricingPlan.delete({ where: { id } });
+
+      res.json({ message: 'Pricing plan deleted successfully' });
+
+    } catch (error) {
+      console.error('Error deleting pricing plan:', error);
+      res.status(500).json({ error: 'Failed to delete pricing plan' });
+    }
+  }
+
+  /**
+   * Получить счета
+   */
+  static async getInvoices(req: Request, res: Response) {
+    try {
+      const userId = (req as any).user?.userId;
+      const user = await prisma.user.findUnique({ where: { id: userId } });
+
+      if (!user || user.role !== UserRole.MODERATOR) {
+        return res.status(403).json({ error: 'Access denied. Admin only.' });
+      }
+
+      const {
+        page = 1,
+        limit = 20,
+        status,
+        employerId,
+      } = req.query;
+
+      const skip = (Number(page) - 1) * Number(limit);
+
+      const where: any = {};
+
+      if (status) {
+        where.status = status;
+      }
+
+      if (employerId) {
+        where.employerId = String(employerId);
+      }
+
+      const [invoices, total] = await Promise.all([
+        prisma.invoice.findMany({
+          where,
+          skip,
+          take: Number(limit),
+          orderBy: { createdAt: 'desc' },
+          include: {
+            employer: {
+              select: {
+                id: true,
+                companyName: true,
+                name: true,
+                verified: true,
+              },
+            },
+          },
+        }),
+        prisma.invoice.count({ where }),
+      ]);
+
+      res.json({
+        invoices,
+        pagination: {
+          page: Number(page),
+          limit: Number(limit),
+          total,
+          totalPages: Math.ceil(total / Number(limit)),
+        },
+      });
+
+    } catch (error) {
+      console.error('Error fetching invoices:', error);
+      res.status(500).json({ error: 'Failed to fetch invoices' });
+    }
+  }
+
+  /**
+   * Обновить счёт
+   */
+  static async updateInvoice(req: Request, res: Response) {
+    try {
+      const userId = (req as any).user?.userId;
+      const user = await prisma.user.findUnique({ where: { id: userId } });
+
+      if (!user || user.role !== UserRole.MODERATOR) {
+        return res.status(403).json({ error: 'Access denied. Admin only.' });
+      }
+
+      const { id } = req.params;
+      const { status, paid_date } = req.body;
+
+      const invoice = await prisma.invoice.update({
+        where: { id },
+        data: {
+          ...(status !== undefined && { status }),
+          ...(paid_date !== undefined && { paidDate: new Date(paid_date) }),
+        },
+      });
+
+      res.json({
+        message: 'Invoice updated successfully',
+        invoice,
+      });
+
+    } catch (error) {
+      console.error('Error updating invoice:', error);
+      res.status(500).json({ error: 'Failed to update invoice' });
+    }
+  }
+
+  /**
    * Вспомогательная функция для группировки по датам
    */
   private static groupByDate(items: { createdAt: Date }[]): { date: string; count: number }[] {

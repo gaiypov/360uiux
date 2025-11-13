@@ -225,6 +225,78 @@ class AdminAPIService {
     const response = await this.client.get(`/transactions/${transactionId}`);
     return response.data;
   }
+
+  /**
+   * Получить тарифные планы
+   */
+  async getPricingPlans(): Promise<{ plans: any[] }> {
+    const response = await this.client.get('/pricing');
+    return response.data;
+  }
+
+  /**
+   * Создать тарифный план
+   */
+  async createPricingPlan(data: {
+    name: string;
+    description?: string;
+    vacancy_post_price: number;
+    vacancy_top_price: number;
+    vacancy_boost_price: number;
+    application_view_price: number;
+    is_active: boolean;
+  }): Promise<any> {
+    const response = await this.client.post('/pricing', data);
+    return response.data;
+  }
+
+  /**
+   * Обновить тарифный план
+   */
+  async updatePricingPlan(planId: string, data: Partial<{
+    name: string;
+    description?: string;
+    vacancy_post_price: number;
+    vacancy_top_price: number;
+    vacancy_boost_price: number;
+    application_view_price: number;
+    is_active: boolean;
+  }>): Promise<any> {
+    const response = await this.client.put(`/pricing/${planId}`, data);
+    return response.data;
+  }
+
+  /**
+   * Удалить тарифный план
+   */
+  async deletePricingPlan(planId: string): Promise<{ message: string }> {
+    const response = await this.client.delete(`/pricing/${planId}`);
+    return response.data;
+  }
+
+  /**
+   * Получить счета
+   */
+  async getInvoices(params?: {
+    page?: number;
+    limit?: number;
+    status?: string;
+    employerId?: string;
+  }): Promise<{ invoices: any[]; pagination: PaginationMeta }> {
+    const response = await this.client.get('/invoices', { params });
+    return response.data;
+  }
+
+  /**
+   * Обновить счёт
+   */
+  async updateInvoice(invoiceId: string, data: {
+    status?: string;
+    paid_date?: Date;
+  }): Promise<{ message: string; invoice: any }> {
+    const response = await this.client.put(`/invoices/${invoiceId}`, data);
+    return response.data;
+  }
 }
 
 export const adminApi = new AdminAPIService();

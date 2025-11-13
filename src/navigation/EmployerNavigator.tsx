@@ -19,6 +19,7 @@ import { AutomationScreen } from '@/screens/employer/AutomationScreen';
 import { ABTestingScreen } from '@/screens/employer/ABTestingScreen';
 import { EmployerVacanciesListScreen } from '@/screens/employer/EmployerVacanciesListScreen';
 import { EmployerProfileScreen } from '@/screens/employer/EmployerProfileScreen';
+import { EmployerPricingScreen } from '@/screens/employer/EmployerPricingScreen';
 import { DetailedAnalyticsScreen } from '@/screens/DetailedAnalyticsScreen';
 import { SettingsScreen } from '@/screens/SettingsScreen';
 import { NotificationsScreen } from '@/screens/NotificationsScreen';
@@ -145,6 +146,8 @@ export function EmployerNavigator() {
       <Stack.Screen name="DetailedAnalytics" component={DetailedAnalyticsScreen} />
       <Stack.Screen name="Chat" component={ChatScreen} />
       <Stack.Screen name="Wallet" component={WalletScreen} />
+      <Stack.Screen name="EmployerPricing" component={EmployerPricingScreen} />
+      <Stack.Screen name="EmployerWallet" component={WalletScreen} />
       <Stack.Screen
         name="TopUpModal"
         component={TopUpModal}
