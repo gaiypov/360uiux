@@ -13,13 +13,39 @@ import {
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import { colors, metalGradients, metalGradients, typography, sizes } from "@/constants";
+import { colors, metalGradients, typography, sizes } from "@/constants";
+import { haptics } from '@/utils/haptics';
 
 interface RoleSelectionScreenProps {
-  onSelectRole: (role: 'jobseeker' | 'employer') => void;
+  route?: {
+    params: {
+      phone: string;
+      formattedPhone: string;
+    };
+  };
+  navigation?: any;
+  onSelectRole?: (role: 'jobseeker' | 'employer') => void;
 }
 
-export function RoleSelectionScreen({ onSelectRole }: RoleSelectionScreenProps) {
+export function RoleSelectionScreen({ route, navigation, onSelectRole }: RoleSelectionScreenProps) {
+  const { phone, formattedPhone } = route?.params || { phone: '', formattedPhone: '' };
+
+  const handleSelectRole = (role: 'jobseeker' | 'employer') => {
+    haptics.medium();
+
+    if (onSelectRole) {
+      // Used as component (not in navigation)
+      onSelectRole(role);
+    } else if (navigation) {
+      // Used in navigation flow
+      if (role === 'jobseeker') {
+        navigation.replace('Registration', { phone, formattedPhone });
+      } else {
+        navigation.replace('EmployerRegistration', { phone, formattedPhone });
+      }
+    }
+  };
+
   return (
     <View style={styles.container}>
       <StatusBar
@@ -40,7 +66,7 @@ export function RoleSelectionScreen({ onSelectRole }: RoleSelectionScreenProps) 
         <TouchableOpacity
           style={styles.card}
           activeOpacity={0.9}
-          onPress={() => onSelectRole('jobseeker')}
+          onPress={() => handleSelectRole('jobseeker')}
         >
           <LinearGradient
             colors={metalGradients.platinum}
@@ -62,7 +88,7 @@ export function RoleSelectionScreen({ onSelectRole }: RoleSelectionScreenProps) 
         <TouchableOpacity
           style={styles.card}
           activeOpacity={0.9}
-          onPress={() => onSelectRole('employer')}
+          onPress={() => handleSelectRole('employer')}
         >
           <View style={styles.cardSecondary}>
             <View style={styles.iconContainer}>

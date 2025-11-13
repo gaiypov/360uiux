@@ -14,6 +14,8 @@ import {
   PhoneInputScreen,
   SMSVerificationScreen,
   RegistrationScreen,
+  EmployerRegistrationScreen,
+  RoleSelectionScreen,
   WelcomeBackScreen,
   RegistrationRequiredScreen,
   LoginScreen,
@@ -118,7 +120,9 @@ export function RootNavigator() {
             name="SMSVerification"
             component={SMSVerificationScreen}
           />
+          <Stack.Screen name="RoleSelection" component={RoleSelectionScreen} />
           <Stack.Screen name="Registration" component={RegistrationScreen} />
+          <Stack.Screen name="EmployerRegistration" component={EmployerRegistrationScreen} />
           <Stack.Screen
             name="WelcomeBack"
             component={WelcomeBackScreen}

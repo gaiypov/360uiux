@@ -122,11 +122,11 @@ export function SMSVerificationScreen({ route, navigation }: Props) {
       const response = await api.verifyCode(phone, fullCode);
 
       if (response.requiresRegistration) {
-        // Нужна регистрация
+        // Нужна регистрация - показываем выбор роли
         haptics.success();
         showToast('success', 'Код подтверждён');
 
-        navigation.replace('Registration', {
+        navigation.replace('RoleSelection', {
           phone,
           formattedPhone,
         });

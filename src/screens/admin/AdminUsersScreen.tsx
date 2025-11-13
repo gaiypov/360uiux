@@ -149,6 +149,36 @@ export function AdminUsersScreen({ navigation }: any) {
     );
   };
 
+  const handleChangeRole = (newRole: 'JOBSEEKER' | 'EMPLOYER' | 'MODERATOR') => {
+    if (!selectedUser) return;
+
+    const roleLabel = getRoleLabel(newRole);
+    Alert.alert(
+      'Изменить роль?',
+      `Назначить роль "${roleLabel}" пользователю ${selectedUser.name}?`,
+      [
+        { text: 'Отмена', style: 'cancel' },
+        {
+          text: 'Изменить',
+          onPress: async () => {
+            try {
+              await adminApi.updateUser(selectedUser.id, { role: newRole });
+
+              setUsers(users.map(u =>
+                u.id === selectedUser.id ? { ...u, role: newRole } : u
+              ));
+              setSelectedUser({ ...selectedUser, role: newRole });
+
+              showToast('success', `Роль изменена на "${roleLabel}"`);
+            } catch (error) {
+              showToast('error', 'Ошибка изменения роли');
+            }
+          },
+        },
+      ]
+    );
+  };
+
   const getRoleColor = (role: string) => {
     switch (role) {
       case 'JOBSEEKER':
@@ -328,6 +358,43 @@ export function AdminUsersScreen({ navigation }: any) {
                   <View style={styles.modalRow}>
                     <Text style={styles.modalLabel}>Баланс:</Text>
                     <Text style={styles.modalValue}>{selectedUser.balance} ₽</Text>
+                  </View>
+
+                  {/* Role Change Section */}
+                  <View style={styles.roleChangeSection}>
+                    <Text style={styles.sectionTitle}>Изменить роль:</Text>
+                    <View style={styles.roleButtons}>
+                      {(['JOBSEEKER', 'EMPLOYER', 'MODERATOR'] as const).map((role) => (
+                        <TouchableOpacity
+                          key={role}
+                          onPress={() => {
+                            haptics.light();
+                            handleChangeRole(role);
+                          }}
+                          style={[
+                            styles.roleButton,
+                            selectedUser.role === role && styles.roleButtonActive,
+                          ]}
+                          disabled={selectedUser.role === role}
+                        >
+                          <Icon
+                            name={
+                              role === 'JOBSEEKER' ? 'account' :
+                              role === 'EMPLOYER' ? 'office-building' :
+                              'shield-account'
+                            }
+                            size={16}
+                            color={selectedUser.role === role ? colors.platinumSilver : colors.chromeSilver}
+                          />
+                          <Text style={[
+                            styles.roleButtonText,
+                            selectedUser.role === role && styles.roleButtonTextActive,
+                          ]}>
+                            {getRoleLabel(role)}
+                          </Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
                   </View>
                 </View>
 
@@ -529,6 +596,46 @@ const styles = StyleSheet.create({
   modalValue: {
     ...typography.body,
     color: colors.textPrimary,
+    fontWeight: '600',
+  },
+  roleChangeSection: {
+    marginTop: sizes.lg,
+    paddingTop: sizes.lg,
+    borderTopWidth: 1,
+    borderTopColor: colors.glassBorder,
+  },
+  sectionTitle: {
+    ...typography.bodyBold,
+    color: colors.liquidSilver,
+    marginBottom: sizes.md,
+  },
+  roleButtons: {
+    flexDirection: 'row',
+    gap: sizes.sm,
+  },
+  roleButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: sizes.xs,
+    paddingVertical: sizes.md,
+    paddingHorizontal: sizes.sm,
+    borderRadius: sizes.radiusMedium,
+    backgroundColor: colors.glassBackground,
+    borderWidth: 1,
+    borderColor: colors.glassBorder,
+  },
+  roleButtonActive: {
+    backgroundColor: colors.accentBlue + '20',
+    borderColor: colors.accentBlue,
+  },
+  roleButtonText: {
+    ...typography.caption,
+    color: colors.chromeSilver,
+  },
+  roleButtonTextActive: {
+    color: colors.platinumSilver,
     fontWeight: '600',
   },
   modalActions: {

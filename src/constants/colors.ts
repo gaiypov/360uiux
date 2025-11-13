@@ -70,6 +70,16 @@ export const statusColors = {
   info: '#39E0F8',
 } as const;
 
+// === ACCENT COLORS (Revolut Ultra - Muted & Elegant) ===
+export const accentColors = {
+  accentGreen: '#00D66F',      // Success, positive, money
+  accentBlue: '#39E0F8',       // Info, neutral, primary
+  accentPurple: '#8E7FFF',     // Premium, special features
+  accentOrange: '#FFAA00',     // Warning, attention
+  accentRed: '#FF4757',        // Error, critical, negative
+  accentGray: '#A8A8B5',       // Neutral, disabled
+} as const;
+
 // === UNIFIED COLORS OBJECT ===
 export const colors = {
   // Obsidian series
@@ -102,10 +112,19 @@ export const colors = {
   error: statusColors.error,
   info: statusColors.info,
 
+  // Accent colors
+  accentGreen: accentColors.accentGreen,
+  accentBlue: accentColors.accentBlue,
+  accentPurple: accentColors.accentPurple,
+  accentOrange: accentColors.accentOrange,
+  accentRed: accentColors.accentRed,
+  accentGray: accentColors.accentGray,
+
   // Legacy aliases for gradual migration
   ultraViolet: '#8E7FFF',
   cyberBlue: '#39E0F8',
   graphiteGray: obsidianSeries.graphiteBlack,
+  textSecondary: chromeSeries.chromeSilver,
 } as const;
 
 // === GRADIENT ARRAYS ===
