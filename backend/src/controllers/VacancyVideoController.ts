@@ -54,6 +54,11 @@ export class VacancyVideoController {
         },
       });
 
+      // Determine video status from upload result
+      // Optimized providers (Yandex) return status='processing' immediately
+      // Legacy providers (api.video) return status='ready' after blocking wait
+      const videoStatus = uploadResult.status || 'ready';
+
       // Сохранить информацию о видео в БД
       const video = await db.one<Video>(
         `INSERT INTO videos (
@@ -61,7 +66,7 @@ export class VacancyVideoController {
           player_url, hls_url, thumbnail_url, duration,
           status, views, provider, created_at, updated_at
         )
-        VALUES ($1, 'vacancy', $2, $3, $4, $5, $6, $7, $8, $9, 'ready', 0, $10, NOW(), NOW())
+        VALUES ($1, 'vacancy', $2, $3, $4, $5, $6, $7, $8, $9, $10, 0, $11, NOW(), NOW())
         RETURNING *`,
         [
           uploadResult.videoId,
@@ -73,15 +78,20 @@ export class VacancyVideoController {
           uploadResult.hlsUrl,
           uploadResult.thumbnailUrl,
           uploadResult.duration,
+          videoStatus, // Use dynamic status instead of hardcoded 'ready'
           videoService.getProviderType(),
         ]
       );
 
-      // Обновить вакансию с URL видео
-      await db.none(
-        'UPDATE vacancies SET video_url = $1, thumbnail_url = $2, updated_at = NOW() WHERE id = $3',
-        [uploadResult.playerUrl, uploadResult.thumbnailUrl, vacancyId]
-      );
+      // Обновить вакансию с URL видео (only if ready, not if processing)
+      if (videoStatus === 'ready') {
+        await db.none(
+          'UPDATE vacancies SET video_url = $1, thumbnail_url = $2, updated_at = NOW() WHERE id = $3',
+          [uploadResult.playerUrl, uploadResult.thumbnailUrl, vacancyId]
+        );
+      } else {
+        console.log(`⏳ Video ${video.id} is processing, vacancy will be updated via webhook`);
+      }
 
       console.log(`✅ Vacancy video uploaded successfully: ${video.id}`);
 
