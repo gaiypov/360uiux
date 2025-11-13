@@ -15,6 +15,7 @@ import notifee, {
 } from '@notifee/react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { wsService } from './WebSocketService';
+import { api } from './api';
 
 export interface NotificationData {
   type: 'new_message' | 'video_message' | 'application_status' | 'interview_invite' | 'video_viewed';
@@ -182,8 +183,14 @@ export class NotificationService {
         await AsyncStorage.setItem('@360rabota:fcm_token', token);
         console.log('📱 FCM Token:', token);
 
-        // TODO: Send token to backend
-        // await api.registerFCMToken(token);
+        // ✅ Send token to backend
+        try {
+          await api.registerFCMToken(token);
+          console.log('✅ FCM token registered on backend');
+        } catch (error) {
+          console.error('❌ Failed to register FCM token on backend:', error);
+          // Continue anyway - token is saved locally
+        }
 
         return token;
       }

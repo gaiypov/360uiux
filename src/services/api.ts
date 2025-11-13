@@ -390,6 +390,27 @@ class APIService {
   }
 
   // ===================================
+  // FCM TOKENS API (Push Notifications)
+  // ===================================
+
+  /**
+   * Зарегистрировать FCM токен для push-уведомлений
+   * @param token FCM токен от Firebase
+   */
+  async registerFCMToken(token: string): Promise<{ success: boolean; message: string }> {
+    const response = await this.client.post('/users/fcm-token', { token });
+    return response.data;
+  }
+
+  /**
+   * Удалить FCM токен (при logout или отписке от уведомлений)
+   */
+  async removeFCMToken(): Promise<{ success: boolean; message: string }> {
+    const response = await this.client.delete('/users/fcm-token');
+    return response.data;
+  }
+
+  // ===================================
   // Helper Methods
   // ===================================
 
