@@ -43,4 +43,11 @@ router.put('/complaints/:id/process', authenticateToken, AdminController.process
 router.get('/settings', authenticateToken, AdminController.getSettings);
 router.put('/settings', authenticateToken, AdminController.updateSettings);
 
+/**
+ * Финансы и транзакции
+ */
+router.get('/financial-stats', authenticateToken, AdminController.getFinancialStats);
+router.get('/transactions', authenticateToken, AdminController.getTransactions);
+router.get('/transactions/:id', authenticateToken, AdminController.getTransactionDetails);
+
 export default router;

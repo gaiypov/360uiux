@@ -179,3 +179,49 @@ export interface PaginationMeta {
   total: number;
   totalPages: number;
 }
+
+// ===============================
+// FINANCIAL TYPES
+// ===============================
+
+export interface AdminFinancialStats {
+  overview: {
+    totalRevenue: number;
+    totalDeposits: number;
+    totalPayments: number;
+    totalRefunds: number;
+    netRevenue: number;
+  };
+  transactions: {
+    pending: number;
+    completed: number;
+  };
+  charts: {
+    revenueByDate: ChartDataPoint[];
+  };
+  topSpenders: TopSpender[];
+}
+
+export interface TopSpender {
+  employerId: string;
+  employerName: string;
+  verified: boolean;
+  totalSpent: number;
+}
+
+export interface AdminTransaction {
+  id: string;
+  type: 'deposit' | 'withdrawal' | 'payment' | 'refund';
+  amount: number;
+  currency: string;
+  status: 'pending' | 'completed' | 'failed' | 'cancelled';
+  paymentSystem?: string;
+  description?: string;
+  createdAt: string;
+  completedAt?: string;
+  employer: {
+    id: string;
+    name: string;
+    verified: boolean;
+  };
+}

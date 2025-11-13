@@ -12,6 +12,8 @@ import {
   AdminComplaint,
   AdminSettings,
   PaginationMeta,
+  AdminFinancialStats,
+  AdminTransaction,
 } from '../types';
 
 const API_BASE_URL = __DEV__
@@ -191,6 +193,36 @@ class AdminAPIService {
    */
   async updateSettings(settings: Partial<AdminSettings>): Promise<{ message: string; settings: AdminSettings }> {
     const response = await this.client.put('/settings', settings);
+    return response.data;
+  }
+
+  /**
+   * Получить финансовую статистику
+   */
+  async getFinancialStats(params?: { period?: '24h' | '7d' | '30d' | '90d' }): Promise<AdminFinancialStats> {
+    const response = await this.client.get('/financial-stats', { params });
+    return response.data;
+  }
+
+  /**
+   * Получить транзакции
+   */
+  async getTransactions(params?: {
+    page?: number;
+    limit?: number;
+    type?: string;
+    status?: string;
+    employerId?: string;
+  }): Promise<{ transactions: AdminTransaction[]; pagination: PaginationMeta }> {
+    const response = await this.client.get('/transactions', { params });
+    return response.data;
+  }
+
+  /**
+   * Получить детали транзакции
+   */
+  async getTransactionDetails(transactionId: string): Promise<{ transaction: AdminTransaction }> {
+    const response = await this.client.get(`/transactions/${transactionId}`);
     return response.data;
   }
 }

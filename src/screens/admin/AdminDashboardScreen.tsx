@@ -182,6 +182,14 @@ export function AdminDashboardScreen({ navigation }: any) {
           <Text style={styles.sectionTitle}>УПРАВЛЕНИЕ</Text>
           <GlassCard style={styles.card}>
             <ActionItem
+              icon="cash-multiple"
+              title="Финансы"
+              subtitle="Транзакции и выручка от работодателей"
+              onPress={() => navigateTo('AdminTransactions')}
+              color={colors.accentGreen}
+            />
+            <View style={styles.divider} />
+            <ActionItem
               icon="account-group"
               title="Пользователи"
               subtitle={`${stats?.overview.totalJobseekers || 0} соискателей • ${stats?.overview.totalEmployers || 0} работодателей`}

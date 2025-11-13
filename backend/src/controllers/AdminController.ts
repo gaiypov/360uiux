@@ -664,6 +664,348 @@ export class AdminController {
   }
 
   /**
+   * Получить финансовую аналитику
+   */
+  static async getFinancialStats(req: Request, res: Response) {
+    try {
+      const userId = (req as any).user?.userId;
+      const user = await prisma.user.findUnique({ where: { id: userId } });
+
+      if (!user || user.role !== UserRole.MODERATOR) {
+        return res.status(403).json({ error: 'Access denied. Admin only.' });
+      }
+
+      const { period = '7d' } = req.query;
+
+      // Определяем временной диапазон
+      const now = new Date();
+      let startDate = new Date();
+      switch (period) {
+        case '24h':
+          startDate.setHours(startDate.getHours() - 24);
+          break;
+        case '7d':
+          startDate.setDate(startDate.getDate() - 7);
+          break;
+        case '30d':
+          startDate.setDate(startDate.getDate() - 30);
+          break;
+        case '90d':
+          startDate.setDate(startDate.getDate() - 90);
+          break;
+        default:
+          startDate.setDate(startDate.getDate() - 7);
+      }
+
+      // Параллельные запросы для финансовой статистики
+      const [
+        totalRevenue,
+        totalDeposits,
+        totalPayments,
+        totalRefunds,
+        pendingTransactions,
+        completedTransactions,
+        recentTransactions,
+        topSpenders,
+      ] = await Promise.all([
+        // Общая выручка (completed deposits)
+        prisma.transaction.aggregate({
+          where: {
+            type: 'deposit',
+            status: 'completed',
+          },
+          _sum: { amount: true },
+        }),
+
+        // Все пополнения
+        prisma.transaction.count({
+          where: { type: 'deposit', status: 'completed' },
+        }),
+
+        // Все платежи (списания)
+        prisma.transaction.aggregate({
+          where: {
+            type: 'payment',
+            status: 'completed',
+          },
+          _sum: { amount: true },
+        }),
+
+        // Возвраты
+        prisma.transaction.aggregate({
+          where: {
+            type: 'refund',
+            status: 'completed',
+          },
+          _sum: { amount: true },
+        }),
+
+        // Pending транзакции
+        prisma.transaction.count({
+          where: { status: 'pending' },
+        }),
+
+        // Completed за период
+        prisma.transaction.count({
+          where: {
+            status: 'completed',
+            createdAt: { gte: startDate },
+          },
+        }),
+
+        // Последние транзакции
+        prisma.transaction.findMany({
+          where: { createdAt: { gte: startDate } },
+          orderBy: { createdAt: 'desc' },
+          take: 50,
+          include: {
+            wallet: {
+              select: {
+                employerId: true,
+              },
+            },
+          },
+        }),
+
+        // Топ работодатели по тратам
+        prisma.transaction.groupBy({
+          by: ['walletId'],
+          where: {
+            type: 'payment',
+            status: 'completed',
+            createdAt: { gte: startDate },
+          },
+          _sum: { amount: true },
+          orderBy: {
+            _sum: { amount: 'desc' },
+          },
+          take: 10,
+        }),
+      ]);
+
+      // Получаем информацию о топ работодателях
+      const walletIds = topSpenders.map(s => s.walletId);
+      const wallets = await prisma.wallet.findMany({
+        where: { id: { in: walletIds } },
+        include: {
+          employerId: true,
+        },
+      });
+
+      const topSpendersWithDetails = await Promise.all(
+        topSpenders.map(async (spender) => {
+          const wallet = wallets.find(w => w.id === spender.walletId);
+          if (!wallet) return null;
+
+          const employer = await prisma.user.findUnique({
+            where: { id: wallet.employerId },
+            select: {
+              id: true,
+              companyName: true,
+              name: true,
+              verified: true,
+            },
+          });
+
+          return {
+            employerId: wallet.employerId,
+            employerName: employer?.companyName || employer?.name || 'Unknown',
+            verified: employer?.verified || false,
+            totalSpent: spender._sum.amount || 0,
+          };
+        })
+      );
+
+      // Группируем транзакции по датам для графика
+      const transactionsByDate = this.groupByDate(
+        recentTransactions.filter(t => t.type === 'deposit' && t.status === 'completed')
+      );
+
+      res.json({
+        overview: {
+          totalRevenue: totalRevenue._sum.amount || 0,
+          totalDeposits,
+          totalPayments: totalPayments._sum.amount || 0,
+          totalRefunds: totalRefunds._sum.amount || 0,
+          netRevenue: (totalRevenue._sum.amount || 0) - (totalRefunds._sum.amount || 0),
+        },
+        transactions: {
+          pending: pendingTransactions,
+          completed: completedTransactions,
+        },
+        charts: {
+          revenueByDate: transactionsByDate,
+        },
+        topSpenders: topSpendersWithDetails.filter(Boolean),
+      });
+
+    } catch (error) {
+      console.error('Error fetching financial stats:', error);
+      res.status(500).json({ error: 'Failed to fetch financial stats' });
+    }
+  }
+
+  /**
+   * Получить все транзакции с фильтрацией
+   */
+  static async getTransactions(req: Request, res: Response) {
+    try {
+      const userId = (req as any).user?.userId;
+      const user = await prisma.user.findUnique({ where: { id: userId } });
+
+      if (!user || user.role !== UserRole.MODERATOR) {
+        return res.status(403).json({ error: 'Access denied. Admin only.' });
+      }
+
+      const {
+        page = 1,
+        limit = 20,
+        type,
+        status,
+        employerId,
+      } = req.query;
+
+      const skip = (Number(page) - 1) * Number(limit);
+
+      const where: any = {};
+
+      if (type) {
+        where.type = type;
+      }
+
+      if (status) {
+        where.status = status;
+      }
+
+      if (employerId) {
+        const wallet = await prisma.wallet.findUnique({
+          where: { employerId: String(employerId) },
+        });
+        if (wallet) {
+          where.walletId = wallet.id;
+        }
+      }
+
+      const [transactions, total] = await Promise.all([
+        prisma.transaction.findMany({
+          where,
+          skip,
+          take: Number(limit),
+          orderBy: { createdAt: 'desc' },
+          include: {
+            wallet: {
+              select: {
+                employerId: true,
+              },
+            },
+          },
+        }),
+        prisma.transaction.count({ where }),
+      ]);
+
+      // Получаем информацию о работодателях
+      const employerIds = transactions.map(t => t.wallet.employerId);
+      const employers = await prisma.user.findMany({
+        where: { id: { in: employerIds } },
+        select: {
+          id: true,
+          companyName: true,
+          name: true,
+          verified: true,
+        },
+      });
+
+      const transactionsFormatted = transactions.map(t => {
+        const employer = employers.find(e => e.id === t.wallet.employerId);
+        return {
+          id: t.id,
+          type: t.type,
+          amount: t.amount,
+          currency: t.currency,
+          status: t.status,
+          paymentSystem: t.paymentSystem,
+          description: t.description,
+          createdAt: t.createdAt,
+          completedAt: t.completedAt,
+          employer: {
+            id: employer?.id,
+            name: employer?.companyName || employer?.name,
+            verified: employer?.verified,
+          },
+        };
+      });
+
+      res.json({
+        transactions: transactionsFormatted,
+        pagination: {
+          page: Number(page),
+          limit: Number(limit),
+          total,
+          totalPages: Math.ceil(total / Number(limit)),
+        },
+      });
+
+    } catch (error) {
+      console.error('Error fetching transactions:', error);
+      res.status(500).json({ error: 'Failed to fetch transactions' });
+    }
+  }
+
+  /**
+   * Получить детали транзакции
+   */
+  static async getTransactionDetails(req: Request, res: Response) {
+    try {
+      const userId = (req as any).user?.userId;
+      const user = await prisma.user.findUnique({ where: { id: userId } });
+
+      if (!user || user.role !== UserRole.MODERATOR) {
+        return res.status(403).json({ error: 'Access denied. Admin only.' });
+      }
+
+      const { id } = req.params;
+
+      const transaction = await prisma.transaction.findUnique({
+        where: { id },
+        include: {
+          wallet: {
+            include: {
+              employerId: true,
+            },
+          },
+        },
+      });
+
+      if (!transaction) {
+        return res.status(404).json({ error: 'Transaction not found' });
+      }
+
+      const employer = await prisma.user.findUnique({
+        where: { id: transaction.wallet.employerId },
+        select: {
+          id: true,
+          companyName: true,
+          name: true,
+          email: true,
+          phone: true,
+          verified: true,
+        },
+      });
+
+      res.json({
+        transaction: {
+          ...transaction,
+          employer,
+        },
+      });
+
+    } catch (error) {
+      console.error('Error fetching transaction details:', error);
+      res.status(500).json({ error: 'Failed to fetch transaction details' });
+    }
+  }
+
+  /**
    * Вспомогательная функция для группировки по датам
    */
   private static groupByDate(items: { createdAt: Date }[]): { date: string; count: number }[] {

@@ -8,3 +8,4 @@ export { AdminUsersScreen } from './AdminUsersScreen';
 export { AdminVacanciesScreen } from './AdminVacanciesScreen';
 export { AdminReportsScreen } from './AdminReportsScreen';
 export { AdminSettingsScreen } from './AdminSettingsScreen';
+export { AdminTransactionsScreen } from './AdminTransactionsScreen';
