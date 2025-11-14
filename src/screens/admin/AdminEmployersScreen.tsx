@@ -232,6 +232,12 @@ export function AdminEmployersScreen({ navigation }: any) {
     );
   });
 
+  const renderEmployer = useCallback(({ item, index }: { item: AdminUser; index: number }) => (
+    <EmployerCard item={item} index={index} />
+  ), []);
+
+  const keyExtractor = useCallback((item: AdminUser) => item.id, []);
+
   if (loading) {
     return (
       <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
@@ -334,8 +340,8 @@ export function AdminEmployersScreen({ navigation }: any) {
       {/* Employers List */}
       <FlatList
         data={employers}
-        renderItem={({ item, index }) => <EmployerCard item={item} index={index} />}
-        keyExtractor={(item) => item.id}
+        renderItem={renderEmployer}
+        keyExtractor={keyExtractor}
         contentContainerStyle={styles.listContent}
         onRefresh={onRefresh}
         refreshing={refreshing}

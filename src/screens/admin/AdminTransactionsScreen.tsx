@@ -170,7 +170,7 @@ export function AdminTransactionsScreen({ navigation }: any) {
     }
   };
 
-  const renderTransaction = ({ item, index }: { item: AdminTransaction; index: number }) => (
+  const renderTransaction = useCallback(({ item, index }: { item: AdminTransaction; index: number }) => (
     <Animated.View entering={FadeInDown.delay(index * 50).duration(400)}>
       <TouchableOpacity
         onPress={() => handleTransactionPress(item)}
@@ -217,7 +217,9 @@ export function AdminTransactionsScreen({ navigation }: any) {
         </GlassCard>
       </TouchableOpacity>
     </Animated.View>
-  );
+  ), []);
+
+  const keyExtractor = useCallback((item: AdminTransaction) => item.id, []);
 
   if (loading) {
     return (
@@ -333,7 +335,7 @@ export function AdminTransactionsScreen({ navigation }: any) {
       <FlatList
         data={transactions}
         renderItem={renderTransaction}
-        keyExtractor={(item) => item.id}
+        keyExtractor={keyExtractor}
         contentContainerStyle={styles.listContent}
         onRefresh={onRefresh}
         refreshing={refreshing}

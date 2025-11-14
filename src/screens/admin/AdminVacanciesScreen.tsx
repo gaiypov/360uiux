@@ -193,7 +193,7 @@ export function AdminVacanciesScreen({ navigation }: any) {
     }
   };
 
-  const renderVacancy = ({ item, index }: { item: AdminVacancy; index: number }) => (
+  const renderVacancy = useCallback(({ item, index }: { item: AdminVacancy; index: number }) => (
     <Animated.View entering={FadeInDown.delay(index * 50).duration(400)}>
       <TouchableOpacity
         onPress={() => handleVacancyPress(item)}
@@ -245,7 +245,9 @@ export function AdminVacanciesScreen({ navigation }: any) {
         </GlassCard>
       </TouchableOpacity>
     </Animated.View>
-  );
+  ), []);
+
+  const keyExtractor = useCallback((item: AdminVacancy) => item.id, []);
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
@@ -302,7 +304,7 @@ export function AdminVacanciesScreen({ navigation }: any) {
       <FlatList
         data={vacancies}
         renderItem={renderVacancy}
-        keyExtractor={(item) => item.id}
+        keyExtractor={keyExtractor}
         contentContainerStyle={styles.listContent}
         onRefresh={onRefresh}
         refreshing={refreshing}
