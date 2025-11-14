@@ -14,8 +14,12 @@ import notifee, {
   Event,
 } from '@notifee/react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { SecureStorage, SECURE_STORAGE_KEYS, migrateFromAsyncStorage } from '../utils/SecureStorage';
 import { wsService } from './WebSocketService';
 import { api } from './api';
+
+// Legacy AsyncStorage key (for migration)
+const LEGACY_FCM_TOKEN_KEY = '@360rabota:fcm_token';
 
 export interface NotificationData {
   type: 'new_message' | 'video_message' | 'application_status' | 'interview_invite' | 'video_viewed';
@@ -169,18 +173,32 @@ export class NotificationService {
    */
   async getFCMToken(): Promise<string | null> {
     try {
-      // Check if already registered
-      const storedToken = await AsyncStorage.getItem('@360rabota:fcm_token');
+      // Check if already registered in SecureStorage
+      let storedToken = await SecureStorage.getItem(SECURE_STORAGE_KEYS.FCM_TOKEN);
+
+      // Migration: If not found in SecureStorage, check legacy AsyncStorage
+      if (!storedToken) {
+        console.log('🔄 Migrating FCM token from AsyncStorage to SecureStorage...');
+        const migrated = await migrateFromAsyncStorage(
+          AsyncStorage,
+          LEGACY_FCM_TOKEN_KEY,
+          SECURE_STORAGE_KEYS.FCM_TOKEN
+        );
+        if (migrated) {
+          storedToken = await SecureStorage.getItem(SECURE_STORAGE_KEYS.FCM_TOKEN);
+        }
+      }
+
       if (storedToken) {
         this.fcmToken = storedToken;
         return storedToken;
       }
 
-      // Get new token
+      // Get new token from Firebase
       const token = await messaging().getToken();
       if (token) {
         this.fcmToken = token;
-        await AsyncStorage.setItem('@360rabota:fcm_token', token);
+        await SecureStorage.setItem(SECURE_STORAGE_KEYS.FCM_TOKEN, token);
         console.log('📱 FCM Token:', token);
 
         // ✅ Send token to backend
@@ -847,7 +865,11 @@ export class NotificationService {
   async refreshToken(): Promise<string | null> {
     try {
       await messaging().deleteToken();
-      await AsyncStorage.removeItem('@360rabota:fcm_token');
+      // Remove from both SecureStorage and legacy AsyncStorage
+      await Promise.all([
+        SecureStorage.removeItem(SECURE_STORAGE_KEYS.FCM_TOKEN),
+        AsyncStorage.removeItem(LEGACY_FCM_TOKEN_KEY),
+      ]);
       return await this.getFCMToken();
     } catch (error) {
       console.error('Error refreshing FCM token:', error);

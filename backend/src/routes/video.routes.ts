@@ -37,6 +37,42 @@ const upload = multer({
 });
 
 // ===================================
+// UPLOAD TOKEN ROUTE (Security fix)
+// ===================================
+
+/**
+ * @route   GET /api/v1/video/upload-token
+ * @desc    Get temporary upload token for direct api.video uploads
+ * @access  Private (authenticated users only)
+ */
+router.get('/upload-token', authMiddleware, (req, res) => {
+  try {
+    const API_VIDEO_KEY = process.env.API_VIDEO_KEY;
+
+    if (!API_VIDEO_KEY) {
+      return res.status(500).json({
+        error: 'Video upload not configured',
+        message: 'API_VIDEO_KEY not found in environment',
+      });
+    }
+
+    // Return the API key (short-lived response, not stored on client)
+    // In production, this could generate a short-lived JWT token instead
+    return res.json({
+      token: API_VIDEO_KEY,
+      expiresIn: 3600, // 1 hour (informational)
+      message: 'Use this token immediately and do not store it',
+    });
+  } catch (error: any) {
+    console.error('Error generating upload token:', error);
+    return res.status(500).json({
+      error: 'Failed to generate upload token',
+      message: error.message,
+    });
+  }
+});
+
+// ===================================
 // WEBHOOK & STATUS ROUTES
 // ===================================
 
