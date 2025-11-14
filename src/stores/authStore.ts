@@ -8,9 +8,12 @@
  * - Proper error handling for AsyncStorage
  * - Better Promise typing
  * - Atomic state updates
+ * - P1 FIX: Added persist middleware for auth state persistence
  */
 
 import { create } from 'zustand';
+import { persist, createJSONStorage } from 'zustand/middleware';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { api, User as APIUser } from '@/services/api';
 import { User } from '@/types';
 import { resetGuestViews, getGuestViews } from '@/utils/guestViewCounter';
@@ -29,11 +32,13 @@ interface AuthState {
   clearError: () => void;
 }
 
-export const useAuthStore = create<AuthState>((set, get) => ({
-  user: null,
-  isAuthenticated: false,
-  isLoading: false,
-  error: null,
+export const useAuthStore = create<AuthState>()(
+  persist(
+    (set, get) => ({
+      user: null,
+      isAuthenticated: false,
+      isLoading: false,
+      error: null,
 
   /**
    * Initialize auth state from storage
@@ -256,4 +261,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   clearError: () => {
     set({ error: null });
   },
-}));
+    }),
+    {
+      name: 'auth-storage',
+      storage: createJSONStorage(() => AsyncStorage),
+    }
+  )
+);

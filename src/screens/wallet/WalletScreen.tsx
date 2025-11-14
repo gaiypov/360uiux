@@ -1,9 +1,10 @@
 /**
  * 360° РАБОТА - ULTRA EDITION
  * Wallet Screen (Employer only)
+ * P1 FIX: Added race condition protection for async operations
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -32,8 +33,18 @@ export function WalletScreen({ navigation }: any) {
   const [refreshing, setRefreshing] = useState(false);
   const [loadingPayment, setLoadingPayment] = useState(false);
 
+  // P1 FIX: Prevent race conditions with async operations
+  const isCancelledRef = useRef(false);
+
+  useEffect(() => {
+    return () => {
+      isCancelledRef.current = true;
+    };
+  }, []);
+
   /**
    * Загрузка данных кошелька
+   * P1 FIX: Added isCancelled checks
    */
   const loadWalletData = useCallback(async () => {
     try {
@@ -42,14 +53,20 @@ export function WalletScreen({ navigation }: any) {
         api.getTransactions({ limit: 50 }),
       ]);
 
+      if (isCancelledRef.current) return;
+
       setBalance(balanceData);
       setTransactions(transactionsData.transactions);
     } catch (error: any) {
+      if (isCancelledRef.current) return;
+
       console.error('Load wallet error:', error);
       showToast('error', 'Ошибка загрузки кошелька');
     } finally {
-      setLoading(false);
-      setRefreshing(false);
+      if (!isCancelledRef.current) {
+        setLoading(false);
+        setRefreshing(false);
+      }
     }
   }, [showToast]);
 
@@ -67,10 +84,11 @@ export function WalletScreen({ navigation }: any) {
 
   /**
    * Инициация пополнения кошелька
+   * P1 FIX: Added isCancelled checks
    */
   const handleTopUp = async (amount: number, paymentSystem: 'alfabank' | 'invoice') => {
     try {
-      setLoadingPayment(true);
+      if (!isCancelledRef.current) setLoadingPayment(true);
       haptics.light();
 
       const response = await api.initPayment({
@@ -79,24 +97,34 @@ export function WalletScreen({ navigation }: any) {
         cardType: 'business',
       });
 
+      if (isCancelledRef.current) return;
+
       // Открываем URL оплаты в браузере (или скачиваем PDF счета)
       const supported = await Linking.canOpenURL(response.paymentUrl);
       if (supported) {
         await Linking.openURL(response.paymentUrl);
-        if (paymentSystem === 'invoice') {
-          showToast('success', 'Счёт успешно сформирован');
-        } else {
-          showToast('success', 'Перенаправление на оплату...');
+        if (!isCancelledRef.current) {
+          if (paymentSystem === 'invoice') {
+            showToast('success', 'Счёт успешно сформирован');
+          } else {
+            showToast('success', 'Перенаправление на оплату...');
+          }
         }
       } else {
-        showToast('error', 'Не удалось открыть страницу оплаты');
+        if (!isCancelledRef.current) {
+          showToast('error', 'Не удалось открыть страницу оплаты');
+        }
       }
     } catch (error: any) {
+      if (isCancelledRef.current) return;
+
       console.error('Init payment error:', error);
       haptics.error();
       showToast('error', error.response?.data?.message || 'Ошибка создания платежа');
     } finally {
-      setLoadingPayment(false);
+      if (!isCancelledRef.current) {
+        setLoadingPayment(false);
+      }
     }
   };
 
