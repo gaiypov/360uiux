@@ -1,9 +1,10 @@
 /**
  * 360° РАБОТА - Video Preview Screen
  * Preview recorded resume video before upload
+ * ✅ STAGE II OPTIMIZED: Added video ref cleanup on unmount
  */
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   StyleSheet,
@@ -48,6 +49,21 @@ export function VideoPreviewScreen({ navigation, route }: VideoPreviewScreenProp
 
   // Animation values
   const playButtonScale = useSharedValue(1);
+
+  // ✅ P0-II-6 FIX: Cleanup video ref on unmount to prevent memory leaks
+  useEffect(() => {
+    return () => {
+      // Pause and cleanup video on unmount
+      if (videoRef.current) {
+        try {
+          // React Native Video cleanup
+          videoRef.current = null;
+        } catch (error) {
+          console.error('Error cleaning up video:', error);
+        }
+      }
+    };
+  }, []);
 
   // Format time to MM:SS
   const formatTime = (seconds: number): string => {

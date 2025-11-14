@@ -3,6 +3,7 @@
  * Resume Video Player Component
  *
  * Architecture v3: Приватный видеоплеер с лимитом 2 просмотра
+ * ✅ STAGE II OPTIMIZED: Fixed memory leak (urlRefreshTimer cleanup)
  *
  * Features:
  * - 2-view limit per employer
@@ -65,17 +66,26 @@ export function ResumeVideoPlayer({
   const videoRef = useRef<Video>(null);
   const urlRefreshTimer = useRef<NodeJS.Timeout | null>(null);
 
+  // ✅ P0-II-4 FIX: Proper cleanup of urlRefreshTimer on unmount
   useEffect(() => {
     checkViewLimitAndLoadVideo();
 
     return () => {
       if (urlRefreshTimer.current) {
         clearTimeout(urlRefreshTimer.current);
+        urlRefreshTimer.current = null;
       }
     };
   }, [videoId, applicationId]);
 
+  // ✅ P0-II-4 FIX: Clear timer before creating new one to prevent leaks
   useEffect(() => {
+    // Clear existing timer before creating new one
+    if (urlRefreshTimer.current) {
+      clearTimeout(urlRefreshTimer.current);
+      urlRefreshTimer.current = null;
+    }
+
     // Auto-refresh URL before it expires
     if (urlExpiresAt && secureUrl) {
       const timeUntilExpiry = urlExpiresAt.getTime() - Date.now();
@@ -85,7 +95,15 @@ export function ResumeVideoPlayer({
         refreshSecureUrl();
       }, refreshTime);
     }
-  }, [urlExpiresAt]);
+
+    // Cleanup on unmount or when urlExpiresAt changes
+    return () => {
+      if (urlRefreshTimer.current) {
+        clearTimeout(urlRefreshTimer.current);
+        urlRefreshTimer.current = null;
+      }
+    };
+  }, [urlExpiresAt, secureUrl]);
 
   const checkViewLimitAndLoadVideo = async () => {
     try {
