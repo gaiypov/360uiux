@@ -12,7 +12,7 @@
  */
 
 import React, { useRef, useState, useEffect, useCallback, useMemo } from 'react';
-import { View, StyleSheet, Dimensions, StatusBar, FlatList } from 'react-native';
+import { View, StyleSheet, Dimensions, StatusBar, FlatList, RefreshControl } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { GestureDetector, Gesture } from 'react-native-gesture-handler';
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
@@ -41,9 +41,10 @@ export function VacancyFeedScreen({ navigation }: any) {
   const flatListRef = useRef<FlatList>(null);
   const insets = useSafeAreaInsets();
   const [currentIndex, setCurrentIndex] = useState(0);
-  const { vacancies, fetchMore } = useVacancyFeed();
+  const { vacancies, fetchMore, refresh, loading } = useVacancyFeed();
   const { user } = useAuthStore();
   const { showToast } = useToastStore();
+  const [refreshing, setRefreshing] = useState(false);
 
   const [likedVacancies, setLikedVacancies] = useState<Set<string>>(new Set());
   const [favoritedVacancies, setFavoritedVacancies] = useState<Set<string>>(new Set());
@@ -389,6 +390,25 @@ export function VacancyFeedScreen({ navigation }: any) {
   }, [fetchMore]);
 
   /**
+   * Handle pull-to-refresh
+   * Only works when at the top (currentIndex === 0)
+   */
+  const handleRefresh = useCallback(async () => {
+    if (currentIndex !== 0) return; // Only refresh at the top
+
+    setRefreshing(true);
+    try {
+      await refresh();
+      haptics.light();
+      showToast('success', 'Лента обновлена');
+    } catch (error) {
+      showToast('error', 'Ошибка обновления');
+    } finally {
+      setRefreshing(false);
+    }
+  }, [currentIndex, refresh, showToast]);
+
+  /**
    * Optimized getItemLayout for better scrolling performance
    * Prevents layout calculations on every scroll
    */
@@ -421,6 +441,16 @@ export function VacancyFeedScreen({ navigation }: any) {
             decelerationRate="fast"
             onEndReached={handleEndReached}
             onEndReachedThreshold={0.5}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={handleRefresh}
+                enabled={currentIndex === 0}
+                tintColor={colors.platinumSilver}
+                colors={[colors.platinumSilver]}
+                progressBackgroundColor={colors.graphiteGray}
+              />
+            }
             onViewableItemsChanged={handleViewableItemsChanged}
             viewabilityConfig={viewabilityConfig}
             getItemLayout={getItemLayout}

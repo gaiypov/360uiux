@@ -25,7 +25,7 @@ const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 interface OnboardingScreenProps {
   navigation: any;
-  onGetStarted?: () => void;
+  onGetStarted: () => void; // Make required instead of optional
 }
 
 const slides = [
@@ -75,11 +75,7 @@ export function OnboardingScreen({ navigation, onGetStarted }: OnboardingScreenP
   const flatListRef = useRef<FlatList>(null);
 
   const handleComplete = () => {
-    if (onGetStarted) {
-      onGetStarted();
-    } else {
-      navigation.replace('Main');
-    }
+    onGetStarted();
   };
 
   const handleNext = () => {
