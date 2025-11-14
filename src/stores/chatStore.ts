@@ -48,6 +48,7 @@ interface ChatState {
   conversations: Conversation[];
   activeConversationId: string | null;
   isConnected: boolean;
+  badgeUpdatePending: boolean; // ✅ FIXED: Moved from module-level to prevent race conditions
 
   // Actions
   createConversation: (conversation: Omit<Conversation, 'messages' | 'unreadCount'>) => void;
@@ -81,8 +82,7 @@ interface ChatState {
   updateBadgeCount: () => Promise<void>;
 }
 
-// Badge update tracking to prevent race conditions
-let badgeUpdatePending = false;
+// ✅ FIXED: Removed module-level variable (moved into store state)
 
 export const useChatStore = create<ChatState>()(
   persist(
@@ -90,6 +90,7 @@ export const useChatStore = create<ChatState>()(
       conversations: [],
       activeConversationId: null,
       isConnected: false,
+      badgeUpdatePending: false, // ✅ Initial state
 
       // WebSocket: Connect
       connectWebSocket: async (userId: string) => {
@@ -161,8 +162,20 @@ export const useChatStore = create<ChatState>()(
 
       // WebSocket: Disconnect
       disconnectWebSocket: () => {
+        // ✅ FIXED: Remove all event listeners to prevent memory leaks
+        wsService.off('message:received');
+        wsService.off('message:delivered');
+        wsService.off('message:read');
+        wsService.off('typing:start');
+        wsService.off('typing:stop');
+        wsService.off('connection:lost');
+        wsService.off('connection:success');
+        wsService.off('video:viewed');
+        wsService.off('video:deleted');
+
         wsService.disconnect();
         set({ isConnected: false });
+        console.log('✅ Chat store disconnected from WebSocket (listeners cleaned up)');
       },
 
       // WebSocket: Send typing indicator
@@ -389,12 +402,12 @@ export const useChatStore = create<ChatState>()(
       // Notification: Update badge count
       updateBadgeCount: async () => {
         // Prevent race conditions - skip if update already pending
-        if (badgeUpdatePending) {
+        if (get().badgeUpdatePending) {
           console.log('📱 Badge update already pending, skipping...');
           return;
         }
 
-        badgeUpdatePending = true;
+        set({ badgeUpdatePending: true });
 
         try {
           const totalUnread = get().getTotalUnreadCount();
@@ -403,7 +416,7 @@ export const useChatStore = create<ChatState>()(
         } catch (error) {
           console.error('❌ Error updating badge count:', error);
         } finally {
-          badgeUpdatePending = false;
+          set({ badgeUpdatePending: false });
         }
       },
     }),

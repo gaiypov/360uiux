@@ -20,7 +20,8 @@ if (!JWT_SECRET || !JWT_REFRESH_SECRET) {
   process.exit(1);
 }
 
-const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '30d';
+// ✅ SECURITY: Short-lived access tokens (15 min) + long-lived refresh tokens (90 days)
+const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '15m';
 const JWT_REFRESH_EXPIRES_IN = process.env.JWT_REFRESH_EXPIRES_IN || '90d';
 
 /**

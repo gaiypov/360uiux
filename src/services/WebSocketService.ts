@@ -5,6 +5,10 @@
 
 import { io, Socket } from 'socket.io-client';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { SecureStorage, SECURE_STORAGE_KEYS, migrateFromAsyncStorage } from '../utils/SecureStorage';
+
+// Legacy AsyncStorage key (for migration)
+const LEGACY_ACCESS_TOKEN_KEY = '@360rabota:access_token';
 
 interface MessageData {
   id: string;
@@ -78,8 +82,22 @@ export class WebSocketService {
     try {
       this.userId = userId;
 
-      // Get auth token from storage
-      const token = await AsyncStorage.getItem('@360rabota:access_token');
+      // Get auth token from SecureStorage
+      let token = await SecureStorage.getItem(SECURE_STORAGE_KEYS.ACCESS_TOKEN);
+
+      // Migration: If not found in SecureStorage, check legacy AsyncStorage
+      if (!token) {
+        console.log('🔄 Migrating WebSocket token from AsyncStorage to SecureStorage...');
+        const migrated = await migrateFromAsyncStorage(
+          AsyncStorage,
+          LEGACY_ACCESS_TOKEN_KEY,
+          SECURE_STORAGE_KEYS.ACCESS_TOKEN
+        );
+        if (migrated) {
+          token = await SecureStorage.getItem(SECURE_STORAGE_KEYS.ACCESS_TOKEN);
+        }
+      }
+
       if (!token) {
         throw new Error('No auth token found');
       }
@@ -105,7 +123,7 @@ export class WebSocketService {
 
       console.log('📡 WebSocket connecting...');
     } catch (error) {
-      console.error('Error connecting to WebSocket:', error);
+      console.error('❌ Error connecting to WebSocket:', error);
       throw error;
     }
   }

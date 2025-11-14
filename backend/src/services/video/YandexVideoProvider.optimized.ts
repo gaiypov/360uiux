@@ -51,18 +51,20 @@ interface YandexCallbackPayload {
 export class YandexVideoProviderOptimized implements IVideoProvider {
   private s3: AWS.S3;
   private bucket: string;
+  private baseUrl: string;
   private yandexApiUrl = 'https://video.api.cloud.yandex.net/video/v1';
   private callbackUrl: string;
 
   constructor() {
-    const { accessKeyId, secretAccessKey, bucket, region } = videoConfig.yandex;
+    const { accessKeyId, secretAccessKey, bucket, region, baseUrl, callbackUrl } = videoConfig.yandex;
 
     if (!accessKeyId || !secretAccessKey) {
       throw new Error('Yandex Cloud credentials are required');
     }
 
     this.bucket = bucket;
-    this.callbackUrl = `${videoConfig.baseUrl}/api/v1/video/yandex-callback`;
+    this.baseUrl = baseUrl;
+    this.callbackUrl = callbackUrl;
 
     // Initialize S3 client for Yandex Object Storage
     this.s3 = new AWS.S3({
@@ -133,9 +135,9 @@ export class YandexVideoProviderOptimized implements IVideoProvider {
       // Client will poll or receive webhook notification when ready
       return {
         videoId: transcodingJob.id,
-        playerUrl: `https://storage.yandexcloud.net/${this.bucket}/${outputPrefix}/master.m3u8`, // Will be available after transcoding
-        hlsUrl: `https://storage.yandexcloud.net/${this.bucket}/${outputPrefix}/master.m3u8`,
-        thumbnailUrl: `https://storage.yandexcloud.net/${this.bucket}/${outputPrefix}/thumbnail.jpg`,
+        playerUrl: `${this.baseUrl}/${outputPrefix}/master.m3u8`, // Will be available after transcoding
+        hlsUrl: `${this.baseUrl}/${outputPrefix}/master.m3u8`,
+        thumbnailUrl: `${this.baseUrl}/${outputPrefix}/thumbnail.jpg`,
         duration: undefined, // Will be set by callback
         status: 'processing', // NEW: Indicate processing status
       };
@@ -237,8 +239,8 @@ export class YandexVideoProviderOptimized implements IVideoProvider {
       console.log(`📨 Yandex callback received for job: ${payload.jobId}`);
 
       if (payload.status === 'COMPLETED') {
-        const hlsUrl = `https://storage.yandexcloud.net/${this.bucket}/${payload.output?.keyPrefix}/master.m3u8`;
-        const thumbnailUrl = `https://storage.yandexcloud.net/${this.bucket}/${payload.output?.keyPrefix}/thumbnail.jpg`;
+        const hlsUrl = `${this.baseUrl}/${payload.output?.keyPrefix}/master.m3u8`;
+        const thumbnailUrl = `${this.baseUrl}/${payload.output?.keyPrefix}/thumbnail.jpg`;
 
         console.log(`✅ Yandex: Transcoding completed for job ${payload.jobId}`);
 
@@ -350,11 +352,11 @@ export class YandexVideoProviderOptimized implements IVideoProvider {
         status,
         playerUrl:
           status === 'ready'
-            ? `https://storage.yandexcloud.net/${this.bucket}/${job.output?.keyPrefix}/master.m3u8`
+            ? `${this.baseUrl}/${job.output?.keyPrefix}/master.m3u8`
             : undefined,
         thumbnailUrl:
           status === 'ready'
-            ? `https://storage.yandexcloud.net/${this.bucket}/${job.output?.keyPrefix}/thumbnail.jpg`
+            ? `${this.baseUrl}/${job.output?.keyPrefix}/thumbnail.jpg`
             : undefined,
       };
     } catch (error) {

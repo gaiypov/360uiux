@@ -5,7 +5,7 @@
 
 import { videoConfig, validateVideoConfig } from '../../config/video.config';
 import { ApiVideoProvider } from './ApiVideoProvider';
-import { YandexVideoProvider } from './YandexVideoProvider';
+import { YandexVideoProviderOptimized } from './YandexVideoProvider.optimized';
 
 // Интерфейс провайдера
 export interface IVideoProvider {
@@ -84,7 +84,7 @@ export class VideoService implements IVideoProvider {
         this.provider = new ApiVideoProvider();
         break;
       case 'yandex':
-        this.provider = new YandexVideoProvider();
+        this.provider = new YandexVideoProviderOptimized();
         break;
       default:
         throw new Error(`Unknown video provider: ${providerType}`);

@@ -8,6 +8,7 @@
  */
 
 import { Request, Response } from 'express';
+import crypto from 'crypto';
 import { db } from '../config/database';
 import { Video } from '../types';
 
@@ -41,6 +42,15 @@ export class VideoCallbackController {
    */
   static async handleYandexCallback(req: Request, res: Response) {
     try {
+      // ✅ SECURITY: Verify webhook signature
+      if (!VideoCallbackController.verifyYandexSignature(req)) {
+        console.error('❌ Invalid Yandex webhook signature');
+        return res.status(401).json({
+          error: 'Unauthorized',
+          message: 'Invalid webhook signature',
+        });
+      }
+
       const payload = req.body as YandexCallbackPayload;
 
       console.log('🔔 Yandex Cloud callback received:', {
@@ -242,16 +252,49 @@ export class VideoCallbackController {
   /**
    * Verify Yandex callback signature (security)
    *
-   * NOTE: Implement this when Yandex provides signature verification
-   * For now, we trust requests to the callback URL
+   * ✅ SECURITY: HMAC-SHA256 signature verification
+   * Prevents unauthorized webhook requests from attackers
+   *
+   * Yandex Cloud sends signature in header: x-yandex-signature
+   * Signature = HMAC-SHA256(request_body, webhook_secret)
    */
   private static verifyYandexSignature(req: Request): boolean {
-    // TODO: Implement signature verification
-    // const signature = req.headers['x-yandex-signature'];
-    // const payload = JSON.stringify(req.body);
-    // const expectedSignature = hmac(payload, SECRET_KEY);
-    // return signature === expectedSignature;
+    const webhookSecret = process.env.YANDEX_WEBHOOK_SECRET;
 
-    return true; // Skip verification for now
+    // If no secret configured, skip verification (dev mode only)
+    if (!webhookSecret) {
+      if (process.env.NODE_ENV === 'production') {
+        console.error('🔴 YANDEX_WEBHOOK_SECRET not configured in production!');
+        return false;
+      }
+      console.warn('⚠️ Webhook signature verification disabled (dev mode)');
+      return true;
+    }
+
+    // Extract signature from header
+    const receivedSignature = req.headers['x-yandex-signature'] as string;
+
+    if (!receivedSignature) {
+      console.error('❌ Missing x-yandex-signature header');
+      return false;
+    }
+
+    try {
+      // Compute expected signature
+      const payload = JSON.stringify(req.body);
+      const expectedSignature = crypto
+        .createHmac('sha256', webhookSecret)
+        .update(payload)
+        .digest('hex');
+
+      // Timing-safe comparison to prevent timing attacks
+      return crypto.timingSafeEqual(
+        Buffer.from(receivedSignature),
+        Buffer.from(expectedSignature)
+      );
+    } catch (error) {
+      console.error('❌ Signature verification error:', error);
+      return false;
+    }
   }
 }

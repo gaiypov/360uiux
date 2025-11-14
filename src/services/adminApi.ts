@@ -5,6 +5,7 @@
 
 import axios, { AxiosInstance } from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { SecureStorage, SECURE_STORAGE_KEYS, migrateFromAsyncStorage } from '../utils/SecureStorage';
 import {
   AdminDashboardStats,
   AdminUser,
@@ -20,9 +21,8 @@ const API_BASE_URL = __DEV__
   ? 'http://localhost:5000/api/v1'
   : 'https://api.360rabota.ru/api/v1';
 
-const STORAGE_KEYS = {
-  ACCESS_TOKEN: '@360rabota:access_token',
-};
+// Legacy AsyncStorage key (for migration)
+const LEGACY_ADMIN_TOKEN_KEY = '@360rabota:admin_access_token';
 
 class AdminAPIService {
   private client: AxiosInstance;
@@ -41,7 +41,20 @@ class AdminAPIService {
     this.client.interceptors.request.use(
       async (config) => {
         if (!this.accessToken) {
-          this.accessToken = await AsyncStorage.getItem(STORAGE_KEYS.ACCESS_TOKEN);
+          // Try loading from SecureStorage first
+          this.accessToken = await SecureStorage.getItem(SECURE_STORAGE_KEYS.ADMIN_ACCESS_TOKEN);
+
+          // Migration: If not found, check legacy AsyncStorage
+          if (!this.accessToken) {
+            const migrated = await migrateFromAsyncStorage(
+              AsyncStorage,
+              LEGACY_ADMIN_TOKEN_KEY,
+              SECURE_STORAGE_KEYS.ADMIN_ACCESS_TOKEN
+            );
+            if (migrated) {
+              this.accessToken = await SecureStorage.getItem(SECURE_STORAGE_KEYS.ADMIN_ACCESS_TOKEN);
+            }
+          }
         }
 
         if (this.accessToken) {
@@ -66,10 +79,14 @@ class AdminAPIService {
     );
   }
 
-  private handleUnauthorized() {
-    // Clear tokens and redirect to login
-    AsyncStorage.removeItem(STORAGE_KEYS.ACCESS_TOKEN);
+  private async handleUnauthorized() {
+    // Clear tokens from both SecureStorage and legacy AsyncStorage
+    await Promise.all([
+      SecureStorage.removeItem(SECURE_STORAGE_KEYS.ADMIN_ACCESS_TOKEN),
+      AsyncStorage.removeItem(LEGACY_ADMIN_TOKEN_KEY),
+    ]);
     this.accessToken = null;
+    console.log('✅ Admin unauthorized - tokens cleared');
     // Navigation handled by React Navigation interceptors
   }
 
