@@ -1,9 +1,10 @@
 /**
  * 360° РАБОТА - ULTRA EDITION
  * Error View Component
+ * Optimized with React.memo
  */
 
-import React from 'react';
+import React, { memo } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import Animated, { FadeIn } from 'react-native-reanimated';
@@ -17,12 +18,12 @@ interface ErrorViewProps {
   retryTitle?: string;
 }
 
-export function ErrorView({
+const ErrorViewComponent = ({
   title = 'Что-то пошло не так',
   message = 'Произошла ошибка. Попробуйте еще раз.',
   onRetry,
   retryTitle = 'ПОВТОРИТЬ',
-}: ErrorViewProps) {
+}: ErrorViewProps) => {
   return (
     <Animated.View entering={FadeIn.duration(500)} style={styles.container}>
       <GlassCard style={styles.card}>
@@ -44,7 +45,12 @@ export function ErrorView({
       </GlassCard>
     </Animated.View>
   );
-}
+};
+
+/**
+ * Memoized export - prevents re-renders when props don't change
+ */
+export const ErrorView = memo(ErrorViewComponent);
 
 const styles = StyleSheet.create({
   container: {

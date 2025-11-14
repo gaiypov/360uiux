@@ -1,6 +1,7 @@
 /**
  * 360° РАБОТА - ULTRA EDITION
  * Admin Navigation - Revolut Style
+ * Architecture v4: Added VideoPlayer from SharedNavigator for video moderation
  */
 
 import React from 'react';
@@ -21,6 +22,7 @@ import {
   AdminInvoicesScreen,
   AdminPricingScreen,
 } from '@/screens/admin';
+import { VideoPlayerScreen } from '@/screens/video';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -149,6 +151,16 @@ export function AdminNavigator() {
       <Stack.Screen name="AdminTransactions" component={AdminTransactionsScreen} />
       <Stack.Screen name="AdminInvoices" component={AdminInvoicesScreen} />
       <Stack.Screen name="AdminPricing" component={AdminPricingScreen} />
+
+      {/* VideoPlayer for video moderation */}
+      <Stack.Screen
+        name="VideoPlayer"
+        component={VideoPlayerScreen}
+        options={{
+          headerShown: false,
+          animation: 'slide_from_right',
+        }}
+      />
     </Stack.Navigator>
   );
 }

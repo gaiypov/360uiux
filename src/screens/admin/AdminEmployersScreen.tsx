@@ -15,6 +15,7 @@ import {
   Modal,
   ScrollView,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { GlassCard, GlassButton, MetalIcon } from '@/components/ui';
@@ -231,9 +232,15 @@ export function AdminEmployersScreen({ navigation }: any) {
     );
   });
 
+  const renderEmployer = useCallback(({ item, index }: { item: AdminUser; index: number }) => (
+    <EmployerCard item={item} index={index} />
+  ), []);
+
+  const keyExtractor = useCallback((item: AdminUser) => item.id, []);
+
   if (loading) {
     return (
-      <View style={styles.container}>
+      <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
         <StatusBar barStyle="light-content" backgroundColor={colors.primaryBlack} />
         <View style={styles.loadingContainer}>
           <MetalIcon name="loading" variant="chrome" size="large" glow />
@@ -244,7 +251,7 @@ export function AdminEmployersScreen({ navigation }: any) {
   }
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <StatusBar barStyle="light-content" backgroundColor={colors.primaryBlack} />
 
       {/* Header */}
@@ -333,8 +340,8 @@ export function AdminEmployersScreen({ navigation }: any) {
       {/* Employers List */}
       <FlatList
         data={employers}
-        renderItem={({ item, index }) => <EmployerCard item={item} index={index} />}
-        keyExtractor={(item) => item.id}
+        renderItem={renderEmployer}
+        keyExtractor={keyExtractor}
         contentContainerStyle={styles.listContent}
         onRefresh={onRefresh}
         refreshing={refreshing}
@@ -464,7 +471,7 @@ export function AdminEmployersScreen({ navigation }: any) {
           </View>
         </View>
       </Modal>
-    </View>
+    </SafeAreaView>
   );
 }
 

@@ -14,6 +14,7 @@ import {
   RefreshControl,
   useWindowDimensions,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { GlassCard, MetalIcon } from '@/components/ui';
@@ -84,7 +85,7 @@ export function AdminDashboardScreen({ navigation }: any) {
 
   if (loading) {
     return (
-      <View style={styles.container}>
+      <SafeAreaView style={styles.container} edges={["'top', "'bottom'"]}>
         <StatusBar barStyle="light-content" backgroundColor={colors.primaryBlack} />
         <View style={styles.loadingContainer}>
           <MetalIcon name="loading" variant="chrome" size="large" glow />
@@ -95,7 +96,7 @@ export function AdminDashboardScreen({ navigation }: any) {
   }
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <StatusBar barStyle="light-content" backgroundColor={colors.primaryBlack} />
 
       <ScrollView
@@ -273,7 +274,7 @@ export function AdminDashboardScreen({ navigation }: any) {
 
         <View style={styles.bottomSpacer} />
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 }
 

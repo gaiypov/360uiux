@@ -14,6 +14,7 @@ import {
   StatusBar,
   KeyboardAvoidingView,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import LinearGradient from 'react-native-linear-gradient';
@@ -76,11 +77,12 @@ export function EditProfileScreen({ navigation }: any) {
   };
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={getKeyboardBehavior()}
-    >
-      <StatusBar barStyle="light-content" />
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+      <KeyboardAvoidingView
+        style={styles.container}
+        behavior={getKeyboardBehavior()}
+      >
+        <StatusBar barStyle="light-content" />
 
       {/* Header */}
       <View style={styles.header}>
@@ -246,7 +248,8 @@ export function EditProfileScreen({ navigation }: any) {
 
         <View style={{ height: sizes.xxl }} />
       </ScrollView>
-    </KeyboardAvoidingView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
 
@@ -295,7 +298,7 @@ const styles = StyleSheet.create({
   },
   inputLabel: {
     ...typography.captionMedium,
-    color: colors.chromeSilver,
+    color: colors.liquidSilver,
     marginBottom: sizes.sm,
   },
   inputWrapper: {

@@ -1,6 +1,7 @@
 /**
  * 360° РАБОТА - ULTRA EDITION
  * Employer Navigation
+ * Architecture v4: Refactored to use SharedNavigator and eliminate duplications
  */
 
 import React from 'react';
@@ -11,7 +12,6 @@ import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { BlurView } from '@react-native-community/blur';
 import { colors, sizes } from '@/constants';
 import { CreateVacancyScreen } from '@/screens/employer/CreateVacancyScreen';
-import { CreateVacancyScreenV2 } from '@/screens/employer/CreateVacancyScreenV2';
 import { CandidatesScreen } from '@/screens/employer/CandidatesScreen';
 import { AnalyticsScreen } from '@/screens/employer/AnalyticsScreen';
 import { MassMailingScreen } from '@/screens/employer/MassMailingScreen';
@@ -21,11 +21,8 @@ import { EmployerVacanciesListScreen } from '@/screens/employer/EmployerVacancie
 import { EmployerProfileScreen } from '@/screens/employer/EmployerProfileScreen';
 import { EmployerPricingScreen } from '@/screens/employer/EmployerPricingScreen';
 import { DetailedAnalyticsScreen } from '@/screens/DetailedAnalyticsScreen';
-import { SettingsScreen } from '@/screens/SettingsScreen';
-import { NotificationsScreen } from '@/screens/NotificationsScreen';
-import { ChatScreen } from '@/screens/ChatScreen';
 import { WalletScreen, TopUpModal } from '@/screens/wallet';
-import { VideoRecordScreen, VideoPlayerScreen } from '@/screens/video';
+import { SharedNavigator } from './SharedNavigator';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -96,20 +93,6 @@ function EmployerTabs() {
         }}
       />
       <Tab.Screen
-        name="Notifications"
-        component={NotificationsScreen}
-        options={{
-          title: 'УВЕДОМЛЕНИЯ',
-          tabBarIcon: ({ focused, color, size }) => (
-            <Icon
-              name={focused ? 'bell' : 'bell-outline'}
-              size={size}
-              color={color}
-            />
-          ),
-        }}
-      />
-      <Tab.Screen
         name="Profile"
         component={EmployerProfileScreen}
         options={{
@@ -135,19 +118,17 @@ export function EmployerNavigator() {
         animation: 'slide_from_right',
       }}
     >
+      {/* Tab Navigator */}
       <Stack.Screen name="Tabs" component={EmployerTabs} />
+
+      {/* Employer-Specific Screens */}
       <Stack.Screen name="CreateVacancy" component={CreateVacancyScreen} />
-      <Stack.Screen name="CreateVacancyV2" component={CreateVacancyScreenV2} />
-      <Stack.Screen name="VideoRecord" component={VideoRecordScreen} />
-      <Stack.Screen name="VideoPlayer" component={VideoPlayerScreen} />
       <Stack.Screen name="MassMailing" component={MassMailingScreen} />
       <Stack.Screen name="Automation" component={AutomationScreen} />
       <Stack.Screen name="ABTesting" component={ABTestingScreen} />
       <Stack.Screen name="DetailedAnalytics" component={DetailedAnalyticsScreen} />
-      <Stack.Screen name="Chat" component={ChatScreen} />
-      <Stack.Screen name="Wallet" component={WalletScreen} />
       <Stack.Screen name="EmployerPricing" component={EmployerPricingScreen} />
-      <Stack.Screen name="EmployerWallet" component={WalletScreen} />
+      <Stack.Screen name="Wallet" component={WalletScreen} />
       <Stack.Screen
         name="TopUpModal"
         component={TopUpModal}
@@ -156,6 +137,9 @@ export function EmployerNavigator() {
           animation: 'fade',
         }}
       />
+
+      {/* Shared Screens (from SharedNavigator - no duplication!) */}
+      {SharedNavigator()}
     </Stack.Navigator>
   );
 }

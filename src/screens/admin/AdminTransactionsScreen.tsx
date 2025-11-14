@@ -13,6 +13,7 @@ import {
   StatusBar,
   Modal,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { GlassCard, MetalIcon } from '@/components/ui';
@@ -169,7 +170,7 @@ export function AdminTransactionsScreen({ navigation }: any) {
     }
   };
 
-  const renderTransaction = ({ item, index }: { item: AdminTransaction; index: number }) => (
+  const renderTransaction = useCallback(({ item, index }: { item: AdminTransaction; index: number }) => (
     <Animated.View entering={FadeInDown.delay(index * 50).duration(400)}>
       <TouchableOpacity
         onPress={() => handleTransactionPress(item)}
@@ -216,11 +217,13 @@ export function AdminTransactionsScreen({ navigation }: any) {
         </GlassCard>
       </TouchableOpacity>
     </Animated.View>
-  );
+  ), []);
+
+  const keyExtractor = useCallback((item: AdminTransaction) => item.id, []);
 
   if (loading) {
     return (
-      <View style={styles.container}>
+      <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
         <StatusBar barStyle="light-content" backgroundColor={colors.primaryBlack} />
         <View style={styles.loadingContainer}>
           <MetalIcon name="loading" variant="chrome" size="large" glow />
@@ -231,7 +234,7 @@ export function AdminTransactionsScreen({ navigation }: any) {
   }
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <StatusBar barStyle="light-content" backgroundColor={colors.primaryBlack} />
 
       {/* Header */}
@@ -332,7 +335,7 @@ export function AdminTransactionsScreen({ navigation }: any) {
       <FlatList
         data={transactions}
         renderItem={renderTransaction}
-        keyExtractor={(item) => item.id}
+        keyExtractor={keyExtractor}
         contentContainerStyle={styles.listContent}
         onRefresh={onRefresh}
         refreshing={refreshing}
@@ -421,7 +424,7 @@ export function AdminTransactionsScreen({ navigation }: any) {
           </View>
         </View>
       </Modal>
-    </View>
+    </SafeAreaView>
   );
 }
 

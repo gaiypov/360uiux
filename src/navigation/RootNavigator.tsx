@@ -28,6 +28,7 @@ import {
 import { JobSeekerNavigator } from './JobSeekerNavigator';
 import { EmployerNavigator } from './EmployerNavigator';
 import { AdminNavigator } from './AdminNavigator';
+import { GuestNavigator } from './GuestNavigator';
 import { useAuthStore } from '@/stores/authStore';
 
 const Stack = createNativeStackNavigator();
@@ -186,7 +187,9 @@ export function RootNavigator() {
    * Role-based navigator selection
    * Returns the appropriate navigator based on user authentication and role
    *
-   * Guest mode (not authenticated): JobSeekerNavigator with 20-video limit
+   * Architecture v4: Uses dedicated GuestNavigator to prevent crashes
+   *
+   * Guest mode (not authenticated): GuestNavigator (limited access, feed only)
    * JobSeeker: JobSeekerNavigator (full access to feed + applications)
    * Employer: EmployerNavigator (post vacancies, view applicants)
    * Moderator: AdminNavigator (content moderation, analytics)
@@ -204,9 +207,9 @@ export function RootNavigator() {
           return JobSeekerNavigator;
       }
     }
-    // Guest mode: access to Feed with 20-video limit before registration required
-    console.log('👤 Guest mode: Limited feed access');
-    return JobSeekerNavigator;
+    // Guest mode: limited access via GuestNavigator (prevents crash from accessing auth-only features)
+    console.log('👤 Guest mode: Limited feed access via GuestNavigator');
+    return GuestNavigator;
   }, [isAuthenticated, user]);
 
   // Show custom splash screen

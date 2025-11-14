@@ -1,9 +1,10 @@
 /**
  * 360° РАБОТА - ULTRA EDITION
  * Empty State Component
+ * Optimized with React.memo
  */
 
-import React from 'react';
+import React, { memo } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import Animated, { FadeIn } from 'react-native-reanimated';
@@ -18,13 +19,13 @@ interface EmptyStateProps {
   onAction?: () => void;
 }
 
-export function EmptyState({
+const EmptyStateComponent = ({
   icon,
   title,
   description,
   actionTitle,
   onAction,
-}: EmptyStateProps) {
+}: EmptyStateProps) => {
   return (
     <Animated.View entering={FadeIn.duration(500)} style={styles.container}>
       <View style={styles.iconContainer}>
@@ -45,7 +46,12 @@ export function EmptyState({
       )}
     </Animated.View>
   );
-}
+};
+
+/**
+ * Memoized export - prevents re-renders when props don't change
+ */
+export const EmptyState = memo(EmptyStateComponent);
 
 const styles = StyleSheet.create({
   container: {

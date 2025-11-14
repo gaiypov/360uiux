@@ -16,6 +16,7 @@ import {
   ScrollView,
   Alert,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 import LinearGradient from 'react-native-linear-gradient';
@@ -469,7 +470,7 @@ export function AdminPricingScreen() {
   }
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <View style={styles.header}>
         <View style={styles.headerTop}>
           <View>
@@ -511,7 +512,7 @@ export function AdminPricingScreen() {
       )}
 
       {renderModal()}
-    </View>
+    </SafeAreaView>
   );
 }
 

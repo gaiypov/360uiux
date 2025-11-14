@@ -13,6 +13,7 @@ import {
   Modal,
   Dimensions,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import Animated, { FadeIn, SlideInDown } from 'react-native-reanimated';
 import LinearGradient from 'react-native-linear-gradient';
@@ -104,7 +105,7 @@ export function TopUpModal({ route, navigation }: Props) {
       onRequestClose={handleClose}
       statusBarTranslucent
     >
-      <View style={styles.overlay}>
+      <SafeAreaView style={styles.overlay} edges={['top', 'bottom']}>
         {/* Background blur */}
         <Animated.View entering={FadeIn.duration(300)} style={styles.backdrop}>
           <TouchableOpacity
@@ -256,7 +257,7 @@ export function TopUpModal({ route, navigation }: Props) {
             </TouchableOpacity>
           </GlassCard>
         </Animated.View>
-      </View>
+      </SafeAreaView>
     </Modal>
   );
 }

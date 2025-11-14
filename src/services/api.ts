@@ -369,6 +369,45 @@ class APIService {
   }
 
   // ===================================
+  // VACANCY API
+  // ===================================
+
+  /**
+   * Get list of vacancies (TikTok-style feed)
+   * @param params Pagination and filter params
+   * @returns List of vacancies
+   */
+  async getVacancies(params?: {
+    limit?: number;
+    offset?: number;
+    city?: string;
+    salaryMin?: number;
+    industry?: string;
+  }): Promise<{ vacancies: any[]; hasMore: boolean; total: number }> {
+    try {
+      const response = await this.client.get('/vacancies', { params });
+      return response.data;
+    } catch (error: any) {
+      // Graceful fallback: if backend returns "Coming soon" or 404
+      if (error?.response?.status === 404 || error?.response?.data?.message?.includes('Coming soon')) {
+        console.warn('⚠️ Vacancy API not implemented yet, using mock data');
+        throw new Error('VACANCY_API_NOT_IMPLEMENTED');
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Get single vacancy by ID
+   * @param vacancyId Vacancy ID
+   * @returns Vacancy details
+   */
+  async getVacancy(vacancyId: string): Promise<any> {
+    const response = await this.client.get(`/vacancies/${vacancyId}`);
+    return response.data;
+  }
+
+  // ===================================
   // VACANCY INTERACTIONS API (Architecture v3)
   // ===================================
 
