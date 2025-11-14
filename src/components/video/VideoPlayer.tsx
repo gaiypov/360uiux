@@ -44,26 +44,33 @@ const VideoPlayerComponent = ({
 
   /**
    * Load and configure video when component mounts or when preload is triggered
+   * FIX: Added isCancelled flag to prevent race conditions and state updates on unmounted component
    */
   useEffect(() => {
+    let isCancelled = false;
+
     if (!shouldRender) {
       // Unload video to free memory
       if (videoRef.current && isLoaded) {
         videoRef.current.unloadAsync().catch((e) => {
           console.warn('Error unloading video:', e);
         });
-        setIsLoaded(false);
+        if (!isCancelled) {
+          setIsLoaded(false);
+        }
       }
       return;
     }
 
     // Load video if should render
     const loadVideo = async () => {
-      if (!videoRef.current || isLoaded) return;
+      if (!videoRef.current || isLoaded || isCancelled) return;
 
       try {
-        setIsLoading(true);
-        setHasError(false);
+        if (!isCancelled) {
+          setIsLoading(true);
+          setHasError(false);
+        }
 
         // Load the video with initial configuration
         await videoRef.current.loadAsync(
@@ -78,50 +85,73 @@ const VideoPlayerComponent = ({
           false // Don't download to cache immediately
         );
 
-        setIsLoaded(true);
-        setIsLoading(false);
-        onLoad?.();
-
-        console.log(`✅ Video loaded: ${videoUrl.substring(0, 50)}...`);
+        // Only update state if component is still mounted
+        if (!isCancelled) {
+          setIsLoaded(true);
+          setIsLoading(false);
+          onLoad?.();
+          console.log(`✅ Video loaded: ${videoUrl.substring(0, 50)}...`);
+        }
       } catch (error) {
-        console.error('❌ Error loading video:', error);
-        setHasError(true);
-        setIsLoading(false);
-        onError?.(error instanceof Error ? error.message : 'Unknown error');
+        // Only update state if component is still mounted
+        if (!isCancelled) {
+          console.error('❌ Error loading video:', error);
+          setHasError(true);
+          setIsLoading(false);
+          onError?.(error instanceof Error ? error.message : 'Unknown error');
+        }
       }
     };
 
     loadVideo();
-  }, [videoUrl, shouldRender, isLoaded, onLoad, onError]);
+
+    // Cleanup: Cancel any pending state updates if effect re-runs or component unmounts
+    return () => {
+      isCancelled = true;
+    };
+  }, [videoUrl, shouldRender, isLoaded, onLoad, onError, isActive]);
 
   /**
    * Control playback based on isActive state
+   * FIX: Added isCancelled flag to prevent race conditions when rapidly changing isActive
    */
   useEffect(() => {
     if (!videoRef.current || !isLoaded) return;
 
+    let isCancelled = false;
+
     const updatePlayback = async () => {
+      // Check if still valid before async operations
+      if (isCancelled || !videoRef.current) return;
+
       try {
         if (isActive) {
           // Active video: play with sound from beginning
-          await videoRef.current!.setIsMutedAsync(false);
-          await videoRef.current!.setVolumeAsync(1.0);
-          await videoRef.current!.setPositionAsync(0);
-          await videoRef.current!.playAsync();
-          console.log('▶️  Video playing (active)');
+          if (!isCancelled) await videoRef.current!.setIsMutedAsync(false);
+          if (!isCancelled) await videoRef.current!.setVolumeAsync(1.0);
+          if (!isCancelled) await videoRef.current!.setPositionAsync(0);
+          if (!isCancelled) await videoRef.current!.playAsync();
+          if (!isCancelled) console.log('▶️  Video playing (active)');
         } else {
           // Inactive video: pause and mute (sound isolation)
-          await videoRef.current!.pauseAsync();
-          await videoRef.current!.setIsMutedAsync(true);
-          await videoRef.current!.setVolumeAsync(0.0);
-          console.log('⏸️  Video paused (inactive)');
+          if (!isCancelled) await videoRef.current!.pauseAsync();
+          if (!isCancelled) await videoRef.current!.setIsMutedAsync(true);
+          if (!isCancelled) await videoRef.current!.setVolumeAsync(0.0);
+          if (!isCancelled) console.log('⏸️  Video paused (inactive)');
         }
       } catch (error) {
-        console.warn('Error updating playback state:', error);
+        if (!isCancelled) {
+          console.warn('Error updating playback state:', error);
+        }
       }
     };
 
     updatePlayback();
+
+    // Cleanup: Cancel pending operations if isActive changes or component unmounts
+    return () => {
+      isCancelled = true;
+    };
   }, [isActive, isLoaded]);
 
   /**
