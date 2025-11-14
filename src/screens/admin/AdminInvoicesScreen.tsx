@@ -17,6 +17,7 @@ import {
   ScrollView,
   Linking,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { GlassCard, GlassButton, MetalIcon } from '@/components/ui';
@@ -280,7 +281,7 @@ export function AdminInvoicesScreen({ navigation }: any) {
   );
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <StatusBar barStyle="light-content" backgroundColor={colors.primaryBlack} />
 
       {/* Header */}
@@ -419,7 +420,7 @@ export function AdminInvoicesScreen({ navigation }: any) {
           </View>
         </View>
       </Modal>
-    </View>
+    </SafeAreaView>
   );
 }
 
