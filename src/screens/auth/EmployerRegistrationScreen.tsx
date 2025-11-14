@@ -15,6 +15,7 @@ import {
   ScrollView,
   StatusBar,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 import LinearGradient from 'react-native-linear-gradient';
@@ -162,10 +163,11 @@ export function EmployerRegistrationScreen({ route, navigation }: Props) {
   );
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={getKeyboardBehavior()}
-      keyboardVerticalOffset={0}
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+      <KeyboardAvoidingView
+        style={styles.flex1}
+        behavior={getKeyboardBehavior()}
+        keyboardVerticalOffset={0}
     >
       <StatusBar
         barStyle="light-content"
@@ -370,7 +372,8 @@ export function EmployerRegistrationScreen({ route, navigation }: Props) {
           </TouchableOpacity>
         </Animated.View>
       </ScrollView>
-    </KeyboardAvoidingView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
 
@@ -378,6 +381,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.primaryBlack,
+  },
+  flex1: {
+    flex: 1,
   },
   scrollView: {
     flex: 1,

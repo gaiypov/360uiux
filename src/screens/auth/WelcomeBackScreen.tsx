@@ -13,6 +13,7 @@ import {
   TouchableOpacity,
   Dimensions,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import Animated, {
   FadeIn,
@@ -112,7 +113,7 @@ export function WelcomeBackScreen({ route, navigation }: WelcomeBackScreenProps)
   };
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <StatusBar barStyle="light-content" backgroundColor={colors.primaryBlack} />
 
       {/* Background gradient */}
@@ -234,7 +235,7 @@ export function WelcomeBackScreen({ route, navigation }: WelcomeBackScreenProps)
           Вы можете создать видео-резюме позже в профиле
         </Text>
       </Animated.View>
-    </View>
+    </SafeAreaView>
   );
 }
 

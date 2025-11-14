@@ -13,6 +13,7 @@ import {
   TouchableOpacity,
   Dimensions,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import Animated, {
   FadeIn,
@@ -89,7 +90,7 @@ export function RegistrationRequiredScreen({ navigation }: RegistrationRequiredS
   };
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <StatusBar barStyle="light-content" backgroundColor={colors.primaryBlack} />
 
       {/* Background gradient */}
@@ -204,7 +205,7 @@ export function RegistrationRequiredScreen({ navigation }: RegistrationRequiredS
           Регистрация займет меньше минуты
         </Text>
       </Animated.View>
-    </View>
+    </SafeAreaView>
   );
 }
 
