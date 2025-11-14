@@ -3,6 +3,7 @@
  * Role Switcher Component
  *
  * Переключение роли между соискателем и работодателем
+ * P1 FIX: Added accessibility labels
  */
 
 import React, { useState } from 'react';
@@ -66,7 +67,12 @@ export function RoleSwitcher({ onRoleChanged }: RoleSwitcherProps) {
       {/* Current Role */}
       <View style={styles.currentRoleSection}>
         <Text style={styles.label}>ТЕКУЩИЙ РЕЖИМ</Text>
-        <View style={styles.currentRoleCard}>
+        <View
+          style={styles.currentRoleCard}
+          accessible={true}
+          accessibilityLabel={`Текущий режим: ${currentRole === 'employer' ? 'Работодатель' : 'Соискатель'}`}
+          accessibilityHint={currentRole === 'employer' ? 'Создание вакансий, поиск кандидатов' : 'Поиск работы, отклики на вакансии'}
+        >
           <LinearGradient
             colors={
               currentRole === 'employer'
@@ -103,6 +109,10 @@ export function RoleSwitcher({ onRoleChanged }: RoleSwitcherProps) {
         style={styles.switchButton}
         onPress={handleSwitchRole}
         disabled={isLoading}
+        accessibilityRole="button"
+        accessibilityLabel={`Переключить на ${currentRole === 'jobseeker' ? 'работодателя' : 'соискателя'}`}
+        accessibilityHint="Открывает диалог подтверждения смены роли"
+        accessibilityState={{ disabled: isLoading, busy: isLoading }}
       >
         <LinearGradient
           colors={

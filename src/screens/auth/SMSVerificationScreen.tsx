@@ -1,6 +1,7 @@
 /**
  * 360° РАБОТА - ULTRA EDITION
  * SMS Verification Screen
+ * P1 FIX: Added race condition protection for async operations
  */
 
 import React, { useState, useRef, useEffect } from 'react';
@@ -54,6 +55,18 @@ export function SMSVerificationScreen({ route, navigation }: Props) {
     useRef<TextInput>(null),
   ];
 
+  // P1 FIX: Prevent race conditions with async operations
+  const isCancelledRef = useRef(false);
+
+  /**
+   * Component cleanup
+   */
+  useEffect(() => {
+    return () => {
+      isCancelledRef.current = true;
+    };
+  }, []);
+
   /**
    * Таймер для повторной отправки
    */
@@ -105,25 +118,30 @@ export function SMSVerificationScreen({ route, navigation }: Props) {
   /**
    * Проверка кода
    * Fixed: Added await for login() to prevent race conditions
+   * P1 FIX: Added isCancelled checks to prevent setState after unmount
    */
   const handleVerifyCode = async (codeToVerify?: string) => {
     try {
       const fullCode = codeToVerify || code.join('');
 
       if (fullCode.length !== 4) {
-        setError('Введите 4-значный код');
+        if (!isCancelledRef.current) setError('Введите 4-значный код');
         haptics.error();
         return;
       }
 
-      setError('');
-      setLoading(true);
+      if (!isCancelledRef.current) {
+        setError('');
+        setLoading(true);
+      }
       haptics.light();
 
       console.log('🔐 Verifying code for phone:', phone);
 
       // Проверяем код
       const response = await api.verifyCode(phone, fullCode);
+
+      if (isCancelledRef.current) return;
 
       if (response.requiresRegistration) {
         // Нужна регистрация - показываем выбор роли
@@ -156,40 +174,53 @@ export function SMSVerificationScreen({ route, navigation }: Props) {
         }
       }
     } catch (error: any) {
+      if (isCancelledRef.current) return;
+
       console.error('❌ Verify code error:', error);
       haptics.error();
 
       const message = error.response?.data?.message || 'Неверный код';
-      setError(message);
-      showToast('error', message);
+      if (!isCancelledRef.current) {
+        setError(message);
+        showToast('error', message);
 
-      // Очищаем поля
-      setCode(['', '', '', '']);
-      inputRefs[0].current?.focus();
+        // Очищаем поля
+        setCode(['', '', '', '']);
+        inputRefs[0].current?.focus();
+      }
     } finally {
-      setLoading(false);
+      if (!isCancelledRef.current) {
+        setLoading(false);
+      }
     }
   };
 
   /**
    * Повторная отправка кода
+   * P1 FIX: Added isCancelled checks to prevent setState after unmount
    */
   const handleResendCode = async () => {
     try {
-      setResending(true);
+      if (!isCancelledRef.current) setResending(true);
       haptics.light();
 
       await api.sendCode(phone);
+
+      if (isCancelledRef.current) return;
 
       setTimer(60);
       haptics.success();
       showToast('success', 'Код отправлен повторно');
     } catch (error: any) {
+      if (isCancelledRef.current) return;
+
       console.error('Resend code error:', error);
       haptics.error();
       showToast('error', 'Ошибка отправки кода');
     } finally {
-      setResending(false);
+      if (!isCancelledRef.current) {
+        setResending(false);
+      }
     }
   };
 

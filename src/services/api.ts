@@ -238,8 +238,11 @@ class APIService {
         return null;
       }
 
+      // P1 FIX: Add timeout for token refresh
       const response = await axios.post(`${API_BASE_URL}/auth/refresh`, {
         refreshToken: this.refreshToken,
+      }, {
+        timeout: 10000, // 10s timeout for refresh token
       });
 
       const tokens = response.data.tokens;

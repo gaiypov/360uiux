@@ -124,5 +124,25 @@ export const useFavoritesStore = create<FavoritesState>()(
       // Only persist favorites array (not loading/syncing states)
       partialize: (state) => ({ favorites: state.favorites }),
     }
+  },
+
+  removeFavorite: (vacancyId: string) => {
+    set((state) => ({
+      favorites: state.favorites.filter((v) => v.id !== vacancyId),
+    }));
+  },
+
+  isFavorite: (vacancyId: string) => {
+    return get().favorites.some((v) => v.id === vacancyId);
+  },
+
+  clearFavorites: () => {
+    set({ favorites: [] });
+  },
+    }),
+    {
+      name: 'favorites-storage',
+      storage: createJSONStorage(() => AsyncStorage),
+    }
   )
 );

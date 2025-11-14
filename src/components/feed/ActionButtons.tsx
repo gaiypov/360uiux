@@ -58,10 +58,18 @@ const ActionButtonsComponent = ({
   return (
     <View style={styles.container}>
       {/* Аватар компании */}
-      <TouchableOpacity style={styles.avatarButton}>
+      <TouchableOpacity
+        style={styles.avatarButton}
+        accessibilityRole="button"
+        accessibilityLabel={`Профиль компании ${vacancy.employer.companyName}`}
+      >
         <View style={styles.avatarCircle}>
           {vacancy.employer.logoUrl ? (
-            <Image source={{ uri: vacancy.employer.logoUrl }} style={styles.avatar} />
+            <Image
+              source={{ uri: vacancy.employer.logoUrl }}
+              style={styles.avatar}
+              accessibilityIgnoresInvertColors
+            />
           ) : (
             <Text style={styles.avatarText}>{vacancy.employer.companyName[0]}</Text>
           )}
@@ -70,7 +78,14 @@ const ActionButtonsComponent = ({
 
       {/* Лайк */}
       <Animated.View style={animatedStyle}>
-        <TouchableOpacity style={styles.button} onPress={handleLikePress}>
+        <TouchableOpacity
+          style={styles.button}
+          onPress={handleLikePress}
+          accessibilityRole="button"
+          accessibilityLabel={isLiked ? 'Убрать лайк' : 'Поставить лайк'}
+          accessibilityState={{ selected: isLiked }}
+          accessibilityHint={`Всего откликов: ${vacancy.applications}`}
+        >
           <Icon
             name={isLiked ? 'heart' : 'heart-outline'}
             size={32}
@@ -83,7 +98,13 @@ const ActionButtonsComponent = ({
       </Animated.View>
 
       {/* Комментарии */}
-      <TouchableOpacity style={styles.button} onPress={onComment}>
+      <TouchableOpacity
+        style={styles.button}
+        onPress={onComment}
+        accessibilityRole="button"
+        accessibilityLabel="Комментарии"
+        accessibilityHint={`Всего комментариев: ${vacancy.commentsCount || 0}`}
+      >
         <Icon name="comment-outline" size={30} color={colors.softWhite} />
         <Text style={styles.buttonText}>
           {vacancy.commentsCount && vacancy.commentsCount > 0 ? vacancy.commentsCount : ''}
@@ -91,7 +112,13 @@ const ActionButtonsComponent = ({
       </TouchableOpacity>
 
       {/* Избранное */}
-      <TouchableOpacity style={styles.button} onPress={onSave}>
+      <TouchableOpacity
+        style={styles.button}
+        onPress={onSave}
+        accessibilityRole="button"
+        accessibilityLabel={isSaved ? 'Удалить из избранного' : 'Добавить в избранное'}
+        accessibilityState={{ selected: isSaved }}
+      >
         <Icon
           name={isSaved ? 'star' : 'star-outline'}
           size={32}
@@ -100,7 +127,12 @@ const ActionButtonsComponent = ({
       </TouchableOpacity>
 
       {/* Поделиться */}
-      <TouchableOpacity style={styles.button} onPress={onShare}>
+      <TouchableOpacity
+        style={styles.button}
+        onPress={onShare}
+        accessibilityRole="button"
+        accessibilityLabel="Поделиться вакансией"
+      >
         <Icon name="share-variant" size={30} color={colors.softWhite} />
       </TouchableOpacity>
     </View>
