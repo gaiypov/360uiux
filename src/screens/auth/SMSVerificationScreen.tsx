@@ -14,6 +14,7 @@ import {
   ScrollView,
   StatusBar,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 import LinearGradient from 'react-native-linear-gradient';
@@ -193,17 +194,18 @@ export function SMSVerificationScreen({ route, navigation }: Props) {
   };
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={getKeyboardBehavior()}
-    >
-      <StatusBar barStyle="light-content" backgroundColor={colors.primaryBlack} />
-
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+      <KeyboardAvoidingView
+        style={styles.container}
+        behavior={getKeyboardBehavior()}
       >
+        <StatusBar barStyle="light-content" backgroundColor={colors.primaryBlack} />
+
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
         {/* Header */}
         <Animated.View entering={FadeInDown.duration(600)} style={styles.header}>
           <TouchableOpacity
@@ -299,8 +301,9 @@ export function SMSVerificationScreen({ route, navigation }: Props) {
             )}
           </GlassCard>
         </Animated.View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
 

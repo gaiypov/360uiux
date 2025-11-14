@@ -13,6 +13,7 @@ import {
   KeyboardAvoidingView,
   StatusBar,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import LinearGradient from 'react-native-linear-gradient';
@@ -62,13 +63,14 @@ export function ForgotPasswordScreen({ navigation }: any) {
   };
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={getKeyboardBehavior()}
-    >
-      <StatusBar barStyle="light-content" backgroundColor={colors.primaryBlack} />
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+      <KeyboardAvoidingView
+        style={styles.container}
+        behavior={getKeyboardBehavior()}
+      >
+        <StatusBar barStyle="light-content" backgroundColor={colors.primaryBlack} />
 
-      <View style={styles.content}>
+        <View style={styles.content}>
         <Animated.View entering={FadeInDown.duration(600)} style={styles.header}>
           <MetalIcon name="lock-reset" variant="platinum" size="large" glow />
           <Text style={styles.title}>Восстановление пароля</Text>
@@ -150,8 +152,9 @@ export function ForgotPasswordScreen({ navigation }: any) {
           <Icon name="arrow-left" size={16} color={colors.platinumSilver} />
           <Text style={styles.backText}>Вернуться ко входу</Text>
         </TouchableOpacity>
-      </View>
-    </KeyboardAvoidingView>
+        </View>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
 
