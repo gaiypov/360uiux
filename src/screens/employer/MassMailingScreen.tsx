@@ -13,6 +13,7 @@ import {
   TouchableOpacity,
   StatusBar,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import LinearGradient from 'react-native-linear-gradient';
 import { GlassCard, GlassButton } from '@/components/ui';
@@ -71,7 +72,7 @@ export function MassMailingScreen({ navigation }: any) {
   };
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <StatusBar barStyle="light-content" backgroundColor={colors.primaryBlack} />
 
       {/* Header */}
@@ -257,7 +258,7 @@ export function MassMailingScreen({ navigation }: any) {
           onPress={handleSend}
         />
       </View>
-    </View>
+    </SafeAreaView>
   );
 }
 
