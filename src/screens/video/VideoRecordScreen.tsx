@@ -29,7 +29,7 @@ import Animated, {
   Easing,
 } from 'react-native-reanimated';
 import Icon from 'react-native-vector-icons/Ionicons';
-import { colors } from '../../theme/colors';
+import { colors } from '@/constants';
 
 const { width, height } = Dimensions.get('window');
 

@@ -13,6 +13,7 @@
 
 import React, { useRef, useState, useEffect, useCallback, useMemo } from 'react';
 import { View, StyleSheet, Dimensions, StatusBar, FlatList } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { GestureDetector, Gesture } from 'react-native-gesture-handler';
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 import { colors, metalGradients } from "@/constants";
@@ -38,6 +39,7 @@ const RENDER_WINDOW_SIZE = 1; // Render current +/- 1
 
 export function VacancyFeedScreen({ navigation }: any) {
   const flatListRef = useRef<FlatList>(null);
+  const insets = useSafeAreaInsets();
   const [currentIndex, setCurrentIndex] = useState(0);
   const { vacancies, fetchMore } = useVacancyFeed();
   const { user } = useAuthStore();
@@ -407,7 +409,7 @@ export function VacancyFeedScreen({ navigation }: any) {
         translucent
       />
       <GestureDetector gesture={gesture}>
-        <View style={styles.container}>
+        <View style={[styles.container, { paddingBottom: insets.bottom }]}>
           <FlatList
             ref={flatListRef}
             data={vacancies}
@@ -427,6 +429,7 @@ export function VacancyFeedScreen({ navigation }: any) {
             windowSize={3} // Keep 3 screens in memory
             initialNumToRender={2} // Start with 2 items
             updateCellsBatchingPeriod={100} // Batch updates every 100ms
+            contentInsetAdjustmentBehavior="automatic"
           />
         </View>
       </GestureDetector>

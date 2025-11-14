@@ -24,7 +24,7 @@ import Animated, {
   FadeIn,
   FadeOut,
 } from 'react-native-reanimated';
-import { colors } from '../../theme/colors';
+import { colors } from '@/constants';
 
 interface VideoPreviewScreenProps {
   navigation: any;
