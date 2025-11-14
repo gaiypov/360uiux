@@ -16,6 +16,7 @@ import {
   StatusBar,
   ActivityIndicator,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import Animated, {
   FadeInLeft,
@@ -360,12 +361,13 @@ export function ChatScreen({ route, navigation }: ChatScreenProps) {
   };
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
-    >
-      <StatusBar barStyle="light-content" backgroundColor={colors.primaryBlack} />
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+      <KeyboardAvoidingView
+        style={styles.container}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+      >
+        <StatusBar barStyle="light-content" backgroundColor={colors.primaryBlack} />
 
       {/* Connection Status Bar */}
       {!isConnected && (
@@ -475,7 +477,8 @@ export function ChatScreen({ route, navigation }: ChatScreenProps) {
           </View>
         </GlassCard>
       </Animated.View>
-    </KeyboardAvoidingView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
 

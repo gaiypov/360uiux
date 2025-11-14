@@ -12,6 +12,7 @@ import {
   TouchableOpacity,
   StatusBar,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import Animated, { FadeInDown, FadeInRight } from 'react-native-reanimated';
 import { Swipeable } from 'react-native-gesture-handler';
@@ -214,7 +215,7 @@ export function NotificationsScreen({ navigation }: any) {
   // Loading skeleton
   if (loading) {
     return (
-      <View style={styles.container}>
+      <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
         <StatusBar barStyle="light-content" backgroundColor={colors.primaryBlack} />
         <View style={styles.headerContainer}>
           <Text style={styles.title}>Уведомления</Text>
@@ -231,12 +232,12 @@ export function NotificationsScreen({ navigation }: any) {
             </View>
           ))}
         </View>
-      </View>
+      </SafeAreaView>
     );
   }
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <StatusBar barStyle="light-content" backgroundColor={colors.primaryBlack} />
 
       {/* Header */}
@@ -293,7 +294,7 @@ export function NotificationsScreen({ navigation }: any) {
           </Animated.View>
         }
       />
-    </View>
+    </SafeAreaView>
   );
 }
 
