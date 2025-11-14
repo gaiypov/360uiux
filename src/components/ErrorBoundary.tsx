@@ -110,7 +110,7 @@ const styles = StyleSheet.create({
   },
   message: {
     ...typography.body,
-    color: colors.chromeSilver,
+    color: colors.liquidSilver,
     textAlign: 'center',
     marginBottom: sizes.xl,
   },

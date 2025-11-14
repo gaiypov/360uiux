@@ -138,7 +138,10 @@ const styles = StyleSheet.create({
   },
   button: {
     alignItems: 'center',
+    justifyContent: 'center',
     marginBottom: 20,
+    minWidth: 44,
+    minHeight: 44,
   },
   buttonText: {
     fontSize: 12,

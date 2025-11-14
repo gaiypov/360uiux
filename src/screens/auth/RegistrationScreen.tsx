@@ -315,7 +315,7 @@ const styles = StyleSheet.create({
   subtitle: {
     ...typography.body,
     fontSize: 16,
-    color: colors.chromeSilver,
+    color: colors.liquidSilver,
     marginTop: sizes.sm,
     textAlign: 'center',
   },
@@ -336,7 +336,7 @@ const styles = StyleSheet.create({
   },
   optional: {
     ...typography.caption,
-    color: colors.chromeSilver,
+    color: colors.liquidSilver,
     fontWeight: '400',
   },
   inputWrapper: {
@@ -367,7 +367,7 @@ const styles = StyleSheet.create({
   },
   hint: {
     ...typography.caption,
-    color: colors.chromeSilver,
+    color: colors.liquidSilver,
     marginTop: sizes.xs,
     marginLeft: sizes.sm,
     fontSize: 13,
@@ -446,7 +446,7 @@ const styles = StyleSheet.create({
   },
   footerText: {
     ...typography.body,
-    color: colors.chromeSilver,
+    color: colors.liquidSilver,
     fontSize: 14,
   },
   footerPhone: {

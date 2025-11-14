@@ -292,7 +292,7 @@ const styles = StyleSheet.create({
   },
   inputLabel: {
     ...typography.captionMedium,
-    color: colors.chromeSilver,
+    color: colors.liquidSilver,
     marginBottom: sizes.sm,
   },
   inputWrapper: {
@@ -382,7 +382,7 @@ const styles = StyleSheet.create({
   },
   footerText: {
     ...typography.body,
-    color: colors.chromeSilver,
+    color: colors.liquidSilver,
   },
   footerLink: {
     ...typography.bodyMedium,

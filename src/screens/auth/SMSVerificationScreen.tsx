@@ -331,7 +331,7 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     ...typography.body,
-    color: colors.chromeSilver,
+    color: colors.liquidSilver,
     marginTop: sizes.sm,
     textAlign: 'center',
   },
@@ -379,7 +379,7 @@ const styles = StyleSheet.create({
   },
   timerText: {
     ...typography.caption,
-    color: colors.chromeSilver,
+    color: colors.liquidSilver,
     textAlign: 'center',
     marginBottom: sizes.lg,
   },
@@ -419,6 +419,6 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     ...typography.body,
-    color: colors.chromeSilver,
+    color: colors.liquidSilver,
   },
 });

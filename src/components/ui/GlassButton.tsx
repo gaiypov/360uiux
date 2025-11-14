@@ -122,11 +122,13 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   } as TextStyle,
   ghost: {
-    paddingVertical: sizes.sm,
+    paddingVertical: sizes.md,
     paddingHorizontal: sizes.md,
+    minHeight: 44,
+    justifyContent: 'center',
   },
   ghostText: {
     ...typography.bodyMedium,
-    color: colors.chromeSilver,
+    color: colors.liquidSilver,
   } as TextStyle,
 });

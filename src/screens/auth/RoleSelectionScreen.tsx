@@ -168,7 +168,7 @@ const styles = StyleSheet.create({
   },
   cardDescription: {
     ...typography.body,
-    color: colors.chromeSilver,
+    color: colors.liquidSilver,
     textAlign: 'center',
   },
 });

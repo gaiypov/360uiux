@@ -241,7 +241,7 @@ const styles = StyleSheet.create({
   },
   description: {
     ...typography.body,
-    color: colors.chromeSilver,
+    color: colors.liquidSilver,
     marginTop: sizes.lg,
     textAlign: 'center',
     maxWidth: 300,
@@ -292,7 +292,7 @@ const styles = StyleSheet.create({
   },
   infoText: {
     ...typography.caption,
-    color: colors.chromeSilver,
+    color: colors.liquidSilver,
     marginLeft: sizes.xs,
     flex: 1,
   },

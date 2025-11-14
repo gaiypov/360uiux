@@ -320,11 +320,11 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     ...typography.body,
-    color: colors.chromeSilver,
+    color: colors.liquidSilver,
   },
   sectionTitle: {
     ...typography.label,
-    color: colors.chromeSilver,
+    color: colors.liquidSilver,
     marginHorizontal: sizes.lg,
     marginTop: sizes.xl,
     marginBottom: sizes.md,
@@ -361,7 +361,7 @@ const styles = StyleSheet.create({
   },
   settingSubtitle: {
     ...typography.caption,
-    color: colors.chromeSilver,
+    color: colors.liquidSilver,
   },
   settingDescription: {
     ...typography.caption,

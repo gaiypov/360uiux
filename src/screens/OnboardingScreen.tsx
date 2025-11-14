@@ -248,7 +248,7 @@ const styles = StyleSheet.create({
   },
   skipText: {
     ...typography.body,
-    color: colors.chromeSilver,
+    color: colors.liquidSilver,
     fontWeight: '600',
     fontSize: 15,
   },
@@ -293,7 +293,7 @@ const styles = StyleSheet.create({
   description: {
     ...typography.body,
     fontSize: 18,
-    color: colors.chromeSilver,
+    color: colors.liquidSilver,
     textAlign: 'center',
     lineHeight: 28,
     marginBottom: sizes.xxLarge,

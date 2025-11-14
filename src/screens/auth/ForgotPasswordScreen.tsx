@@ -177,7 +177,7 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     ...typography.body,
-    color: colors.chromeSilver,
+    color: colors.liquidSilver,
     marginTop: sizes.sm,
     textAlign: 'center',
   },
@@ -189,7 +189,7 @@ const styles = StyleSheet.create({
   },
   inputLabel: {
     ...typography.captionMedium,
-    color: colors.chromeSilver,
+    color: colors.liquidSilver,
     marginBottom: sizes.sm,
   },
   inputWrapper: {
@@ -246,7 +246,7 @@ const styles = StyleSheet.create({
   },
   successText: {
     ...typography.body,
-    color: colors.chromeSilver,
+    color: colors.liquidSilver,
     textAlign: 'center',
   },
   backToLogin: {
