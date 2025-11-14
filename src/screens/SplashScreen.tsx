@@ -5,6 +5,7 @@
 
 import React, { useEffect } from 'react';
 import { View, StyleSheet, Text } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -70,7 +71,7 @@ export function SplashScreen({ onComplete }: SplashScreenProps) {
   }));
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       {/* Вращающееся металлическое кольцо */}
       <Animated.View style={[styles.ringContainer, ringStyle]}>
         <LinearGradient
@@ -86,7 +87,7 @@ export function SplashScreen({ onComplete }: SplashScreenProps) {
         <Text style={styles.logoText}>360°</Text>
         <Text style={styles.logoSubtext}>РАБОТА</Text>
       </Animated.View>
-    </View>
+    </SafeAreaView>
   );
 }
 

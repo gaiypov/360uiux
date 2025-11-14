@@ -14,6 +14,7 @@ import {
   Platform,
   StatusBar,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import Video from 'react-native-video';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { BlurView } from '@react-native-community/blur';
@@ -113,7 +114,7 @@ export function VideoPreviewScreen({ navigation, route }: VideoPreviewScreenProp
   }));
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <StatusBar barStyle="light-content" />
 
       {/* Video player */}
@@ -229,7 +230,7 @@ export function VideoPreviewScreen({ navigation, route }: VideoPreviewScreenProp
           </View>
         </BlurView>
       </View>
-    </View>
+    </SafeAreaView>
   );
 }
 

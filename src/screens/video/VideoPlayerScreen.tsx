@@ -14,6 +14,7 @@ import {
   Platform,
   ActivityIndicator,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import Video from 'react-native-video';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
@@ -99,7 +100,7 @@ export function VideoPlayerScreen({ route, navigation }: Props) {
   };
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <StatusBar
         barStyle="light-content"
         backgroundColor="transparent"
@@ -213,7 +214,7 @@ export function VideoPlayerScreen({ route, navigation }: Props) {
           </Animated.View>
         )}
       </TouchableOpacity>
-    </View>
+    </SafeAreaView>
   );
 }
 
