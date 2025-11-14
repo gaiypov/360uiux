@@ -1,9 +1,10 @@
 /**
  * 360° РАБОТА - ULTRA EDITION
  * Stat Card Component
+ * Optimized with React.memo
  */
 
-import React from 'react';
+import React, { memo } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import Animated, { FadeInDown } from 'react-native-reanimated';
@@ -19,14 +20,14 @@ interface StatCardProps {
   index?: number;
 }
 
-export function StatCard({
+const StatCardComponent = ({
   icon,
   label,
   value,
   change,
   trend,
   index = 0,
-}: StatCardProps) {
+}: StatCardProps) => {
   return (
     <Animated.View entering={FadeInDown.delay(index * 100).duration(400)}>
       <GlassCard style={styles.card}>
@@ -68,7 +69,12 @@ export function StatCard({
       </GlassCard>
     </Animated.View>
   );
-}
+};
+
+/**
+ * Memoized export - prevents re-renders when props don't change
+ */
+export const StatCard = memo(StatCardComponent);
 
 const styles = StyleSheet.create({
   card: {

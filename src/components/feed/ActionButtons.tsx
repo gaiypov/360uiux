@@ -1,9 +1,10 @@
 /**
  * 360° РАБОТА - ActionButtons Component
  * TikTok-style side action buttons
+ * Optimized with React.memo
  */
 
-import React from 'react';
+import React, { memo } from 'react';
 import { View, TouchableOpacity, Text, StyleSheet, Image } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import Animated, {
@@ -32,7 +33,7 @@ interface ActionButtonsProps {
   onShare: () => void;
 }
 
-export function ActionButtons({
+const ActionButtonsComponent = ({
   vacancy,
   isLiked,
   isSaved,
@@ -40,7 +41,7 @@ export function ActionButtons({
   onComment,
   onSave,
   onShare,
-}: ActionButtonsProps) {
+}: ActionButtonsProps) => {
   const scale = useSharedValue(1);
 
   const animatedStyle = useAnimatedStyle(() => ({
@@ -104,7 +105,23 @@ export function ActionButtons({
       </TouchableOpacity>
     </View>
   );
-}
+};
+
+/**
+ * Memoized export with custom comparison
+ * Only re-render when isLiked, isSaved, or counts change
+ */
+export const ActionButtons = memo(
+  ActionButtonsComponent,
+  (prevProps, nextProps) => {
+    return (
+      prevProps.isLiked === nextProps.isLiked &&
+      prevProps.isSaved === nextProps.isSaved &&
+      prevProps.vacancy.applications === nextProps.vacancy.applications &&
+      prevProps.vacancy.commentsCount === nextProps.vacancy.commentsCount
+    );
+  }
+);
 
 const styles = StyleSheet.create({
   container: {

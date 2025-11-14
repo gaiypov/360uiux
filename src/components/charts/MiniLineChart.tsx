@@ -1,9 +1,10 @@
 /**
  * 360° РАБОТА - ULTRA EDITION
  * Mini Line Chart Component (Premium Style)
+ * Optimized with React.memo
  */
 
-import React from 'react';
+import React, { memo } from 'react';
 import { View, StyleSheet, Dimensions } from 'react-native';
 import Svg, { Path, Defs, LinearGradient as SvgGradient, Stop } from 'react-native-svg';
 import { colors } from '@/constants';
@@ -15,12 +16,12 @@ interface MiniLineChartProps {
   color?: string;
 }
 
-export function MiniLineChart({
+const MiniLineChartComponent = ({
   data,
   width = Dimensions.get('window').width - 64,
   height = 120,
   color = colors.platinumSilver,
-}: MiniLineChartProps) {
+}: MiniLineChartProps) => {
   if (data.length === 0) return null;
 
   const max = Math.max(...data);
@@ -64,7 +65,12 @@ export function MiniLineChart({
       </Svg>
     </View>
   );
-}
+};
+
+/**
+ * Memoized export - prevents re-renders when data doesn't change
+ */
+export const MiniLineChart = memo(MiniLineChartComponent);
 
 const styles = StyleSheet.create({
   container: {

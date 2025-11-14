@@ -1,9 +1,10 @@
 /**
  * 360° РАБОТА - ULTRA EDITION
  * Bar Chart Component
+ * Optimized with React.memo
  */
 
-import React from 'react';
+import React, { memo } from 'react';
 import { View, StyleSheet, Text } from 'react-native';
 import Animated, { FadeInUp } from 'react-native-reanimated';
 import LinearGradient from 'react-native-linear-gradient';
@@ -16,12 +17,12 @@ interface BarChartProps {
   showValues?: boolean;
 }
 
-export function BarChart({
+const BarChartComponent = ({
   data,
   maxValue,
   height = 200,
   showValues = true,
-}: BarChartProps) {
+}: BarChartProps) => {
   const max = maxValue || Math.max(...data.map(d => d.value));
 
   return (
@@ -56,7 +57,12 @@ export function BarChart({
       </View>
     </View>
   );
-}
+};
+
+/**
+ * Memoized export - prevents re-renders when data doesn't change
+ */
+export const BarChart = memo(BarChartComponent);
 
 const styles = StyleSheet.create({
   container: {
