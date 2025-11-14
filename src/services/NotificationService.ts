@@ -61,6 +61,12 @@ export class NotificationService {
   private appState: AppStateStatus = AppState.currentState;
   private navigationCallback: ((route: string, params: any) => void) | null = null;
 
+  // Memory leak fix: Store subscriptions for cleanup
+  private appStateSubscription: any = null;
+  private foregroundMessageUnsubscribe: (() => void) | null = null;
+  private notificationOpenedListener: (() => void) | null = null;
+  private notifeeUnsubscribe: (() => Promise<void>) | null = null;
+
   private constructor() {
     this.setupAppStateListener();
   }
@@ -74,9 +80,15 @@ export class NotificationService {
 
   /**
    * Setup app state listener
+   * FIX: Store subscription for cleanup to prevent memory leak
    */
   private setupAppStateListener(): void {
-    AppState.addEventListener('change', (nextAppState) => {
+    // Clean up existing listener if any
+    if (this.appStateSubscription) {
+      this.appStateSubscription.remove();
+    }
+
+    this.appStateSubscription = AppState.addEventListener('change', (nextAppState) => {
       this.appState = nextAppState;
       console.log('📱 App state changed:', nextAppState);
     });
@@ -310,10 +322,22 @@ export class NotificationService {
 
   /**
    * Setup WebSocket listeners for real-time notifications
+   * FIX: Store callbacks for cleanup to prevent memory leak
    */
+  private wsMessageNewCallback: ((data: any) => void) | null = null;
+  private wsMessageVideoCallback: ((data: any) => void) | null = null;
+
   private setupWebSocketListeners(): void {
+    // Clean up existing listeners if any
+    if (this.wsMessageNewCallback) {
+      wsService.off('message:new', this.wsMessageNewCallback);
+    }
+    if (this.wsMessageVideoCallback) {
+      wsService.off('message:video', this.wsMessageVideoCallback);
+    }
+
     // Listen for new messages
-    wsService.on('message:new', (data: any) => {
+    this.wsMessageNewCallback = (data: any) => {
       // Only show notification if app is in background
       if (this.appState !== 'active') {
         this.showMessageNotification({
@@ -326,10 +350,11 @@ export class NotificationService {
           body: this.formatMessageBody(data),
         });
       }
-    });
+    };
+    wsService.on('message:new', this.wsMessageNewCallback);
 
     // Listen for video messages
-    wsService.on('message:video', (data: any) => {
+    this.wsMessageVideoCallback = (data: any) => {
       if (this.appState !== 'active') {
         this.showMessageNotification({
           type: 'video_message',
@@ -341,7 +366,8 @@ export class NotificationService {
           body: '📹 Видео-резюме получено',
         });
       }
-    });
+    };
+    wsService.on('message:video', this.wsMessageVideoCallback);
 
     console.log('✅ WebSocket listeners setup for notifications');
   }
@@ -608,9 +634,15 @@ export class NotificationService {
 
   /**
    * Setup foreground message listener
+   * FIX: Store unsubscribe function for cleanup to prevent memory leak
    */
   private setupForegroundListener(): void {
-    messaging().onMessage(async (remoteMessage) => {
+    // Clean up existing listener if any
+    if (this.foregroundMessageUnsubscribe) {
+      this.foregroundMessageUnsubscribe();
+    }
+
+    this.foregroundMessageUnsubscribe = messaging().onMessage(async (remoteMessage) => {
       console.log('📨 Foreground notification:', remoteMessage);
 
       // Display notification
@@ -632,6 +664,7 @@ export class NotificationService {
 
   /**
    * Setup message handlers
+   * FIX: Store unsubscribe functions for cleanup to prevent memory leak
    */
   private setupMessageHandlers(): void {
     // Handle notification opened app (from quit state)
@@ -644,14 +677,24 @@ export class NotificationService {
         }
       });
 
+    // Clean up existing listener if any
+    if (this.notificationOpenedListener) {
+      this.notificationOpenedListener();
+    }
+
     // Handle notification opened app (from background)
-    messaging().onNotificationOpenedApp((remoteMessage) => {
+    this.notificationOpenedListener = messaging().onNotificationOpenedApp((remoteMessage) => {
       console.log('📨 Notification opened app from background:', remoteMessage);
       this.handleNotificationPress(remoteMessage);
     });
 
+    // Clean up existing Notifee listener if any
+    if (this.notifeeUnsubscribe) {
+      this.notifeeUnsubscribe();
+    }
+
     // Handle Notifee notification press
-    notifee.onForegroundEvent(({ type, detail }) => {
+    this.notifeeUnsubscribe = notifee.onForegroundEvent(({ type, detail }) => {
       if (type === EventType.PRESS) {
         console.log('📨 Notifee notification pressed:', detail);
         // TODO: Navigate to relevant screen
@@ -899,6 +942,49 @@ export class NotificationService {
     } catch (error) {
       console.error(`Error unsubscribing from topic ${topic}:`, error);
     }
+  }
+
+  /**
+   * Cleanup all listeners and subscriptions
+   * FIX: Prevent memory leaks by removing all event listeners
+   * Call this on logout or when notifications are no longer needed
+   */
+  cleanup(): void {
+    console.log('🧹 Cleaning up notification service...');
+
+    // Remove AppState listener
+    if (this.appStateSubscription) {
+      this.appStateSubscription.remove();
+      this.appStateSubscription = null;
+    }
+
+    // Remove WebSocket listeners
+    if (this.wsMessageNewCallback) {
+      wsService.off('message:new', this.wsMessageNewCallback);
+      this.wsMessageNewCallback = null;
+    }
+    if (this.wsMessageVideoCallback) {
+      wsService.off('message:video', this.wsMessageVideoCallback);
+      this.wsMessageVideoCallback = null;
+    }
+
+    // Remove Firebase messaging listeners
+    if (this.foregroundMessageUnsubscribe) {
+      this.foregroundMessageUnsubscribe();
+      this.foregroundMessageUnsubscribe = null;
+    }
+    if (this.notificationOpenedListener) {
+      this.notificationOpenedListener();
+      this.notificationOpenedListener = null;
+    }
+
+    // Remove Notifee listener
+    if (this.notifeeUnsubscribe) {
+      this.notifeeUnsubscribe();
+      this.notifeeUnsubscribe = null;
+    }
+
+    console.log('✅ Notification service cleanup complete');
   }
 }
 

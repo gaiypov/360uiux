@@ -1,9 +1,12 @@
 /**
  * 360° РАБОТА - Revolut Ultra Edition
  * Favorites Store (Zustand)
+ * P1 FIX: Added persist middleware for favorites persistence
  */
 
 import { create } from 'zustand';
+import { persist, createJSONStorage } from 'zustand/middleware';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Vacancy } from '@/types';
 
 interface FavoritesState {
@@ -14,8 +17,10 @@ interface FavoritesState {
   clearFavorites: () => void;
 }
 
-export const useFavoritesStore = create<FavoritesState>((set, get) => ({
-  favorites: [],
+export const useFavoritesStore = create<FavoritesState>()(
+  persist(
+    (set, get) => ({
+      favorites: [],
 
   addFavorite: (vacancy: Vacancy) => {
     const { favorites } = get();
@@ -37,4 +42,10 @@ export const useFavoritesStore = create<FavoritesState>((set, get) => ({
   clearFavorites: () => {
     set({ favorites: [] });
   },
-}));
+    }),
+    {
+      name: 'favorites-storage',
+      storage: createJSONStorage(() => AsyncStorage),
+    }
+  )
+);

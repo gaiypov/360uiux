@@ -2,6 +2,7 @@
  * 360° РАБОТА - Video Upload Service
  * Upload videos to api.video
  * Security: API key fetched from backend, not hardcoded
+ * P1 FIX: Added timeouts for all axios calls
  */
 
 import axios from 'axios';
@@ -10,6 +11,13 @@ import { Platform } from 'react-native';
 const API_BASE_URL = __DEV__
   ? 'http://localhost:5000/api/v1'
   : 'https://api.360rabota.ru/api/v1';
+
+// API timeouts (P1 High fix)
+const TIMEOUTS = {
+  TOKEN_REQUEST: 10000,      // 10s for token requests
+  VIDEO_METADATA: 15000,     // 15s for video metadata operations
+  VIDEO_UPLOAD: 300000,      // 5 minutes for video uploads
+};
 
 interface VideoUploadProgress {
   loaded: number;
@@ -61,7 +69,9 @@ export class VideoUploadService {
 
       // Fetch new token from backend
       console.log('🔑 Fetching upload token from backend...');
-      const response = await axios.get<UploadTokenResponse>(`${API_BASE_URL}/video/upload-token`);
+      const response = await axios.get<UploadTokenResponse>(`${API_BASE_URL}/video/upload-token`, {
+        timeout: TIMEOUTS.TOKEN_REQUEST,
+      });
 
       this.uploadToken = response.data.token;
       this.tokenExpiresAt = now + response.data.expiresIn * 1000;
@@ -112,6 +122,7 @@ export class VideoUploadService {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'multipart/form-data',
         },
+        timeout: TIMEOUTS.VIDEO_UPLOAD,
         onUploadProgress: (progressEvent) => {
           if (onProgress && progressEvent.total) {
             const percentage = (progressEvent.loaded / progressEvent.total) * 100;
@@ -180,6 +191,7 @@ export class VideoUploadService {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'multipart/form-data',
         },
+        timeout: TIMEOUTS.VIDEO_UPLOAD,
         onUploadProgress: (progressEvent) => {
           if (onProgress && progressEvent.total) {
             const percentage = (progressEvent.loaded / progressEvent.total) * 100;
@@ -236,6 +248,7 @@ export class VideoUploadService {
             Authorization: `Bearer ${token}`,
             'Content-Type': 'application/json',
           },
+          timeout: TIMEOUTS.VIDEO_METADATA,
         }
       );
 
@@ -279,6 +292,7 @@ export class VideoUploadService {
         headers: {
           Authorization: `Bearer ${token}`,
         },
+        timeout: TIMEOUTS.VIDEO_METADATA,
       });
 
       console.log('Video deleted:', videoId);
@@ -302,6 +316,7 @@ export class VideoUploadService {
         headers: {
           Authorization: `Bearer ${token}`,
         },
+        timeout: TIMEOUTS.VIDEO_METADATA,
       });
 
       return response.data;
@@ -336,6 +351,7 @@ export class VideoUploadService {
             Authorization: `Bearer ${token}`,
             'Content-Type': 'application/json',
           },
+          timeout: TIMEOUTS.VIDEO_METADATA,
         }
       );
 
