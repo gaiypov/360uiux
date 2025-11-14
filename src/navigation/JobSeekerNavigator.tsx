@@ -1,6 +1,7 @@
 /**
  * 360° РАБОТА - ULTRA EDITION
  * Job Seeker Navigation (Tab + Stack)
+ * Architecture v4: Refactored to use SharedNavigator and eliminate duplications
  */
 
 import React from 'react';
@@ -11,7 +12,6 @@ import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { BlurView } from '@react-native-community/blur';
 import { colors, sizes } from '@/constants';
 import { VacancyFeedScreen } from '@/screens/jobseeker/VacancyFeedScreen';
-import { MainFeedScreen } from '@/screens/MainFeedScreen';
 import { SearchScreen } from '@/screens/jobseeker/SearchScreen';
 import { ApplicationsScreen } from '@/screens/jobseeker/ApplicationsScreen';
 import { ApplicationScreen } from '@/screens/jobseeker/ApplicationScreen';
@@ -20,10 +20,7 @@ import { FavoritesScreen } from '@/screens/jobseeker/FavoritesScreen';
 import { VacancyDetailScreen } from '@/screens/jobseeker/VacancyDetailScreen';
 import { CompanyDetailScreen } from '@/screens/jobseeker/CompanyDetailScreen';
 import { CreateResumeScreen } from '@/screens/jobseeker/CreateResumeScreen';
-import { SettingsScreen } from '@/screens/SettingsScreen';
-import { NotificationsScreen } from '@/screens/NotificationsScreen';
-import { ChatScreen } from '@/screens/ChatScreen';
-import { VideoRecordScreen, VideoPreviewScreen, VideoPlayerScreen } from '@/screens/video';
+import { SharedNavigator } from './SharedNavigator';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -54,7 +51,7 @@ function JobSeekerTabs() {
     >
       <Tab.Screen
         name="Home"
-        component={MainFeedScreen}
+        component={VacancyFeedScreen}
         options={{
           title: 'ДОМОЙ',
           tabBarIcon: ({ focused, color, size }) => (
@@ -135,18 +132,17 @@ export function JobSeekerNavigator() {
         animation: 'slide_from_right',
       }}
     >
+      {/* Tab Navigator */}
       <Stack.Screen name="Tabs" component={JobSeekerTabs} />
-      <Stack.Screen name="Feed" component={VacancyFeedScreen} />
+
+      {/* JobSeeker-Specific Screens */}
       <Stack.Screen name="VacancyDetail" component={VacancyDetailScreen} />
       <Stack.Screen name="CompanyDetail" component={CompanyDetailScreen} />
       <Stack.Screen name="Application" component={ApplicationScreen} />
       <Stack.Screen name="CreateResume" component={CreateResumeScreen} />
-      <Stack.Screen name="VideoRecord" component={VideoRecordScreen} />
-      <Stack.Screen name="VideoPreview" component={VideoPreviewScreen} />
-      <Stack.Screen name="VideoPlayer" component={VideoPlayerScreen} />
-      <Stack.Screen name="Chat" component={ChatScreen} />
-      <Stack.Screen name="Notifications" component={NotificationsScreen} />
-      <Stack.Screen name="Settings" component={SettingsScreen} />
+
+      {/* Shared Screens (from SharedNavigator - no duplication!) */}
+      {SharedNavigator()}
     </Stack.Navigator>
   );
 }
