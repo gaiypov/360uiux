@@ -2,12 +2,12 @@
  * 360° РАБОТА - ULTRA EDITION
  * Vacancy Feed Screen (TikTok-style vertical swipe)
  * Architecture v3: Guest view tracking with 20-video limit + API integration
+ * ✅ STAGE II OPTIMIZED: Memoized renderItem, optimized FlatList, no heavy animations
  */
 
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { View, StyleSheet, Dimensions, StatusBar, FlatList } from 'react-native';
 import { GestureDetector, Gesture } from 'react-native-gesture-handler';
-import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 import { colors, metalGradients } from "@/constants";
 import { PremiumVacancyCard, CommentsModal } from '@/components/vacancy';
 import { useVacancyFeed } from '@/hooks/useVacancyFeed';
@@ -269,15 +269,36 @@ export function VacancyFeedScreen({ navigation }: any) {
     }
   });
 
-  const handleViewableItemsChanged = useRef(({ viewableItems }: any) => {
+  // ✅ P0-II-3 FIX: Use useCallback instead of useRef for stable reference
+  const handleViewableItemsChanged = useCallback(({ viewableItems }: any) => {
     if (viewableItems.length > 0) {
       setCurrentIndex(viewableItems[0].index || 0);
     }
-  }).current;
+  }, []);
 
   const viewabilityConfig = useRef({
     itemVisiblePercentThreshold: 50,
   }).current;
+
+  // ✅ P0-II-1 FIX: Memoize renderItem to prevent FlatList re-renders
+  // ✅ P0-II-4 FIX: Removed FadeIn/FadeOut animations (too heavy for scroll)
+  const renderItem = useCallback(({ item, index }: { item: any; index: number }) => (
+    <View>
+      <PremiumVacancyCard
+        vacancy={item}
+        isActive={index === currentIndex}
+        isLiked={likedVacancies.has(item.id)}
+        isFavorited={favoritedVacancies.has(item.id)}
+        onApply={() => handleApply(item.id)}
+        onCompanyPress={() => console.log('Company', item.employer.id)}
+        onLike={() => handleLike(item.id)}
+        onComment={() => handleComment(item.id)}
+        onFavorite={() => handleFavorite(item.id)}
+        onShare={() => handleShare(item.id)}
+        onSoundPress={() => handleSoundPress(item.id)}
+      />
+    </View>
+  ), [currentIndex, likedVacancies, favoritedVacancies, handleApply, handleLike, handleComment, handleFavorite, handleShare, handleSoundPress]);
 
   return (
     <>
@@ -288,29 +309,11 @@ export function VacancyFeedScreen({ navigation }: any) {
       />
       <GestureDetector gesture={gesture}>
         <View style={styles.container}>
+          {/* ✅ P0-II-2 FIX: Optimized FlatList props for video feed performance */}
           <FlatList
             ref={flatListRef}
             data={vacancies}
-            renderItem={({ item, index }) => (
-              <Animated.View
-                entering={FadeIn.duration(300)}
-                exiting={FadeOut.duration(300)}
-              >
-                <PremiumVacancyCard
-                  vacancy={item}
-                  isActive={index === currentIndex}
-                  isLiked={likedVacancies.has(item.id)}
-                  isFavorited={favoritedVacancies.has(item.id)}
-                  onApply={() => handleApply(item.id)}
-                  onCompanyPress={() => console.log('Company', item.employer.id)}
-                  onLike={() => handleLike(item.id)}
-                  onComment={() => handleComment(item.id)}
-                  onFavorite={() => handleFavorite(item.id)}
-                  onShare={() => handleShare(item.id)}
-                  onSoundPress={() => handleSoundPress(item.id)}
-                />
-              </Animated.View>
-            )}
+            renderItem={renderItem}
             keyExtractor={(item) => item.id}
             pagingEnabled
             showsVerticalScrollIndicator={false}
@@ -325,6 +328,12 @@ export function VacancyFeedScreen({ navigation }: any) {
               offset: SCREEN_HEIGHT * index,
               index,
             })}
+            // ✅ Performance optimizations (same as MainFeedScreen)
+            windowSize={3}
+            maxToRenderPerBatch={2}
+            removeClippedSubviews={true}
+            initialNumToRender={1}
+            updateCellsBatchingPeriod={100}
           />
         </View>
       </GestureDetector>
