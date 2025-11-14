@@ -13,6 +13,7 @@ import {
   StatusBar,
   Dimensions,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import Video from 'react-native-video';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import LinearGradient from 'react-native-linear-gradient';
@@ -40,7 +41,7 @@ export function VacancyDetailScreen({
   const [isPlaying, setIsPlaying] = useState(true);
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
 
       {/* Video Background */}
@@ -223,7 +224,7 @@ export function VacancyDetailScreen({
           onPress={() => console.log('Apply to vacancy')}
         />
       </View>
-    </View>
+    </SafeAreaView>
   );
 }
 
