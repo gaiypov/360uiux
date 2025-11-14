@@ -2,6 +2,7 @@
  * 360° РАБОТА - Revolut Ultra Edition
  * Root Navigator
  * Architecture v3: TikTok-style navigation with guest mode
+ * ✅ P0-5 FIX: Type-safe navigation with TypeScript
  */
 
 import React, { useState, useEffect } from 'react';
@@ -21,8 +22,9 @@ import {
 import { JobSeekerNavigator } from './JobSeekerNavigator';
 import { EmployerNavigator } from './EmployerNavigator';
 import { useAuthStore } from '@/stores/authStore';
+import { RootStackParamList } from './types';
 
-const Stack = createNativeStackNavigator();
+const Stack = createNativeStackNavigator<RootStackParamList>();
 const ONBOARDING_KEY = '@360rabota:onboarding_completed';
 
 export function RootNavigator() {

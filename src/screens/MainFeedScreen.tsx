@@ -1,9 +1,10 @@
 /**
  * 360° РАБОТА - MainFeedScreen
  * TikTok-style video feed with vacancies
+ * ✅ P0-2, P0-3, P0-7 FIX: Optimized FlatList and callbacks
  */
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { View, FlatList, Dimensions, StyleSheet, StatusBar, Share } from 'react-native';
 import { colors } from '@/constants';
 import { MainFeedHeader, VacancyCard, ActionButtons, SearchModal } from '@/components/feed';
@@ -27,12 +28,12 @@ export function MainFeedScreen({ navigation }: any) {
   const [savedVacancies, setSavedVacancies] = useState<Set<string>>(new Set());
   const [isSearchVisible, setIsSearchVisible] = useState(false);
 
-  // Отслеживание текущего видео
-  const handleViewableItemsChanged = useRef(({ viewableItems }: any) => {
+  // ✅ P0-7 FIX: Use useCallback instead of useRef for stable reference
+  const handleViewableItemsChanged = useCallback(({ viewableItems }: any) => {
     if (viewableItems.length > 0) {
       setCurrentIndex(viewableItems[0].index || 0);
     }
-  }).current;
+  }, []);
 
   const viewabilityConfig = useRef({
     itemVisiblePercentThreshold: 50,
@@ -180,8 +181,8 @@ export function MainFeedScreen({ navigation }: any) {
     navigation.navigate('Search', { query });
   };
 
-  // Рендер одной вакансии
-  const renderItem = ({ item, index }: { item: Vacancy; index: number }) => (
+  // ✅ P0-2 FIX: Memoize renderItem to prevent FlatList re-renders
+  const renderItem = useCallback(({ item, index }: { item: Vacancy; index: number }) => (
     <View style={styles.vacancyContainer}>
       {/* Карточка с видео и информацией */}
       <VacancyCard
@@ -201,7 +202,7 @@ export function MainFeedScreen({ navigation }: any) {
         onShare={() => handleShare(item)}
       />
     </View>
-  );
+  ), [currentIndex, likedVacancies, savedVacancies, handleApply, handleLike, handleComment, handleSave, handleShare]);
 
   return (
     <View style={styles.container}>
@@ -215,6 +216,7 @@ export function MainFeedScreen({ navigation }: any) {
       <MainFeedHeader onSearchPress={() => setIsSearchVisible(true)} />
 
       {/* Видео-лента */}
+      {/* ✅ P0-3 FIX: Optimized FlatList props for video feed performance */}
       <FlatList
         ref={flatListRef}
         data={vacancies}
@@ -233,6 +235,12 @@ export function MainFeedScreen({ navigation }: any) {
         })}
         onEndReached={fetchMore}
         onEndReachedThreshold={0.5}
+        // ✅ Performance optimizations
+        windowSize={3}
+        maxToRenderPerBatch={2}
+        removeClippedSubviews={true}
+        initialNumToRender={1}
+        updateCellsBatchingPeriod={100}
       />
 
       {/* Модалка поиска */}

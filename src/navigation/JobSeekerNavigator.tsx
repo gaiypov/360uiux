@@ -1,6 +1,7 @@
 /**
  * 360° РАБОТА - ULTRA EDITION
  * Job Seeker Navigation (Tab + Stack)
+ * ✅ P0-5 FIX: Type-safe navigation with TypeScript
  */
 
 import React from 'react';
@@ -24,9 +25,10 @@ import { SettingsScreen } from '@/screens/SettingsScreen';
 import { NotificationsScreen } from '@/screens/NotificationsScreen';
 import { ChatScreen } from '@/screens/ChatScreen';
 import { VideoRecordScreen, VideoPreviewScreen, VideoPlayerScreen } from '@/screens/video';
+import { JobSeekerTabParamList, JobSeekerStackParamList } from './types';
 
-const Tab = createBottomTabNavigator();
-const Stack = createNativeStackNavigator();
+const Tab = createBottomTabNavigator<JobSeekerTabParamList>();
+const Stack = createNativeStackNavigator<JobSeekerStackParamList>();
 
 // Tab Navigator
 function JobSeekerTabs() {

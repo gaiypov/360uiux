@@ -1,9 +1,10 @@
 /**
  * 360° РАБОТА - VacancyCard Component
  * TikTok-style vacancy card with video and information
+ * ✅ P0-1 FIX: Memoized with React.memo() for performance
  */
 
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState, useCallback, memo } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
 import Video from 'react-native-video';
 import LinearGradient from 'react-native-linear-gradient';
@@ -16,26 +17,52 @@ interface VacancyCardProps {
   onApply: () => void;
 }
 
-export function VacancyCard({ vacancy, isActive, onApply }: VacancyCardProps) {
+export const VacancyCard = memo(function VacancyCard({ vacancy, isActive, onApply }: VacancyCardProps) {
   const videoRef = useRef<Video>(null);
+  const [isVideoLoaded, setIsVideoLoaded] = useState(false);
 
-  // Управление воспроизведением
+  // ✅ P0-8 FIX: Safe video seek with error handling
   useEffect(() => {
-    if (videoRef.current && isActive) {
-      videoRef.current.seek(0);
+    if (!isActive || !isVideoLoaded || !videoRef.current) {
+      return;
     }
-  }, [isActive]);
 
-  // Обработка ошибок видео
-  const handleVideoError = (error: any) => {
+    const seekToStart = async () => {
+      try {
+        await videoRef.current?.seek(0);
+      } catch (error) {
+        console.error(`Failed to seek video ${vacancy.id}:`, error);
+        // Fallback: pause and retry
+        try {
+          videoRef.current?.pause?.();
+          await new Promise(resolve => setTimeout(resolve, 100));
+          await videoRef.current?.seek(0);
+          videoRef.current?.play?.();
+        } catch (retryError) {
+          console.error(`Failed to seek video after retry:`, retryError);
+        }
+      }
+    };
+
+    seekToStart();
+  }, [isActive, isVideoLoaded, vacancy.id]);
+
+  // ✅ Memoized callback: Video load handler
+  const handleVideoLoad = useCallback(() => {
+    setIsVideoLoaded(true);
+  }, []);
+
+  // ✅ Memoized callback: Video error handler
+  const handleVideoError = useCallback((error: any) => {
     console.error('Video playback error:', error);
-  };
+    setIsVideoLoaded(false);
+  }, []);
 
-  // Безопасное получение первой буквы названия компании
-  const getCompanyInitial = () => {
+  // ✅ Memoized callback: Get company initial
+  const getCompanyInitial = useCallback(() => {
     const companyName = vacancy.employer?.companyName || '';
     return companyName.trim().charAt(0).toUpperCase() || '?';
-  };
+  }, [vacancy.employer?.companyName]);
 
   return (
     <View style={styles.container}>
@@ -48,6 +75,7 @@ export function VacancyCard({ vacancy, isActive, onApply }: VacancyCardProps) {
         repeat
         paused={!isActive}
         muted={false}
+        onLoad={handleVideoLoad}
         onError={handleVideoError}
       />
 
@@ -99,7 +127,15 @@ export function VacancyCard({ vacancy, isActive, onApply }: VacancyCardProps) {
       </View>
     </View>
   );
-}
+}, (prevProps, nextProps) => {
+  // ✅ Custom comparison function for React.memo()
+  // Only re-render if vacancy ID or isActive changed
+  return (
+    prevProps.vacancy.id === nextProps.vacancy.id &&
+    prevProps.isActive === nextProps.isActive
+    // onApply не проверяем, т.к. это callback который может меняться
+  );
+});
 
 const styles = StyleSheet.create({
   container: {

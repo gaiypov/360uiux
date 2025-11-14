@@ -1,6 +1,7 @@
 /**
  * 360° РАБОТА - ULTRA EDITION
  * Employer Navigation
+ * ✅ P0-5 FIX: Type-safe navigation with TypeScript
  */
 
 import React from 'react';
@@ -23,9 +24,10 @@ import { NotificationsScreen } from '@/screens/NotificationsScreen';
 import { ChatScreen } from '@/screens/ChatScreen';
 import { WalletScreen, TopUpModal } from '@/screens/wallet';
 import { VideoRecordScreen, VideoPlayerScreen } from '@/screens/video';
+import { EmployerTabParamList, EmployerStackParamList } from './types';
 
-const Tab = createBottomTabNavigator();
-const Stack = createNativeStackNavigator();
+const Tab = createBottomTabNavigator<EmployerTabParamList>();
+const Stack = createNativeStackNavigator<EmployerStackParamList>();
 
 // Placeholder screens
 function VacanciesListScreen() {

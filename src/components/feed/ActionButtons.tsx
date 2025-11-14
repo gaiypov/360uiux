@@ -1,15 +1,17 @@
 /**
  * 360° РАБОТА - ActionButtons Component
  * TikTok-style side action buttons
+ * ✅ P0-6 FIX: Memoized with React.memo() for performance
  */
 
-import React from 'react';
+import React, { memo, useCallback } from 'react';
 import { View, TouchableOpacity, Text, StyleSheet, Image } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import Animated, {
   useAnimatedStyle,
   withSpring,
   useSharedValue,
+  runOnJS,
 } from 'react-native-reanimated';
 import { colors, sizes, typography } from '@/constants';
 
@@ -32,7 +34,7 @@ interface ActionButtonsProps {
   onShare: () => void;
 }
 
-export function ActionButtons({
+export const ActionButtons = memo(function ActionButtons({
   vacancy,
   isLiked,
   isSaved,
@@ -43,16 +45,19 @@ export function ActionButtons({
 }: ActionButtonsProps) {
   const scale = useSharedValue(1);
 
+  // ✅ Memoized animated style (empty deps for performance)
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
-  }));
+  }), []);
 
-  const handleLikePress = () => {
+  // ✅ Memoized callback with worklet directive
+  const handleLikePress = useCallback(() => {
+    'worklet';
     scale.value = withSpring(1.2, {}, () => {
       scale.value = withSpring(1);
     });
-    onLike();
-  };
+    runOnJS(onLike)();
+  }, [onLike, scale]);
 
   return (
     <View style={styles.container}>
@@ -104,7 +109,15 @@ export function ActionButtons({
       </TouchableOpacity>
     </View>
   );
-}
+}, (prevProps, nextProps) => {
+  // ✅ Custom comparison function for React.memo()
+  return (
+    prevProps.vacancy.id === nextProps.vacancy.id &&
+    prevProps.isLiked === nextProps.isLiked &&
+    prevProps.isSaved === nextProps.isSaved &&
+    prevProps.vacancy.applications === nextProps.vacancy.applications
+  );
+});
 
 const styles = StyleSheet.create({
   container: {
