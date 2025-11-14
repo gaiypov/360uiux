@@ -1,6 +1,7 @@
 /**
  * 360° РАБОТА - ULTRA EDITION
  * Premium Icon Button Component
+ * P1 FIX: Added accessibility support
  */
 
 import React from 'react';
@@ -15,6 +16,8 @@ interface NeonIconButtonProps {
   size?: number;
   style?: ViewStyle;
   iconColor?: string;
+  accessibilityLabel?: string;
+  accessibilityHint?: string;
 }
 
 export function NeonIconButton({
@@ -24,6 +27,8 @@ export function NeonIconButton({
   size = 24,
   style,
   iconColor,
+  accessibilityLabel,
+  accessibilityHint,
 }: NeonIconButtonProps) {
   const buttonSize = size * 2.33; // 56px for default 24px icon
 
@@ -37,6 +42,10 @@ export function NeonIconButton({
         style,
       ]}
       activeOpacity={0.7}
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel}
+      accessibilityHint={accessibilityHint}
+      accessibilityState={{ selected: active }}
     >
       <Icon
         name={icon}

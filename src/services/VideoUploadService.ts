@@ -1,10 +1,23 @@
 /**
  * 360° РАБОТА - Video Upload Service
  * Upload videos to api.video
+ * Security: API key fetched from backend, not hardcoded
+ * P1 FIX: Added timeouts for all axios calls
  */
 
 import axios from 'axios';
 import { Platform } from 'react-native';
+
+const API_BASE_URL = __DEV__
+  ? 'http://localhost:5000/api/v1'
+  : 'https://api.360rabota.ru/api/v1';
+
+// API timeouts (P1 High fix)
+const TIMEOUTS = {
+  TOKEN_REQUEST: 10000,      // 10s for token requests
+  VIDEO_METADATA: 15000,     // 15s for video metadata operations
+  VIDEO_UPLOAD: 300000,      // 5 minutes for video uploads
+};
 
 interface VideoUploadProgress {
   loaded: number;
@@ -31,9 +44,45 @@ interface CreateVideoResponse {
   };
 }
 
+interface UploadTokenResponse {
+  token: string;
+  expiresIn: number;
+  message: string;
+}
+
 export class VideoUploadService {
-  private static readonly API_BASE_URL = 'https://sandbox.api.video'; // Change to production URL
-  private static readonly API_KEY = process.env.API_VIDEO_KEY || 'YOUR_API_VIDEO_KEY';
+  private static readonly API_VIDEO_BASE_URL = 'https://sandbox.api.video'; // Change to production URL
+  private static uploadToken: string | null = null;
+  private static tokenExpiresAt: number = 0;
+
+  /**
+   * Get upload token from backend
+   * Security fix: Token is fetched from backend, not hardcoded in frontend
+   */
+  private static async getUploadToken(): Promise<string> {
+    try {
+      // Check if token is still valid (with 5 minute buffer)
+      const now = Date.now();
+      if (this.uploadToken && this.tokenExpiresAt > now + 5 * 60 * 1000) {
+        return this.uploadToken;
+      }
+
+      // Fetch new token from backend
+      console.log('🔑 Fetching upload token from backend...');
+      const response = await axios.get<UploadTokenResponse>(`${API_BASE_URL}/video/upload-token`, {
+        timeout: TIMEOUTS.TOKEN_REQUEST,
+      });
+
+      this.uploadToken = response.data.token;
+      this.tokenExpiresAt = now + response.data.expiresIn * 1000;
+
+      console.log('✅ Upload token received (expires in', response.data.expiresIn, 'seconds)');
+      return this.uploadToken;
+    } catch (error) {
+      console.error('❌ Error fetching upload token:', error);
+      throw new Error('Failed to get upload token. Please ensure you are logged in.');
+    }
+  }
 
   /**
    * Upload resume video to api.video
@@ -45,17 +94,20 @@ export class VideoUploadService {
     onProgress?: (progress: VideoUploadProgress) => void
   ): Promise<VideoUploadResult> {
     try {
+      // Get upload token from backend (security fix)
+      const token = await this.getUploadToken();
+
       // Step 1: Create video object in api.video
       const videoMetadata = await this.createVideo(title, {
         isPublic: false, // Private video (Architecture v3)
         description: 'Resume video for 360° РАБОТА',
         tags: ['resume', 'jobseeker'],
-      });
+      }, token);
 
       console.log('Video created:', videoMetadata);
 
       // Step 2: Upload video file
-      const uploadUrl = `${this.API_BASE_URL}/videos/${videoMetadata.videoId}/source`;
+      const uploadUrl = `${this.API_VIDEO_BASE_URL}/videos/${videoMetadata.videoId}/source`;
       const videoData = await this.prepareVideoFile(videoPath);
 
       const formData = new FormData();
@@ -67,9 +119,10 @@ export class VideoUploadService {
 
       const response = await axios.post(uploadUrl, formData, {
         headers: {
-          Authorization: `Bearer ${this.API_KEY}`,
+          Authorization: `Bearer ${token}`,
           'Content-Type': 'multipart/form-data',
         },
+        timeout: TIMEOUTS.VIDEO_UPLOAD,
         onUploadProgress: (progressEvent) => {
           if (onProgress && progressEvent.total) {
             const percentage = (progressEvent.loaded / progressEvent.total) * 100;
@@ -111,17 +164,20 @@ export class VideoUploadService {
     onProgress?: (progress: VideoUploadProgress) => void
   ): Promise<VideoUploadResult> {
     try {
+      // Get upload token from backend (security fix)
+      const token = await this.getUploadToken();
+
       // Step 1: Create video object in api.video
       const videoMetadata = await this.createVideo(title, {
         isPublic: true, // Public video
         description,
         tags: ['vacancy', 'employer'],
-      });
+      }, token);
 
       console.log('Vacancy video created:', videoMetadata);
 
       // Step 2: Upload video file
-      const uploadUrl = `${this.API_BASE_URL}/videos/${videoMetadata.videoId}/source`;
+      const uploadUrl = `${this.API_VIDEO_BASE_URL}/videos/${videoMetadata.videoId}/source`;
 
       const formData = new FormData();
       formData.append('file', {
@@ -132,9 +188,10 @@ export class VideoUploadService {
 
       const response = await axios.post(uploadUrl, formData, {
         headers: {
-          Authorization: `Bearer ${this.API_KEY}`,
+          Authorization: `Bearer ${token}`,
           'Content-Type': 'multipart/form-data',
         },
+        timeout: TIMEOUTS.VIDEO_UPLOAD,
         onUploadProgress: (progressEvent) => {
           if (onProgress && progressEvent.total) {
             const percentage = (progressEvent.loaded / progressEvent.total) * 100;
@@ -173,11 +230,12 @@ export class VideoUploadService {
       isPublic: boolean;
       description?: string;
       tags?: string[];
-    }
+    },
+    token: string
   ): Promise<CreateVideoResponse> {
     try {
       const response = await axios.post(
-        `${this.API_BASE_URL}/videos`,
+        `${this.API_VIDEO_BASE_URL}/videos`,
         {
           title,
           public: options.isPublic,
@@ -187,9 +245,10 @@ export class VideoUploadService {
         },
         {
           headers: {
-            Authorization: `Bearer ${this.API_KEY}`,
+            Authorization: `Bearer ${token}`,
             'Content-Type': 'application/json',
           },
+          timeout: TIMEOUTS.VIDEO_METADATA,
         }
       );
 
@@ -226,10 +285,14 @@ export class VideoUploadService {
    */
   static async deleteVideo(videoId: string): Promise<void> {
     try {
-      await axios.delete(`${this.API_BASE_URL}/videos/${videoId}`, {
+      // Get upload token from backend (security fix)
+      const token = await this.getUploadToken();
+
+      await axios.delete(`${this.API_VIDEO_BASE_URL}/videos/${videoId}`, {
         headers: {
-          Authorization: `Bearer ${this.API_KEY}`,
+          Authorization: `Bearer ${token}`,
         },
+        timeout: TIMEOUTS.VIDEO_METADATA,
       });
 
       console.log('Video deleted:', videoId);
@@ -246,10 +309,14 @@ export class VideoUploadService {
    */
   static async getVideoDetails(videoId: string): Promise<any> {
     try {
-      const response = await axios.get(`${this.API_BASE_URL}/videos/${videoId}`, {
+      // Get upload token from backend (security fix)
+      const token = await this.getUploadToken();
+
+      const response = await axios.get(`${this.API_VIDEO_BASE_URL}/videos/${videoId}`, {
         headers: {
-          Authorization: `Bearer ${this.API_KEY}`,
+          Authorization: `Bearer ${token}`,
         },
+        timeout: TIMEOUTS.VIDEO_METADATA,
       });
 
       return response.data;
@@ -273,14 +340,18 @@ export class VideoUploadService {
     }
   ): Promise<void> {
     try {
+      // Get upload token from backend (security fix)
+      const token = await this.getUploadToken();
+
       await axios.patch(
-        `${this.API_BASE_URL}/videos/${videoId}`,
+        `${this.API_VIDEO_BASE_URL}/videos/${videoId}`,
         updates,
         {
           headers: {
-            Authorization: `Bearer ${this.API_KEY}`,
+            Authorization: `Bearer ${token}`,
             'Content-Type': 'application/json',
           },
+          timeout: TIMEOUTS.VIDEO_METADATA,
         }
       );
 

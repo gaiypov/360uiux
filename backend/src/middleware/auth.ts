@@ -94,6 +94,32 @@ export function requireJobSeeker(
 }
 
 /**
+ * Middleware to check if user is moderator
+ * ✅ ADDED: Security fix for moderation routes
+ */
+export function requireModerator(
+  req: Request,
+  res: Response,
+  next: NextFunction
+) {
+  if (!req.user) {
+    return res.status(401).json({
+      error: 'Unauthorized',
+      message: 'Authentication required',
+    });
+  }
+
+  if (req.user.role !== 'moderator') {
+    return res.status(403).json({
+      error: 'Forbidden',
+      message: 'This action is only available to moderators',
+    });
+  }
+
+  next();
+}
+
+/**
  * Middleware to check for specific roles
  */
 export function requireRole(roles: UserRole[]) {

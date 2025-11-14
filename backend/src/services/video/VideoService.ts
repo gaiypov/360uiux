@@ -5,12 +5,20 @@
 
 import { videoConfig, validateVideoConfig } from '../../config/video.config';
 import { ApiVideoProvider } from './ApiVideoProvider';
-import { YandexVideoProvider } from './YandexVideoProvider';
+import { YandexVideoProviderOptimized } from './YandexVideoProvider.optimized';
 
 // Интерфейс провайдера
 export interface IVideoProvider {
   /**
    * Загрузить видео
+   *
+   * Returns:
+   * - status: 'ready' (blocking, transcoding complete) or 'processing' (non-blocking, webhook callback)
+   * - videoId: Unique video identifier
+   * - playerUrl: URL for video player (may be placeholder if processing)
+   * - hlsUrl: HLS playlist URL (may be placeholder if processing)
+   * - thumbnailUrl: Thumbnail URL (may be placeholder if processing)
+   * - duration: Video duration in seconds (only if ready)
    */
   uploadVideo(params: {
     file: Buffer;
@@ -27,6 +35,7 @@ export interface IVideoProvider {
     hlsUrl: string;
     thumbnailUrl: string;
     duration?: number;
+    status?: 'ready' | 'processing' | 'failed'; // NEW: Video transcoding status
   }>;
 
   /**
@@ -75,7 +84,7 @@ export class VideoService implements IVideoProvider {
         this.provider = new ApiVideoProvider();
         break;
       case 'yandex':
-        this.provider = new YandexVideoProvider();
+        this.provider = new YandexVideoProviderOptimized();
         break;
       default:
         throw new Error(`Unknown video provider: ${providerType}`);

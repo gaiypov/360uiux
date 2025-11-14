@@ -1,4 +1,88 @@
 {
-  "name": "360Rabota",
-  "displayName": "360° РАБОТА"
+  "expo": {
+    "name": "360° РАБОТА",
+    "slug": "360rabota",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "scheme": "360rabota",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#000000"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.360rabota.app",
+      "buildNumber": "1",
+      "infoPlist": {
+        "NSCameraUsageDescription": "360° РАБОТА использует камеру для записи видео-резюме и видео-вакансий",
+        "NSMicrophoneUsageDescription": "360° РАБОТА использует микрофон для записи звука в видео",
+        "NSPhotoLibraryUsageDescription": "360° РАБОТА использует галерею для выбора видео и изображений",
+        "NSPhotoLibraryAddUsageDescription": "360° РАБОТА сохраняет видео в галерею"
+      },
+      "config": {
+        "usesNonExemptEncryption": false
+      }
+    },
+    "android": {
+      "package": "com.rabota360.app",
+      "versionCode": 1,
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#000000"
+      },
+      "permissions": [
+        "CAMERA",
+        "RECORD_AUDIO",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png",
+      "bundler": "metro"
+    },
+    "plugins": [
+      [
+        "expo-build-properties",
+        {
+          "ios": {
+            "deploymentTarget": "13.4",
+            "useFrameworks": "static"
+          },
+          "android": {
+            "compileSdkVersion": 34,
+            "targetSdkVersion": 34,
+            "minSdkVersion": 23
+          }
+        }
+      ],
+      [
+        "react-native-vision-camera",
+        {
+          "cameraPermissionText": "360° РАБОТА использует камеру для записи видео-резюме и видео-вакансий",
+          "enableMicrophonePermission": true,
+          "microphonePermissionText": "360° РАБОТА использует микрофон для записи звука в видео"
+        }
+      ],
+      "expo-font",
+      [
+        "expo-video",
+        {
+          "supportsBackgroundAudio": false
+        }
+      ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "YOUR_EAS_PROJECT_ID"
+      }
+    },
+    "owner": "360rabota"
+  }
 }

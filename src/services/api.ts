@@ -5,15 +5,21 @@
 
 import axios, { AxiosInstance, AxiosError } from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { SecureStorage, SECURE_STORAGE_KEYS, migrateFromAsyncStorage } from '../utils/SecureStorage';
 
 // API Configuration
 const API_BASE_URL = __DEV__
   ? 'http://localhost:5000/api/v1'
   : 'https://api.360rabota.ru/api/v1';
 
-const STORAGE_KEYS = {
+// Legacy AsyncStorage keys (for migration)
+const LEGACY_STORAGE_KEYS = {
   ACCESS_TOKEN: '@360rabota:access_token',
   REFRESH_TOKEN: '@360rabota:refresh_token',
+};
+
+// Non-sensitive data (kept in AsyncStorage)
+const STORAGE_KEYS = {
   USER: '@360rabota:user',
 };
 
@@ -30,7 +36,7 @@ export interface User {
   id: string;
   phone: string;
   email?: string;
-  role: 'jobseeker' | 'employer';
+  role: 'jobseeker' | 'employer' | 'moderator';
   name?: string;
   company_name?: string;
   verified?: boolean;
@@ -81,7 +87,7 @@ export interface Transaction {
 
 export interface InitPaymentRequest {
   amount: number;
-  paymentSystem: 'tinkoff' | 'alfabank';
+  paymentSystem: 'alfabank' | 'invoice';
   cardType?: 'business' | 'mir' | 'regular';
 }
 
@@ -162,29 +168,63 @@ class APIService {
 
   private async loadTokensFromStorage() {
     try {
+      // Try loading from SecureStorage first
       const [accessToken, refreshToken] = await Promise.all([
-        AsyncStorage.getItem(STORAGE_KEYS.ACCESS_TOKEN),
-        AsyncStorage.getItem(STORAGE_KEYS.REFRESH_TOKEN),
+        SecureStorage.getItem(SECURE_STORAGE_KEYS.ACCESS_TOKEN),
+        SecureStorage.getItem(SECURE_STORAGE_KEYS.REFRESH_TOKEN),
       ]);
 
-      this.accessToken = accessToken;
-      this.refreshToken = refreshToken;
+      // If tokens found in SecureStorage, use them
+      if (accessToken && refreshToken) {
+        this.accessToken = accessToken;
+        this.refreshToken = refreshToken;
+        return;
+      }
+
+      // Migration: If not found in SecureStorage, check legacy AsyncStorage
+      console.log('🔄 Migrating JWT tokens from AsyncStorage to SecureStorage...');
+      const migrated = await Promise.all([
+        migrateFromAsyncStorage(
+          AsyncStorage,
+          LEGACY_STORAGE_KEYS.ACCESS_TOKEN,
+          SECURE_STORAGE_KEYS.ACCESS_TOKEN
+        ),
+        migrateFromAsyncStorage(
+          AsyncStorage,
+          LEGACY_STORAGE_KEYS.REFRESH_TOKEN,
+          SECURE_STORAGE_KEYS.REFRESH_TOKEN
+        ),
+      ]);
+
+      // Load again after migration
+      if (migrated[0] || migrated[1]) {
+        const [newAccessToken, newRefreshToken] = await Promise.all([
+          SecureStorage.getItem(SECURE_STORAGE_KEYS.ACCESS_TOKEN),
+          SecureStorage.getItem(SECURE_STORAGE_KEYS.REFRESH_TOKEN),
+        ]);
+        this.accessToken = newAccessToken;
+        this.refreshToken = newRefreshToken;
+      }
     } catch (error) {
-      console.error('Error loading tokens:', error);
+      console.error('❌ Error loading tokens:', error);
     }
   }
 
   private async saveTokens(tokens: AuthTokens) {
     try {
+      // Save to SecureStorage (encrypted)
       await Promise.all([
-        AsyncStorage.setItem(STORAGE_KEYS.ACCESS_TOKEN, tokens.accessToken),
-        AsyncStorage.setItem(STORAGE_KEYS.REFRESH_TOKEN, tokens.refreshToken),
+        SecureStorage.setItem(SECURE_STORAGE_KEYS.ACCESS_TOKEN, tokens.accessToken),
+        SecureStorage.setItem(SECURE_STORAGE_KEYS.REFRESH_TOKEN, tokens.refreshToken),
       ]);
 
       this.accessToken = tokens.accessToken;
       this.refreshToken = tokens.refreshToken;
+
+      console.log('✅ JWT tokens saved to SecureStorage');
     } catch (error) {
-      console.error('Error saving tokens:', error);
+      console.error('❌ Error saving tokens:', error);
+      throw error;
     }
   }
 
@@ -198,8 +238,11 @@ class APIService {
         return null;
       }
 
+      // P1 FIX: Add timeout for token refresh
       const response = await axios.post(`${API_BASE_URL}/auth/refresh`, {
         refreshToken: this.refreshToken,
+      }, {
+        timeout: 10000, // 10s timeout for refresh token
       });
 
       const tokens = response.data.tokens;
@@ -266,15 +309,21 @@ class APIService {
     } catch (error) {
       console.error('Logout error:', error);
     } finally {
-      // Очищаем токены и данные
+      // Clear tokens from SecureStorage (encrypted tokens)
       await Promise.all([
-        AsyncStorage.removeItem(STORAGE_KEYS.ACCESS_TOKEN),
-        AsyncStorage.removeItem(STORAGE_KEYS.REFRESH_TOKEN),
+        SecureStorage.removeItem(SECURE_STORAGE_KEYS.ACCESS_TOKEN),
+        SecureStorage.removeItem(SECURE_STORAGE_KEYS.REFRESH_TOKEN),
+        // Clear legacy AsyncStorage tokens (migration cleanup)
+        AsyncStorage.removeItem(LEGACY_STORAGE_KEYS.ACCESS_TOKEN),
+        AsyncStorage.removeItem(LEGACY_STORAGE_KEYS.REFRESH_TOKEN),
+        // Clear user data (non-sensitive)
         AsyncStorage.removeItem(STORAGE_KEYS.USER),
       ]);
 
       this.accessToken = null;
       this.refreshToken = null;
+
+      console.log('✅ Logged out - all tokens cleared');
     }
   }
 
@@ -303,6 +352,19 @@ class APIService {
 
   async getPaymentStatus(paymentId: string): Promise<any> {
     const response = await this.client.get(`/billing/payment/${paymentId}/status`);
+    return response.data;
+  }
+
+  async getPricing(): Promise<{ plans: any[] }> {
+    const response = await this.client.get('/billing/pricing');
+    return response.data;
+  }
+
+  async purchaseService(data: {
+    service: string;
+    amount: number;
+  }): Promise<{ success: boolean; transaction: any }> {
+    const response = await this.client.post('/billing/purchase-service', data);
     return response.data;
   }
 
@@ -373,6 +435,27 @@ class APIService {
 
   async getVideoViewsRemaining(videoId: string): Promise<{ viewsRemaining: number }> {
     const response = await this.client.get(`/videos/${videoId}/views`);
+    return response.data;
+  }
+
+  // ===================================
+  // FCM TOKENS API (Push Notifications)
+  // ===================================
+
+  /**
+   * Зарегистрировать FCM токен для push-уведомлений
+   * @param token FCM токен от Firebase
+   */
+  async registerFCMToken(token: string): Promise<{ success: boolean; message: string }> {
+    const response = await this.client.post('/users/fcm-token', { token });
+    return response.data;
+  }
+
+  /**
+   * Удалить FCM токен (при logout или отписке от уведомлений)
+   */
+  async removeFCMToken(): Promise<{ success: boolean; message: string }> {
+    const response = await this.client.delete('/users/fcm-token');
     return response.data;
   }
 

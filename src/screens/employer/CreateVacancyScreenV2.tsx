@@ -23,6 +23,7 @@ import LinearGradient from 'react-native-linear-gradient';
 import { GlassCard, GlassButton } from '@/components/ui';
 import { colors, metalGradients, typography, sizes } from '@/constants';
 import { useToastStore } from '@/stores';
+import { pickVideoFromGallery } from '@/services/videoPickerService';
 
 interface CreateVacancyScreenV2Props {
   navigation: any;
@@ -96,6 +97,30 @@ export function CreateVacancyScreenV2({ navigation }: CreateVacancyScreenV2Props
         showToast('success', 'Видео записано!');
       },
     });
+  };
+
+  const handlePickVideo = async () => {
+    setLoading(true);
+    try {
+      const result = await pickVideoFromGallery({
+        maxDuration: 180,
+        minDuration: 10,
+        maxSizeInMB: 100,
+      });
+
+      if (result.success && result.videoInfo) {
+        setVideoPath(result.videoInfo.path);
+        setVideoDuration(result.videoInfo.duration);
+        showToast('success', 'Видео загружено!');
+      } else if (result.error && result.error !== 'Выбор отменен') {
+        showToast('error', result.error);
+      }
+    } catch (error: any) {
+      console.error('Error picking video:', error);
+      showToast('error', 'Ошибка при выборе видео');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handlePublish = async () => {
@@ -351,36 +376,73 @@ export function CreateVacancyScreenV2({ navigation }: CreateVacancyScreenV2Props
           <View style={styles.videoPreview}>
             <View style={styles.videoPreviewBox}>
               <Icon name="check-circle" size={64} color={colors.success} />
-              <Text style={styles.videoPreviewText}>Видео записано</Text>
+              <Text style={styles.videoPreviewText}>Видео загружено</Text>
               <Text style={styles.videoPreviewDuration}>
                 {Math.floor(videoDuration / 60)}:
                 {(videoDuration % 60).toString().padStart(2, '0')}
               </Text>
             </View>
 
-            <TouchableOpacity
-              style={styles.retakeButton}
-              onPress={handleRecordVideo}
-            >
-              <Icon name="refresh" size={20} color={colors.platinumSilver} />
-              <Text style={styles.retakeText}>Переснять</Text>
-            </TouchableOpacity>
+            <View style={styles.videoActionsRow}>
+              <TouchableOpacity
+                style={styles.videoActionButton}
+                onPress={handleRecordVideo}
+              >
+                <Icon name="video" size={20} color={colors.platinumSilver} />
+                <Text style={styles.videoActionText}>Переснять</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.videoActionButton}
+                onPress={handlePickVideo}
+                disabled={loading}
+              >
+                <Icon name="folder-image" size={20} color={colors.platinumSilver} />
+                <Text style={styles.videoActionText}>Выбрать другое</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         ) : (
-          <TouchableOpacity
-            style={styles.recordButton}
-            onPress={handleRecordVideo}
-          >
-            <LinearGradient
-              colors={metalGradients.platinum}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.recordGradient}
+          <View style={styles.videoButtonsContainer}>
+            <TouchableOpacity
+              style={styles.videoOptionButton}
+              onPress={handleRecordVideo}
             >
-              <Icon name="video-plus" size={48} color={colors.primaryBlack} />
-              <Text style={styles.recordButtonText}>Записать видео</Text>
-            </LinearGradient>
-          </TouchableOpacity>
+              <LinearGradient
+                colors={metalGradients.platinum}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.videoOptionGradient}
+              >
+                <Icon name="video-plus" size={40} color={colors.primaryBlack} />
+                <Text style={styles.videoOptionTitle}>Записать видео</Text>
+                <Text style={styles.videoOptionHint}>Снять через камеру</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+
+            <View style={styles.orDivider}>
+              <View style={styles.orLine} />
+              <Text style={styles.orText}>или</Text>
+              <View style={styles.orLine} />
+            </View>
+
+            <TouchableOpacity
+              style={styles.videoOptionButton}
+              onPress={handlePickVideo}
+              disabled={loading}
+            >
+              <LinearGradient
+                colors={metalGradients.arctic}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.videoOptionGradient}
+              >
+                <Icon name="folder-upload" size={40} color={colors.primaryBlack} />
+                <Text style={styles.videoOptionTitle}>Загрузить видео</Text>
+                <Text style={styles.videoOptionHint}>Выбрать из галереи</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          </View>
         )}
 
         <View style={styles.tipsBox}>
@@ -741,31 +803,63 @@ const styles = StyleSheet.create({
     color: colors.liquidSilver,
     marginTop: sizes.small,
   },
-  retakeButton: {
+  videoActionsRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: sizes.medium,
+    marginTop: sizes.medium,
+  },
+  videoActionButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: sizes.medium,
     gap: sizes.small,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    paddingHorizontal: sizes.medium,
+    paddingVertical: sizes.small,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
   },
-  retakeText: {
+  videoActionText: {
     ...typography.body,
     color: colors.platinumSilver,
   },
-  recordButton: {
+  videoButtonsContainer: {
     marginVertical: sizes.large,
+    gap: sizes.medium,
+  },
+  videoOptionButton: {
     borderRadius: 16,
     overflow: 'hidden',
   },
-  recordGradient: {
-    padding: sizes.xxLarge,
+  videoOptionGradient: {
+    padding: sizes.xLarge,
     alignItems: 'center',
-    gap: sizes.medium,
+    gap: sizes.small,
   },
-  recordButtonText: {
+  videoOptionTitle: {
     ...typography.h3,
     color: colors.primaryBlack,
     fontWeight: '700',
+  },
+  videoOptionHint: {
+    ...typography.caption,
+    color: colors.graphiteGray,
+  },
+  orDivider: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: sizes.medium,
+    marginVertical: sizes.small,
+  },
+  orLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+  },
+  orText: {
+    ...typography.body,
+    color: colors.liquidSilver,
   },
   tipsBox: {
     backgroundColor: 'rgba(255,255,255,0.05)',

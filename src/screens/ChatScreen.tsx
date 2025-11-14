@@ -119,8 +119,13 @@ export function ChatScreen({ route, navigation }: ChatScreenProps) {
       if (isTyping) {
         sendTypingIndicator(conversationId, false);
       }
+      // FIX: Clear typing timeout to prevent memory leak
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+        typingTimeoutRef.current = null;
+      }
     };
-  }, [conversationId]);
+  }, [conversationId, isTyping]);
 
   const messages = conversation?.messages || [];
   const otherUserTyping = conversation?.isTyping || false;

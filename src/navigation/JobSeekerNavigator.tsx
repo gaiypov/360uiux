@@ -11,6 +11,7 @@ import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { BlurView } from '@react-native-community/blur';
 import { colors, sizes } from '@/constants';
 import { VacancyFeedScreen } from '@/screens/jobseeker/VacancyFeedScreen';
+import { MainFeedScreen } from '@/screens/MainFeedScreen';
 import { SearchScreen } from '@/screens/jobseeker/SearchScreen';
 import { ApplicationsScreen } from '@/screens/jobseeker/ApplicationsScreen';
 import { ApplicationScreen } from '@/screens/jobseeker/ApplicationScreen';
@@ -52,10 +53,10 @@ function JobSeekerTabs() {
       }}
     >
       <Tab.Screen
-        name="Feed"
-        component={VacancyFeedScreen}
+        name="Home"
+        component={MainFeedScreen}
         options={{
-          title: 'ЛЕНТА',
+          title: 'ДОМОЙ',
           tabBarIcon: ({ focused, color, size }) => (
             <Icon
               name={focused ? 'home' : 'home-outline'}
@@ -80,6 +81,20 @@ function JobSeekerTabs() {
         }}
       />
       <Tab.Screen
+        name="Favorites"
+        component={FavoritesScreen}
+        options={{
+          title: 'ИЗБРАННОЕ',
+          tabBarIcon: ({ focused, color, size }) => (
+            <Icon
+              name={focused ? 'heart' : 'heart-outline'}
+              size={size}
+              color={color}
+            />
+          ),
+        }}
+      />
+      <Tab.Screen
         name="Applications"
         component={ApplicationsScreen}
         options={{
@@ -94,27 +109,13 @@ function JobSeekerTabs() {
         }}
       />
       <Tab.Screen
-        name="Notifications"
-        component={NotificationsScreen}
+        name="Profile"
+        component={ProfileScreen}
         options={{
-          title: 'УВЕДОМЛЕНИЯ',
+          title: 'ПРОФИЛЬ',
           tabBarIcon: ({ focused, color, size }) => (
             <Icon
-              name={focused ? 'bell' : 'bell-outline'}
-              size={size}
-              color={color}
-            />
-          ),
-        }}
-      />
-      <Tab.Screen
-        name="Settings"
-        component={SettingsScreen}
-        options={{
-          title: 'НАСТРОЙКИ',
-          tabBarIcon: ({ focused, color, size }) => (
-            <Icon
-              name={focused ? 'cog' : 'cog-outline'}
+              name={focused ? 'account' : 'account-outline'}
               size={size}
               color={color}
             />
@@ -135,16 +136,17 @@ export function JobSeekerNavigator() {
       }}
     >
       <Stack.Screen name="Tabs" component={JobSeekerTabs} />
+      <Stack.Screen name="Feed" component={VacancyFeedScreen} />
       <Stack.Screen name="VacancyDetail" component={VacancyDetailScreen} />
       <Stack.Screen name="CompanyDetail" component={CompanyDetailScreen} />
       <Stack.Screen name="Application" component={ApplicationScreen} />
-      <Stack.Screen name="Favorites" component={FavoritesScreen} />
-      <Stack.Screen name="Profile" component={ProfileScreen} />
       <Stack.Screen name="CreateResume" component={CreateResumeScreen} />
       <Stack.Screen name="VideoRecord" component={VideoRecordScreen} />
       <Stack.Screen name="VideoPreview" component={VideoPreviewScreen} />
       <Stack.Screen name="VideoPlayer" component={VideoPlayerScreen} />
       <Stack.Screen name="Chat" component={ChatScreen} />
+      <Stack.Screen name="Notifications" component={NotificationsScreen} />
+      <Stack.Screen name="Settings" component={SettingsScreen} />
     </Stack.Navigator>
   );
 }

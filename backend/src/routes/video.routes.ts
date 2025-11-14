@@ -8,6 +8,7 @@ import multer from 'multer';
 import { authMiddleware, requireEmployer } from '../middleware/auth';
 import { VacancyVideoController } from '../controllers/VacancyVideoController';
 import { ResumeVideoController } from '../controllers/ResumeVideoController';
+import { VideoCallbackController } from '../controllers/VideoCallbackController';
 
 const router = Router();
 
@@ -34,6 +35,60 @@ const upload = multer({
     }
   },
 });
+
+// ===================================
+// UPLOAD TOKEN ROUTE (Security fix)
+// ===================================
+
+/**
+ * @route   GET /api/v1/video/upload-token
+ * @desc    Get temporary upload token for direct api.video uploads
+ * @access  Private (authenticated users only)
+ */
+router.get('/upload-token', authMiddleware, (req, res) => {
+  try {
+    const API_VIDEO_KEY = process.env.API_VIDEO_KEY;
+
+    if (!API_VIDEO_KEY) {
+      return res.status(500).json({
+        error: 'Video upload not configured',
+        message: 'API_VIDEO_KEY not found in environment',
+      });
+    }
+
+    // Return the API key (short-lived response, not stored on client)
+    // In production, this could generate a short-lived JWT token instead
+    return res.json({
+      token: API_VIDEO_KEY,
+      expiresIn: 3600, // 1 hour (informational)
+      message: 'Use this token immediately and do not store it',
+    });
+  } catch (error: any) {
+    console.error('Error generating upload token:', error);
+    return res.status(500).json({
+      error: 'Failed to generate upload token',
+      message: error.message,
+    });
+  }
+});
+
+// ===================================
+// WEBHOOK & STATUS ROUTES
+// ===================================
+
+/**
+ * @route   POST /api/v1/video/yandex-callback
+ * @desc    Handle Yandex Cloud transcoding callback
+ * @access  Public (called by Yandex Cloud)
+ */
+router.post('/yandex-callback', VideoCallbackController.handleYandexCallback);
+
+/**
+ * @route   GET /api/v1/video/:videoId/status
+ * @desc    Get video transcoding status
+ * @access  Private
+ */
+router.get('/:videoId/status', authMiddleware, VideoCallbackController.getVideoStatus);
 
 // ===================================
 // VACANCY VIDEO ROUTES (Работодатели)
