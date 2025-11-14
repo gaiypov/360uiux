@@ -376,7 +376,7 @@ const styles = StyleSheet.create({
   },
   notificationMessage: {
     ...typography.body,
-    color: colors.chromeSilver,
+    color: colors.liquidSilver,
     marginBottom: sizes.xs,
   },
   timestamp: {
@@ -396,7 +396,7 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     ...typography.body,
-    color: colors.chromeSilver,
+    color: colors.liquidSilver,
     textAlign: 'center',
   },
   deleteAction: {

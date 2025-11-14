@@ -608,7 +608,7 @@ const styles = StyleSheet.create({
   },
   vacancyTitle: {
     ...typography.caption,
-    color: colors.chromeSilver,
+    color: colors.liquidSilver,
   },
   moreButton: {
     marginLeft: sizes.sm,
@@ -711,7 +711,7 @@ const styles = StyleSheet.create({
   },
   typingText: {
     ...typography.caption,
-    color: colors.chromeSilver,
+    color: colors.liquidSilver,
   },
   typingDots: {
     flexDirection: 'row',

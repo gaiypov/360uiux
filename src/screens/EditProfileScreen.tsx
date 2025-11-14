@@ -298,7 +298,7 @@ const styles = StyleSheet.create({
   },
   inputLabel: {
     ...typography.captionMedium,
-    color: colors.chromeSilver,
+    color: colors.liquidSilver,
     marginBottom: sizes.sm,
   },
   inputWrapper: {
