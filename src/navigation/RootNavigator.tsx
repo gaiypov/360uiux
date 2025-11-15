@@ -73,9 +73,13 @@ export function RootNavigator() {
     <NavigationContainer>
       <Stack.Navigator
         initialRouteName={showOnboarding ? 'Onboarding' : 'Main'}
+        // ✅ P1-II-3 FIX: Detach inactive screens to save memory
+        detachInactiveScreens={true}
         screenOptions={{
           headerShown: false,
           animation: 'fade',
+          // ✅ P1-II-3 FIX: Freeze inactive screens (auth/onboarding)
+          freezeOnBlur: true,
         }}
       >
         {/* Onboarding (show once) */}
