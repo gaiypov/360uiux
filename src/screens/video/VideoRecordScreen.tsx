@@ -1,6 +1,7 @@
 /**
  * 360° РАБОТА - Video Record Screen
  * Record resume video with camera
+ * ✅ STAGE II OPTIMIZED: Fixed interval leak, stale closure, animation cleanup
  */
 
 import React, { useState, useRef, useCallback, useEffect } from 'react';
@@ -28,6 +29,7 @@ import Animated, {
   withTiming,
   withRepeat,
   Easing,
+  cancelAnimation,
 } from 'react-native-reanimated';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { colors } from '@/constants';
@@ -57,12 +59,34 @@ export function VideoRecordScreen({ navigation, route }: VideoRecordScreenProps)
   const maxDuration = route.params?.maxDuration || 120; // 2 minutes default
   const onVideoRecorded = route.params?.onVideoRecorded;
 
+  // ✅ P0-II-5 FIX: Use ref for duration to avoid stale closure in navigation
+  const durationRef = useRef(0);
+
   // Animation values
   const recordButtonScale = useSharedValue(1);
   const recordingIndicatorOpacity = useSharedValue(0);
   const timerScale = useSharedValue(0);
 
-  // Timer effect
+  // ✅ P0-II-5 FIX: Sync ref with state
+  useEffect(() => {
+    durationRef.current = recordingDuration;
+  }, [recordingDuration]);
+
+  // Stop recording callback (needs to be defined before interval effect)
+  const handleStopRecording = useCallback(async () => {
+    if (!camera.current || !isRecording) return;
+
+    try {
+      await camera.current.stopRecording();
+      resetRecordingState();
+    } catch (error) {
+      console.error('Error stopping recording:', error);
+      Alert.alert('Ошибка', 'Не удалось остановить запись');
+      resetRecordingState();
+    }
+  }, [isRecording]);
+
+  // ✅ P0-II-5 FIX: Timer effect with correct dependencies
   useEffect(() => {
     let interval: NodeJS.Timeout | null = null;
 
@@ -83,9 +107,12 @@ export function VideoRecordScreen({ navigation, route }: VideoRecordScreenProps)
     }
 
     return () => {
-      if (interval) clearInterval(interval);
+      if (interval) {
+        clearInterval(interval);
+        interval = null;
+      }
     };
-  }, [isRecording, isPaused, maxDuration]);
+  }, [isRecording, isPaused, maxDuration, handleStopRecording]);
 
   // Request permissions on mount
   useEffect(() => {
@@ -118,6 +145,7 @@ export function VideoRecordScreen({ navigation, route }: VideoRecordScreenProps)
     try {
       setIsRecording(true);
       setRecordingDuration(0);
+      durationRef.current = 0;
 
       // Animate recording indicator
       recordingIndicatorOpacity.value = withRepeat(
@@ -132,10 +160,10 @@ export function VideoRecordScreen({ navigation, route }: VideoRecordScreenProps)
         onRecordingFinished: (video) => {
           console.log('Recording finished:', video.path);
 
-          // Navigate to preview screen
+          // ✅ P0-II-5 FIX: Use ref value instead of stale state
           navigation.replace('VideoPreview', {
             videoPath: video.path,
-            duration: recordingDuration,
+            duration: durationRef.current,
             onConfirm: onVideoRecorded,
           });
         },
@@ -150,27 +178,18 @@ export function VideoRecordScreen({ navigation, route }: VideoRecordScreenProps)
       Alert.alert('Ошибка', 'Не удалось начать запись');
       resetRecordingState();
     }
-  }, [navigation, onVideoRecorded, recordingDuration]);
-
-  // Stop recording
-  const handleStopRecording = useCallback(async () => {
-    if (!camera.current || !isRecording) return;
-
-    try {
-      await camera.current.stopRecording();
-      resetRecordingState();
-    } catch (error) {
-      console.error('Error stopping recording:', error);
-      Alert.alert('Ошибка', 'Не удалось остановить запись');
-      resetRecordingState();
-    }
-  }, [isRecording]);
+  }, [navigation, onVideoRecorded]);
 
   // Reset recording state
+  // ✅ P1-II-1 FIX: Cancel infinite animations to save battery
   const resetRecordingState = () => {
     setIsRecording(false);
     setIsPaused(false);
+
+    // Cancel infinite recording indicator animation
+    cancelAnimation(recordingIndicatorOpacity);
     recordingIndicatorOpacity.value = withTiming(0);
+
     timerScale.value = withTiming(0);
     recordButtonScale.value = withSpring(1);
   };

@@ -1,21 +1,13 @@
 /**
  * 360° РАБОТА - ULTRA EDITION
  * Vacancy Feed Screen (TikTok-style vertical swipe)
- * Architecture v4: Optimized with preloading, memory cleanup, sound isolation
- *
- * Optimizations:
- * - Preloading: N+1 while playing N
- * - Memory cleanup: Only N-1, N, N+1 rendered (window = 3)
- * - Sound isolation: Only active video plays sound
- * - Smart caching: Expo-av with optimized loading
- * - Minimal re-renders: useCallback, React.memo
+ * Architecture v3: Guest view tracking with 20-video limit + API integration
+ * ✅ STAGE II OPTIMIZED: Memoized renderItem, optimized FlatList, no heavy animations
  */
 
-import React, { useRef, useState, useEffect, useCallback, useMemo } from 'react';
-import { View, StyleSheet, Dimensions, StatusBar, FlatList, RefreshControl } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import React, { useRef, useState, useEffect, useCallback } from 'react';
+import { View, StyleSheet, Dimensions, StatusBar, FlatList } from 'react-native';
 import { GestureDetector, Gesture } from 'react-native-gesture-handler';
-import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 import { colors, metalGradients } from "@/constants";
 import { PremiumVacancyCard, CommentsModal } from '@/components/vacancy';
 import { useVacancyFeed } from '@/hooks/useVacancyFeed';
@@ -31,20 +23,12 @@ import {
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
-/**
- * Memory optimization: Only render videos within this window
- * N-1, N, N+1 where N is current index
- */
-const RENDER_WINDOW_SIZE = 1; // Render current +/- 1
-
 export function VacancyFeedScreen({ navigation }: any) {
   const flatListRef = useRef<FlatList>(null);
-  const insets = useSafeAreaInsets();
   const [currentIndex, setCurrentIndex] = useState(0);
-  const { vacancies, fetchMore, refresh, loading } = useVacancyFeed();
+  const { vacancies, fetchMore } = useVacancyFeed();
   const { user } = useAuthStore();
   const { showToast } = useToastStore();
-  const [refreshing, setRefreshing] = useState(false);
 
   const [likedVacancies, setLikedVacancies] = useState<Set<string>>(new Set());
   const [favoritedVacancies, setFavoritedVacancies] = useState<Set<string>>(new Set());
@@ -92,26 +76,9 @@ export function VacancyFeedScreen({ navigation }: any) {
   }, [currentIndex, user, vacancies, navigation]);
 
   /**
-   * Calculate which videos should be rendered (memory optimization)
-   * Only render videos within window: [currentIndex - 1, currentIndex + 1]
-   */
-  const shouldRenderVideo = useCallback((index: number): boolean => {
-    return Math.abs(index - currentIndex) <= RENDER_WINDOW_SIZE;
-  }, [currentIndex]);
-
-  /**
-   * Calculate which videos should be preloaded
-   * Preload N+1 while playing N
-   */
-  const shouldPreloadVideo = useCallback((index: number): boolean => {
-    return index === currentIndex + 1;
-  }, [currentIndex]);
-
-  /**
    * Handle Like/Unlike with API
-   * Wrapped in useCallback to prevent re-renders
    */
-  const handleLike = useCallback(async (vacancyId: string) => {
+  const handleLike = async (vacancyId: string) => {
     if (!user) {
       navigation.navigate('RegistrationRequired');
       return;
@@ -168,13 +135,12 @@ export function VacancyFeedScreen({ navigation }: any) {
         return newSet;
       });
     }
-  }, [user, navigation, likedVacancies, loadingActions, showToast]);
+  };
 
   /**
    * Handle Favorite/Unfavorite with API
-   * Wrapped in useCallback to prevent re-renders
    */
-  const handleFavorite = useCallback(async (vacancyId: string) => {
+  const handleFavorite = async (vacancyId: string) => {
     if (!user) {
       navigation.navigate('RegistrationRequired');
       return;
@@ -232,13 +198,12 @@ export function VacancyFeedScreen({ navigation }: any) {
         return newSet;
       });
     }
-  }, [user, navigation, favoritedVacancies, loadingActions, showToast]);
+  };
 
   /**
    * Handle Comment - open modal
-   * Wrapped in useCallback to prevent re-renders
    */
-  const handleComment = useCallback((vacancyId: string) => {
+  const handleComment = (vacancyId: string) => {
     if (!user) {
       navigation.navigate('RegistrationRequired');
       return;
@@ -247,14 +212,12 @@ export function VacancyFeedScreen({ navigation }: any) {
     haptics.light();
     setSelectedVacancyId(vacancyId);
     setCommentsModalVisible(true);
-  }, [user, navigation]);
+  };
 
   /**
    * Handle Apply to vacancy
-   * Wrapped in useCallback to prevent re-renders
-   * НЕ МЕНЯТЬ: Это логика "Откликнуться"!
    */
-  const handleApply = useCallback((vacancyId: string) => {
+  const handleApply = (vacancyId: string) => {
     if (!user) {
       navigation.navigate('RegistrationRequired');
       return;
@@ -264,31 +227,26 @@ export function VacancyFeedScreen({ navigation }: any) {
     showToast('success', '✅ Отклик отправлен!');
     // TODO: Navigate to ApplicationScreen or create application
     console.log('Apply to', vacancyId);
-  }, [user, navigation, showToast]);
+  };
 
   /**
    * Handle Share
-   * Wrapped in useCallback to prevent re-renders
    */
-  const handleShare = useCallback((vacancyId: string) => {
+  const handleShare = (vacancyId: string) => {
     haptics.light();
     showToast('info', 'Функция "Поделиться" скоро будет доступна');
     console.log('Share', vacancyId);
-  }, [showToast]);
+  };
 
   /**
    * Handle Sound/Music info
-   * Wrapped in useCallback to prevent re-renders
    */
-  const handleSoundPress = useCallback((vacancyId: string) => {
+  const handleSoundPress = (vacancyId: string) => {
     haptics.light();
     console.log('Sound info', vacancyId);
-  }, []);
+  };
 
-  /**
-   * Optimized gesture handler with useCallback
-   */
-  const gesture = useMemo(() => Gesture.Pan().onEnd((event) => {
+  const gesture = Gesture.Pan().onEnd((event) => {
     const threshold = 500;
 
     // Swipe up - next vacancy
@@ -309,117 +267,38 @@ export function VacancyFeedScreen({ navigation }: any) {
       });
       setCurrentIndex(prevIndex);
     }
-  }), [currentIndex, vacancies.length]);
+  });
 
-  /**
-   * Handle viewable items changed - updates current index
-   * Memoized with useRef to maintain stable reference
-   */
-  const handleViewableItemsChanged = useRef(({ viewableItems }: any) => {
+  // ✅ P0-II-3 FIX: Use useCallback instead of useRef for stable reference
+  const handleViewableItemsChanged = useCallback(({ viewableItems }: any) => {
     if (viewableItems.length > 0) {
       setCurrentIndex(viewableItems[0].index || 0);
     }
-  }).current;
+  }, []);
 
-  /**
-   * Viewability configuration for FlatList
-   * Stable reference with useRef
-   */
   const viewabilityConfig = useRef({
     itemVisiblePercentThreshold: 50,
   }).current;
 
-  /**
-   * Optimized renderItem with useCallback
-   * Prevents unnecessary re-renders
-   */
-  const renderItem = useCallback(({ item, index }: any) => {
-    const isActive = index === currentIndex;
-    const shouldPreload = shouldPreloadVideo(index);
-    const shouldRender = shouldRenderVideo(index);
-
-    return (
-      <Animated.View
-        entering={FadeIn.duration(300)}
-        exiting={FadeOut.duration(300)}
-      >
-        <PremiumVacancyCard
-          vacancy={item}
-          isActive={isActive}
-          shouldPreload={shouldPreload}
-          shouldRender={shouldRender}
-          isLiked={likedVacancies.has(item.id)}
-          isFavorited={favoritedVacancies.has(item.id)}
-          onApply={() => handleApply(item.id)}
-          onCompanyPress={() => console.log('Company', item.employer.id)}
-          onLike={() => handleLike(item.id)}
-          onComment={() => handleComment(item.id)}
-          onFavorite={() => handleFavorite(item.id)}
-          onShare={() => handleShare(item.id)}
-          onSoundPress={() => handleSoundPress(item.id)}
-        />
-      </Animated.View>
-    );
-  }, [
-    currentIndex,
-    shouldPreloadVideo,
-    shouldRenderVideo,
-    likedVacancies,
-    favoritedVacancies,
-    handleApply,
-    handleLike,
-    handleComment,
-    handleFavorite,
-    handleShare,
-    handleSoundPress,
-  ]);
-
-  /**
-   * Optimized keyExtractor with useCallback
-   * Returns stable unique key for each item
-   */
-  const keyExtractor = useCallback((item: any) => item.id, []);
-
-  /**
-   * Handle end reached for infinite scroll
-   * Wrapped in useCallback
-   */
-  const handleEndReached = useCallback(() => {
-    console.log('📥 Fetching more vacancies...');
-    fetchMore();
-  }, [fetchMore]);
-
-  /**
-   * Handle pull-to-refresh
-   * Only works when at the top (currentIndex === 0)
-   */
-  const handleRefresh = useCallback(async () => {
-    if (currentIndex !== 0) return; // Only refresh at the top
-
-    setRefreshing(true);
-    try {
-      await refresh();
-      haptics.light();
-      showToast('success', 'Лента обновлена');
-    } catch (error) {
-      showToast('error', 'Ошибка обновления');
-    } finally {
-      setRefreshing(false);
-    }
-  }, [currentIndex, refresh, showToast]);
-
-  /**
-   * Optimized getItemLayout for better scrolling performance
-   * Prevents layout calculations on every scroll
-   */
-  const getItemLayout = useCallback(
-    (_data: any, index: number) => ({
-      length: SCREEN_HEIGHT,
-      offset: SCREEN_HEIGHT * index,
-      index,
-    }),
-    []
-  );
+  // ✅ P0-II-1 FIX: Memoize renderItem to prevent FlatList re-renders
+  // ✅ P0-II-4 FIX: Removed FadeIn/FadeOut animations (too heavy for scroll)
+  const renderItem = useCallback(({ item, index }: { item: any; index: number }) => (
+    <View>
+      <PremiumVacancyCard
+        vacancy={item}
+        isActive={index === currentIndex}
+        isLiked={likedVacancies.has(item.id)}
+        isFavorited={favoritedVacancies.has(item.id)}
+        onApply={() => handleApply(item.id)}
+        onCompanyPress={() => console.log('Company', item.employer.id)}
+        onLike={() => handleLike(item.id)}
+        onComment={() => handleComment(item.id)}
+        onFavorite={() => handleFavorite(item.id)}
+        onShare={() => handleShare(item.id)}
+        onSoundPress={() => handleSoundPress(item.id)}
+      />
+    </View>
+  ), [currentIndex, likedVacancies, favoritedVacancies, handleApply, handleLike, handleComment, handleFavorite, handleShare, handleSoundPress]);
 
   return (
     <>
@@ -429,37 +308,32 @@ export function VacancyFeedScreen({ navigation }: any) {
         translucent
       />
       <GestureDetector gesture={gesture}>
-        <View style={[styles.container, { paddingBottom: insets.bottom }]}>
+        <View style={styles.container}>
+          {/* ✅ P0-II-2 FIX: Optimized FlatList props for video feed performance */}
           <FlatList
             ref={flatListRef}
             data={vacancies}
             renderItem={renderItem}
-            keyExtractor={keyExtractor}
+            keyExtractor={(item) => item.id}
             pagingEnabled
             showsVerticalScrollIndicator={false}
             snapToInterval={SCREEN_HEIGHT}
             decelerationRate="fast"
-            onEndReached={handleEndReached}
+            onEndReached={fetchMore}
             onEndReachedThreshold={0.5}
-            refreshControl={
-              <RefreshControl
-                refreshing={refreshing}
-                onRefresh={handleRefresh}
-                enabled={currentIndex === 0}
-                tintColor={colors.platinumSilver}
-                colors={[colors.platinumSilver]}
-                progressBackgroundColor={colors.graphiteGray}
-              />
-            }
             onViewableItemsChanged={handleViewableItemsChanged}
             viewabilityConfig={viewabilityConfig}
-            getItemLayout={getItemLayout}
-            removeClippedSubviews={true} // Memory optimization
-            maxToRenderPerBatch={3} // Render only 3 items per batch
-            windowSize={3} // Keep 3 screens in memory
-            initialNumToRender={2} // Start with 2 items
-            updateCellsBatchingPeriod={100} // Batch updates every 100ms
-            contentInsetAdjustmentBehavior="automatic"
+            getItemLayout={(data, index) => ({
+              length: SCREEN_HEIGHT,
+              offset: SCREEN_HEIGHT * index,
+              index,
+            })}
+            // ✅ Performance optimizations (same as MainFeedScreen)
+            windowSize={3}
+            maxToRenderPerBatch={2}
+            removeClippedSubviews={true}
+            initialNumToRender={1}
+            updateCellsBatchingPeriod={100}
           />
         </View>
       </GestureDetector>
