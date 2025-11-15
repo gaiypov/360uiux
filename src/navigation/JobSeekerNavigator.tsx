@@ -11,6 +11,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { BlurView } from '@react-native-community/blur';
 import { colors, sizes } from '@/constants';
+import { getBlurIntensity } from '@/utils/platform';
 import { VacancyFeedScreen } from '@/screens/jobseeker/VacancyFeedScreen';
 import { MainFeedScreen } from '@/screens/MainFeedScreen';
 import { SearchScreen } from '@/screens/jobseeker/SearchScreen';
@@ -49,7 +50,8 @@ function JobSeekerTabs() {
             <BlurView
               style={styles.blurView}
               blurType="dark"
-              blurAmount={12}
+              // ✅ P2-II-1 FIX: Platform-optimized blur intensity
+              blurAmount={getBlurIntensity(12)}
               reducedTransparencyFallbackColor={colors.graphiteBlack}
             />
           ) : (
