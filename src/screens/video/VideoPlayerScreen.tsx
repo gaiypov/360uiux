@@ -2,9 +2,10 @@
  * 360° РАБОТА - ULTRA EDITION
  * Video Player Screen
  * Просмотр видео
+ * ✅ STAGE II OPTIMIZED: Auto-hide controls after 3 seconds
  */
 
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -37,12 +38,37 @@ export function VideoPlayerScreen({ route, navigation }: Props) {
   const { videoUrl, title, type } = route.params;
 
   const videoRef = useRef<Video>(null);
+  const hideControlsTimer = useRef<NodeJS.Timeout | null>(null);
+
   const [paused, setPaused] = useState(false);
   const [loading, setLoading] = useState(true);
   const [controlsVisible, setControlsVisible] = useState(true);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [fullscreen, setFullscreen] = useState(false);
+
+  // ✅ P1-II-2 FIX: Auto-hide controls after 3 seconds
+  useEffect(() => {
+    if (controlsVisible && !paused) {
+      // Clear existing timer
+      if (hideControlsTimer.current) {
+        clearTimeout(hideControlsTimer.current);
+      }
+
+      // Set new timer to hide controls after 3 seconds
+      hideControlsTimer.current = setTimeout(() => {
+        setControlsVisible(false);
+      }, 3000);
+    }
+
+    // Cleanup on unmount or when controls hidden
+    return () => {
+      if (hideControlsTimer.current) {
+        clearTimeout(hideControlsTimer.current);
+        hideControlsTimer.current = null;
+      }
+    };
+  }, [controlsVisible, paused]);
 
   /**
    * Форматировать время
@@ -59,10 +85,15 @@ export function VideoPlayerScreen({ route, navigation }: Props) {
   const togglePause = () => {
     haptics.light();
     setPaused(!paused);
+    // Show controls when pausing
+    if (!paused) {
+      setControlsVisible(true);
+    }
   };
 
   /**
    * Показать/скрыть контролы
+   * ✅ P1-II-2 FIX: Reset auto-hide timer when manually toggling
    */
   const toggleControls = () => {
     setControlsVisible(!controlsVisible);

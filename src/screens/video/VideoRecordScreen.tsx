@@ -1,7 +1,7 @@
 /**
  * 360° РАБОТА - Video Record Screen
  * Record resume video with camera
- * ✅ STAGE II OPTIMIZED: Fixed interval leak and stale closure
+ * ✅ STAGE II OPTIMIZED: Fixed interval leak, stale closure, animation cleanup
  */
 
 import React, { useState, useRef, useCallback, useEffect } from 'react';
@@ -28,6 +28,7 @@ import Animated, {
   withTiming,
   withRepeat,
   Easing,
+  cancelAnimation,
 } from 'react-native-reanimated';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { colors } from '../../theme/colors';
@@ -179,10 +180,15 @@ export function VideoRecordScreen({ navigation, route }: VideoRecordScreenProps)
   }, [navigation, onVideoRecorded]);
 
   // Reset recording state
+  // ✅ P1-II-1 FIX: Cancel infinite animations to save battery
   const resetRecordingState = () => {
     setIsRecording(false);
     setIsPaused(false);
+
+    // Cancel infinite recording indicator animation
+    cancelAnimation(recordingIndicatorOpacity);
     recordingIndicatorOpacity.value = withTiming(0);
+
     timerScale.value = withTiming(0);
     recordButtonScale.value = withSpring(1);
   };
