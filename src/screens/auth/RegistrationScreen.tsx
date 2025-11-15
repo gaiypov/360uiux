@@ -15,6 +15,7 @@ import {
   ScrollView,
   StatusBar,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 import LinearGradient from 'react-native-linear-gradient';
@@ -146,17 +147,18 @@ export function RegistrationScreen({ route, navigation }: Props) {
   );
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={getKeyboardBehavior()}
-    >
-      <StatusBar barStyle="light-content" backgroundColor={colors.primaryBlack} />
-
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+      <KeyboardAvoidingView
+        style={styles.container}
+        behavior={getKeyboardBehavior()}
       >
+        <StatusBar barStyle="light-content" backgroundColor={colors.primaryBlack} />
+
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
         {/* Header */}
         <Animated.View entering={FadeInDown.duration(600)} style={styles.header}>
           <MetalIcon name="account-plus" variant="platinum" size="large" glow />
@@ -284,8 +286,9 @@ export function RegistrationScreen({ route, navigation }: Props) {
             <Text style={styles.footerLink}>Изменить</Text>
           </TouchableOpacity>
         </Animated.View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
 
@@ -315,7 +318,7 @@ const styles = StyleSheet.create({
   subtitle: {
     ...typography.body,
     fontSize: 16,
-    color: colors.chromeSilver,
+    color: colors.liquidSilver,
     marginTop: sizes.sm,
     textAlign: 'center',
   },
@@ -336,7 +339,7 @@ const styles = StyleSheet.create({
   },
   optional: {
     ...typography.caption,
-    color: colors.chromeSilver,
+    color: colors.liquidSilver,
     fontWeight: '400',
   },
   inputWrapper: {
@@ -367,7 +370,7 @@ const styles = StyleSheet.create({
   },
   hint: {
     ...typography.caption,
-    color: colors.chromeSilver,
+    color: colors.liquidSilver,
     marginTop: sizes.xs,
     marginLeft: sizes.sm,
     fontSize: 13,
@@ -446,7 +449,7 @@ const styles = StyleSheet.create({
   },
   footerText: {
     ...typography.body,
-    color: colors.chromeSilver,
+    color: colors.liquidSilver,
     fontSize: 14,
   },
   footerPhone: {

@@ -14,6 +14,7 @@ import {
   ScrollView,
   StatusBar,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 import LinearGradient from 'react-native-linear-gradient';
@@ -89,10 +90,11 @@ export function RegisterScreen({ navigation }: any) {
   };
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={getKeyboardBehavior()}
-    >
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+      <KeyboardAvoidingView
+        style={styles.flex1}
+        behavior={getKeyboardBehavior()}
+      >
       <StatusBar barStyle="light-content" backgroundColor={colors.primaryBlack} />
 
       <ScrollView
@@ -259,12 +261,14 @@ export function RegisterScreen({ navigation }: any) {
           </TouchableOpacity>
         </Animated.View>
       </ScrollView>
-    </KeyboardAvoidingView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.primaryBlack },
+  flex1: { flex: 1 },
   scrollContent: { flexGrow: 1, justifyContent: 'center', paddingHorizontal: sizes.xl, paddingVertical: sizes.xxl },
   header: { alignItems: 'center', marginBottom: sizes.xl },
   title: { ...typography.h1, color: colors.softWhite, marginTop: sizes.md, letterSpacing: 2 },

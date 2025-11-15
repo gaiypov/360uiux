@@ -11,17 +11,44 @@ import {
   TouchableOpacity,
   StatusBar,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import { colors, metalGradients, metalGradients, typography, sizes } from "@/constants";
+import { colors, metalGradients, typography, sizes } from "@/constants";
+import { haptics } from '@/utils/haptics';
 
 interface RoleSelectionScreenProps {
-  onSelectRole: (role: 'jobseeker' | 'employer') => void;
+  route?: {
+    params: {
+      phone: string;
+      formattedPhone: string;
+    };
+  };
+  navigation?: any;
+  onSelectRole?: (role: 'jobseeker' | 'employer') => void;
 }
 
-export function RoleSelectionScreen({ onSelectRole }: RoleSelectionScreenProps) {
+export function RoleSelectionScreen({ route, navigation, onSelectRole }: RoleSelectionScreenProps) {
+  const { phone, formattedPhone } = route?.params || { phone: '', formattedPhone: '' };
+
+  const handleSelectRole = (role: 'jobseeker' | 'employer') => {
+    haptics.medium();
+
+    if (onSelectRole) {
+      // Used as component (not in navigation)
+      onSelectRole(role);
+    } else if (navigation) {
+      // Used in navigation flow
+      if (role === 'jobseeker') {
+        navigation.replace('Registration', { phone, formattedPhone });
+      } else {
+        navigation.replace('EmployerRegistration', { phone, formattedPhone });
+      }
+    }
+  };
+
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <StatusBar
         barStyle="light-content"
         backgroundColor={colors.primaryBlack}
@@ -40,7 +67,7 @@ export function RoleSelectionScreen({ onSelectRole }: RoleSelectionScreenProps) 
         <TouchableOpacity
           style={styles.card}
           activeOpacity={0.9}
-          onPress={() => onSelectRole('jobseeker')}
+          onPress={() => handleSelectRole('jobseeker')}
         >
           <LinearGradient
             colors={metalGradients.platinum}
@@ -62,7 +89,7 @@ export function RoleSelectionScreen({ onSelectRole }: RoleSelectionScreenProps) 
         <TouchableOpacity
           style={styles.card}
           activeOpacity={0.9}
-          onPress={() => onSelectRole('employer')}
+          onPress={() => handleSelectRole('employer')}
         >
           <View style={styles.cardSecondary}>
             <View style={styles.iconContainer}>
@@ -75,7 +102,7 @@ export function RoleSelectionScreen({ onSelectRole }: RoleSelectionScreenProps) 
           </View>
         </TouchableOpacity>
       </View>
-    </View>
+    </SafeAreaView>
   );
 }
 
@@ -142,7 +169,7 @@ const styles = StyleSheet.create({
   },
   cardDescription: {
     ...typography.body,
-    color: colors.chromeSilver,
+    color: colors.liquidSilver,
     textAlign: 'center',
   },
 });

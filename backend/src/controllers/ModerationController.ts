@@ -32,7 +32,7 @@ export class ModerationController {
       const { page = 1, limit = 20, priority_only = false } = req.query;
       const offset = (Number(page) - 1) * Number(limit);
 
-      // Построение WHERE условия
+      // ✅ FIXED: Безопасное построение WHERE условия (хардкод значений)
       let whereConditions = `status IN ('auto_moderation', 'pending_moderation')`;
       if (priority_only === 'true') {
         whereConditions += ` AND priority_moderation = true`;
@@ -231,9 +231,22 @@ export class ModerationController {
       const { status, page = 1, limit = 20 } = req.query;
       const offset = (Number(page) - 1) * Number(limit);
 
+      // ✅ FIXED: Параметризованный запрос для предотвращения SQL injection
+      const params: any[] = [limit, offset];
       let whereConditions = '1=1';
+
       if (status) {
-        whereConditions += ` AND vc.status = '${status}'`;
+        // Валидация: разрешены только определённые статусы
+        const ALLOWED_STATUSES = ['pending', 'reviewed', 'resolved', 'dismissed'];
+        if (!ALLOWED_STATUSES.includes(status as string)) {
+          return res.status(400).json({
+            error: 'Invalid status parameter',
+            allowed: ALLOWED_STATUSES
+          });
+        }
+
+        whereConditions += ` AND vc.status = $${params.length + 1}`;
+        params.push(status);
       }
 
       const complaints = await db.manyOrNone<VideoComplaint>(
@@ -248,7 +261,7 @@ export class ModerationController {
          WHERE ${whereConditions}
          ORDER BY vc.created_at DESC
          LIMIT $1 OFFSET $2`,
-        [limit, offset]
+        params
       );
 
       return res.json({ success: true, complaints: complaints || [] });

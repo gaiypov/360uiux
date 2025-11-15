@@ -21,6 +21,7 @@
   "license": "MIT",
   "dependencies": {
     "@api.video/nodejs-client": "^2.4.1",
+    "@prisma/client": "^6.19.0",
     "@supabase/supabase-js": "^2.38.0",
     "aws-sdk": "^2.1478.0",
     "axios": "^1.6.2",
@@ -39,6 +40,7 @@
     "pdfkit": "^0.14.0",
     "pg": "^8.11.3",
     "pg-promise": "^11.5.4",
+    "uuid": "^13.0.0",
     "winston": "^3.11.0"
   },
   "devDependencies": {
@@ -49,6 +51,7 @@
     "@types/multer": "^1.4.11",
     "@types/node": "^20.10.5",
     "@types/pdfkit": "^0.13.4",
+    "@types/uuid": "^10.0.0",
     "node-pg-migrate": "^6.2.2",
     "ts-node": "^10.9.2",
     "ts-node-dev": "^2.0.0",

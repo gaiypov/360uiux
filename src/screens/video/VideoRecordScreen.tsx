@@ -15,6 +15,7 @@ import {
   Dimensions,
   StatusBar,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   Camera,
   useCameraDevice,
@@ -31,7 +32,7 @@ import Animated, {
   cancelAnimation,
 } from 'react-native-reanimated';
 import Icon from 'react-native-vector-icons/Ionicons';
-import { colors } from '../../theme/colors';
+import { colors } from '@/constants';
 
 const { width, height } = Dimensions.get('window');
 
@@ -233,7 +234,7 @@ export function VideoRecordScreen({ navigation, route }: VideoRecordScreenProps)
   // Loading or no permission
   if (!hasCameraPermission || !hasMicrophonePermission) {
     return (
-      <View style={styles.permissionContainer}>
+      <SafeAreaView style={styles.permissionContainer} edges={['top', 'bottom']}>
         <Icon name="videocam-off" size={80} color={colors.error} />
         <Text style={styles.permissionTitle}>Нужны разрешения</Text>
         <Text style={styles.permissionText}>
@@ -248,24 +249,24 @@ export function VideoRecordScreen({ navigation, route }: VideoRecordScreenProps)
         >
           <Text style={styles.permissionButtonText}>Разрешить</Text>
         </TouchableOpacity>
-      </View>
+      </SafeAreaView>
     );
   }
 
   if (!device) {
     return (
-      <View style={styles.permissionContainer}>
+      <SafeAreaView style={styles.permissionContainer} edges={['top', 'bottom']}>
         <Icon name="videocam-off" size={80} color={colors.error} />
         <Text style={styles.permissionTitle}>Камера не найдена</Text>
         <Text style={styles.permissionText}>
           Не удалось обнаружить камеру на устройстве
         </Text>
-      </View>
+      </SafeAreaView>
     );
   }
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <StatusBar barStyle="light-content" />
 
       {/* Camera */}
@@ -340,7 +341,7 @@ export function VideoRecordScreen({ navigation, route }: VideoRecordScreenProps)
           )}
         </View>
       </View>
-    </View>
+    </SafeAreaView>
   );
 }
 

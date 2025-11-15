@@ -1,9 +1,10 @@
 /**
  * 360° РАБОТА - ULTRA EDITION
  * Pie Chart Component (Donut Style)
+ * Optimized with React.memo
  */
 
-import React from 'react';
+import React, { memo } from 'react';
 import { View, StyleSheet, Text } from 'react-native';
 import Svg, { Circle, G } from 'react-native-svg';
 import Animated, { FadeIn } from 'react-native-reanimated';
@@ -16,12 +17,12 @@ interface PieChartProps {
   showLegend?: boolean;
 }
 
-export function PieChart({
+const PieChartComponent = ({
   data,
   size = 160,
   strokeWidth = 32,
   showLegend = true,
-}: PieChartProps) {
+}: PieChartProps) => {
   const radius = (size - strokeWidth) / 2;
   const circleCircumference = 2 * Math.PI * radius;
   const total = data.reduce((sum, item) => sum + item.value, 0);
@@ -102,7 +103,12 @@ export function PieChart({
       )}
     </View>
   );
-}
+};
+
+/**
+ * Memoized export - prevents re-renders when data doesn't change
+ */
+export const PieChart = memo(PieChartComponent);
 
 const styles = StyleSheet.create({
   container: {

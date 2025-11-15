@@ -13,6 +13,7 @@ import {
   StatusBar,
   Image,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import LinearGradient from 'react-native-linear-gradient';
 import { GlassCard, GlassButton } from '@/components/ui';
@@ -29,7 +30,7 @@ export function ProfileScreen() {
   const profile = user.profile as any;
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <StatusBar barStyle="light-content" backgroundColor={colors.primaryBlack} />
 
       <ScrollView
@@ -149,7 +150,7 @@ export function ProfileScreen() {
           <Text style={styles.appVersion}>Версия 1.0.0</Text>
         </View>
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 }
 

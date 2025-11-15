@@ -63,3 +63,165 @@ export interface Application {
   status: 'pending' | 'viewed' | 'accepted' | 'rejected';
   createdAt: string;
 }
+
+// ===============================
+// ADMIN PANEL TYPES
+// ===============================
+
+export interface AdminDashboardStats {
+  overview: {
+    totalUsers: number;
+    totalJobseekers: number;
+    totalEmployers: number;
+    totalVacancies: number;
+    activeVacancies: number;
+    totalApplications: number;
+    totalVideos: number;
+  };
+  moderation: {
+    pendingModeration: number;
+    totalComplaints: number;
+    pendingComplaints: number;
+  };
+  today: {
+    newUsers: number;
+    newVacancies: number;
+    newApplications: number;
+  };
+  charts: {
+    weeklyUsers: ChartDataPoint[];
+    weeklyVacancies: ChartDataPoint[];
+  };
+  topEmployers: TopEmployer[];
+}
+
+export interface ChartDataPoint {
+  date: string;
+  count: number;
+}
+
+export interface TopEmployer {
+  id: string;
+  name: string;
+  vacanciesCount: number;
+  totalApplications: number;
+  verified: boolean;
+}
+
+export interface AdminUser {
+  id: string;
+  name: string;
+  phone: string;
+  email?: string;
+  role: 'JOBSEEKER' | 'EMPLOYER' | 'MODERATOR';
+  companyName?: string;
+  verified: boolean;
+  balance: number;
+  createdAt: string;
+  stats: {
+    vacancies: number;
+    applications: number;
+    videos: number;
+  };
+}
+
+export interface AdminVacancy {
+  id: string;
+  title: string;
+  profession: string;
+  city: string;
+  salaryMin?: number;
+  salaryMax?: number;
+  status: string;
+  views: number;
+  applicationsCount: number;
+  isTop: boolean;
+  employer: {
+    id: string;
+    name: string;
+    verified: boolean;
+  };
+  createdAt: string;
+}
+
+export interface AdminComplaint {
+  id: string;
+  reason: string;
+  description?: string;
+  status: 'pending' | 'approved' | 'rejected';
+  createdAt: string;
+  reviewedBy?: string;
+  reviewedAt?: string;
+  moderatorComment?: string;
+  video: {
+    id: string;
+    title: string;
+    type: 'VACANCY' | 'RESUME';
+    status: string;
+    user: {
+      id: string;
+      name: string;
+    };
+  };
+}
+
+export interface AdminSettings {
+  autoModeration: boolean;
+  guestViewLimit: number;
+  resumeVideoViewLimit: number;
+  topVacancyCostPerDay: number;
+  minimumWithdrawal: number;
+}
+
+export interface PaginationMeta {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+}
+
+// ===============================
+// FINANCIAL TYPES
+// ===============================
+
+export interface AdminFinancialStats {
+  overview: {
+    totalRevenue: number;
+    totalDeposits: number;
+    totalPayments: number;
+    totalRefunds: number;
+    netRevenue: number;
+  };
+  transactions: {
+    pending: number;
+    completed: number;
+  };
+  charts: {
+    revenueByDate: ChartDataPoint[];
+  };
+  topSpenders: TopSpender[];
+}
+
+export interface TopSpender {
+  employerId: string;
+  employerName: string;
+  verified: boolean;
+  totalSpent: number;
+}
+
+export interface AdminTransaction {
+  id: string;
+  type: 'deposit' | 'withdrawal' | 'payment' | 'refund';
+  amount: number;
+  currency: string;
+  status: 'pending' | 'completed' | 'failed' | 'cancelled';
+  paymentSystem?: string;
+  description?: string;
+  createdAt: string;
+  completedAt?: string;
+  employer: {
+    id: string;
+    name: string;
+    verified: boolean;
+  };
+}

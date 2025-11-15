@@ -6,7 +6,7 @@
 
 import { Router } from 'express';
 import { ModerationController } from '../controllers/ModerationController';
-import { authMiddleware } from '../middleware/auth.middleware';
+import { authMiddleware, requireModerator } from '../middleware/auth'; // ✅ FIXED: Правильный импорт
 
 const router = Router();
 
@@ -22,7 +22,7 @@ const router = Router();
 router.get(
   '/pending',
   authMiddleware,
-  // TODO: Add requireModerator middleware
+  requireModerator, // ✅ FIXED: Добавлена проверка роли
   ModerationController.getPendingVideos
 );
 
@@ -34,7 +34,7 @@ router.get(
 router.post(
   '/moderate',
   authMiddleware,
-  // TODO: Add requireModerator middleware
+  requireModerator, // ✅ FIXED: Добавлена проверка роли
   ModerationController.moderateVideo
 );
 
@@ -45,7 +45,7 @@ router.post(
 router.get(
   '/logs/:videoId',
   authMiddleware,
-  // TODO: Add requireModerator middleware
+  requireModerator, // ✅ FIXED: Добавлена проверка роли
   ModerationController.getModerationLogs
 );
 
@@ -72,7 +72,7 @@ router.post(
 router.get(
   '/complaints',
   authMiddleware,
-  // TODO: Add requireModerator middleware
+  requireModerator, // ✅ FIXED: Добавлена проверка роли
   ModerationController.getComplaints
 );
 
@@ -84,7 +84,7 @@ router.get(
 router.patch(
   '/complaints/:complaintId',
   authMiddleware,
-  // TODO: Add requireModerator middleware
+  requireModerator, // ✅ FIXED: Добавлена проверка роли
   ModerationController.reviewComplaint
 );
 

@@ -14,6 +14,7 @@ import {
   ScrollView,
   StatusBar,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 import LinearGradient from 'react-native-linear-gradient';
@@ -79,17 +80,18 @@ export function LoginScreen({ navigation }: any) {
   };
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={getKeyboardBehavior()}
-    >
-      <StatusBar barStyle="light-content" backgroundColor={colors.primaryBlack} />
-
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+      <KeyboardAvoidingView
+        style={styles.container}
+        behavior={getKeyboardBehavior()}
       >
+        <StatusBar barStyle="light-content" backgroundColor={colors.primaryBlack} />
+
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
         {/* Logo & Title */}
         <Animated.View entering={FadeInDown.duration(600)} style={styles.header}>
           <MetalIcon name="briefcase-account" variant="platinum" size="large" glow />
@@ -244,8 +246,9 @@ export function LoginScreen({ navigation }: any) {
             <Text style={styles.footerLink}>Зарегистрироваться</Text>
           </TouchableOpacity>
         </Animated.View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
 
@@ -289,7 +292,7 @@ const styles = StyleSheet.create({
   },
   inputLabel: {
     ...typography.captionMedium,
-    color: colors.chromeSilver,
+    color: colors.liquidSilver,
     marginBottom: sizes.sm,
   },
   inputWrapper: {
@@ -379,7 +382,7 @@ const styles = StyleSheet.create({
   },
   footerText: {
     ...typography.body,
-    color: colors.chromeSilver,
+    color: colors.liquidSilver,
   },
   footerLink: {
     ...typography.bodyMedium,

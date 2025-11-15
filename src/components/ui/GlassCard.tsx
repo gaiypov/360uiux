@@ -1,9 +1,10 @@
 /**
  * 360° РАБОТА - ULTRA EDITION
  * Premium Glass Card Component with Variants
+ * Optimized with React.memo
  */
 
-import React from 'react';
+import React, { memo } from 'react';
 import { View, StyleSheet, ViewStyle } from 'react-native';
 import { BlurView } from '@react-native-community/blur';
 import { glassVariants, colors, sizes } from '@/constants';
@@ -19,13 +20,13 @@ interface GlassCardProps {
   noPadding?: boolean;
 }
 
-export function GlassCard({
+const GlassCardComponent = ({
   children,
   style,
   variant = 'medium',
   blurAmount,
   noPadding = false,
-}: GlassCardProps) {
+}: GlassCardProps) => {
   const glassConfig = glassVariants[variant];
   const finalBlurAmount = blurAmount ?? glassConfig.blur;
 
@@ -77,7 +78,12 @@ export function GlassCard({
       </View>
     </View>
   );
-}
+};
+
+/**
+ * Memoized export - prevents re-renders when variant/children don't change
+ */
+export const GlassCard = memo(GlassCardComponent);
 
 const styles = StyleSheet.create({
   container: {

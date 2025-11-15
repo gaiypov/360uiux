@@ -4,6 +4,5 @@
  */
 
 export { MainFeedHeader } from './MainFeedHeader';
-export { VacancyCard } from './VacancyCard';
 export { ActionButtons } from './ActionButtons';
 export { SearchModal } from './SearchModal';

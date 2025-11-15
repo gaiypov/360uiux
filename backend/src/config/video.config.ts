@@ -20,6 +20,8 @@ export const videoConfig = {
     bucket: process.env.YANDEX_VIDEO_BUCKET || 'vacancy-videos',
     region: 'ru-central1',
     iamToken: process.env.YANDEX_IAM_TOKEN || '',
+    baseUrl: process.env.YANDEX_VIDEO_BASE_URL || `https://${process.env.YANDEX_VIDEO_BUCKET || 'vacancy-videos'}.storage.yandexcloud.net`,
+    callbackUrl: process.env.YANDEX_CALLBACK_URL || `${process.env.BACKEND_URL || 'http://localhost:3000'}/api/v1/video/yandex-callback`,
   },
 };
 

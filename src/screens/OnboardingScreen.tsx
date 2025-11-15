@@ -14,6 +14,7 @@ import {
   TouchableOpacity,
   FlatList,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import LinearGradient from 'react-native-linear-gradient';
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
@@ -24,7 +25,7 @@ const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 interface OnboardingScreenProps {
   navigation: any;
-  onGetStarted?: () => void;
+  onGetStarted: () => void; // Make required instead of optional
 }
 
 const slides = [
@@ -74,11 +75,7 @@ export function OnboardingScreen({ navigation, onGetStarted }: OnboardingScreenP
   const flatListRef = useRef<FlatList>(null);
 
   const handleComplete = () => {
-    if (onGetStarted) {
-      onGetStarted();
-    } else {
-      navigation.replace('Main');
-    }
+    onGetStarted();
   };
 
   const handleNext = () => {
@@ -148,7 +145,7 @@ export function OnboardingScreen({ navigation, onGetStarted }: OnboardingScreenP
   };
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <StatusBar barStyle="light-content" backgroundColor={colors.primaryBlack} />
 
       {/* Background gradient */}
@@ -220,7 +217,7 @@ export function OnboardingScreen({ navigation, onGetStarted }: OnboardingScreenP
           </LinearGradient>
         </TouchableOpacity>
       </View>
-    </View>
+    </SafeAreaView>
   );
 }
 
@@ -248,7 +245,7 @@ const styles = StyleSheet.create({
   },
   skipText: {
     ...typography.body,
-    color: colors.chromeSilver,
+    color: colors.liquidSilver,
     fontWeight: '600',
     fontSize: 15,
   },
@@ -293,7 +290,7 @@ const styles = StyleSheet.create({
   description: {
     ...typography.body,
     fontSize: 18,
-    color: colors.chromeSilver,
+    color: colors.liquidSilver,
     textAlign: 'center',
     lineHeight: 28,
     marginBottom: sizes.xxLarge,
