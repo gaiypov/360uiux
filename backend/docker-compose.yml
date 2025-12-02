@@ -1,0 +1,102 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: rework-backend
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+      - DB_PROVIDER=yandex
+      - DATABASE_URL=${DATABASE_URL}
+      - JWT_SECRET=${JWT_SECRET}
+      - JWT_REFRESH_SECRET=${JWT_REFRESH_SECRET}
+      - YANDEX_CLOUD_FOLDER_ID=${YANDEX_CLOUD_FOLDER_ID}
+      - YANDEX_CLOUD_SA_KEY=${YANDEX_CLOUD_SA_KEY}
+      - YANDEX_S3_ENDPOINT=${YANDEX_S3_ENDPOINT}
+      - YANDEX_S3_REGION=${YANDEX_S3_REGION}
+      - YANDEX_S3_BUCKET=${YANDEX_S3_BUCKET}
+      - YANDEX_S3_ACCESS_KEY=${YANDEX_S3_ACCESS_KEY}
+      - YANDEX_S3_SECRET_KEY=${YANDEX_S3_SECRET_KEY}
+      - YANDEX_VIDEO_CHANNEL_ID=${YANDEX_VIDEO_CHANNEL_ID}
+      - YANDEX_VIDEO_API_KEY=${YANDEX_VIDEO_API_KEY}
+      - SMSC_LOGIN=${SMSC_LOGIN}
+      - SMSC_PASSWORD=${SMSC_PASSWORD}
+      - SMSC_SENDER=${SMSC_SENDER}
+      - DADATA_API_KEY=${DADATA_API_KEY}
+      - DADATA_SECRET_KEY=${DADATA_SECRET_KEY}
+      - YUKASSA_SHOP_ID=${YUKASSA_SHOP_ID}
+      - YUKASSA_SECRET_KEY=${YUKASSA_SECRET_KEY}
+      - YUKASSA_RETURN_URL=${YUKASSA_RETURN_URL}
+      - YUKASSA_WEBHOOK_URL=${YUKASSA_WEBHOOK_URL}
+      - REDIS_URL=${REDIS_URL}
+      - WEB_URL=${WEB_URL}
+      - ADMIN_URL=${ADMIN_URL}
+      - CORS_ORIGINS=${CORS_ORIGINS}
+      - SMTP_HOST=${SMTP_HOST}
+      - SMTP_PORT=${SMTP_PORT}
+      - SMTP_USER=${SMTP_USER}
+      - SMTP_PASSWORD=${SMTP_PASSWORD}
+      - SMTP_FROM=${SMTP_FROM}
+      - EXPO_ACCESS_TOKEN=${EXPO_ACCESS_TOKEN}
+    # depends_on:
+    #   - redis
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - rework-network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # redis:
+  #   image: redis:7-alpine
+  #   container_name: rework-redis
+  #   restart: unless-stopped
+  #   ports:
+  #     - "6379:6379"
+  #   volumes:
+  #     - redis-data:/data
+  #   command: redis-server --appendonly yes
+  #   networks:
+  #     - rework-network
+  #   healthcheck:
+  #     test: ["CMD", "redis-cli", "ping"]
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 5
+
+  nginx:
+    image: nginx:alpine
+    container_name: rework-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+      - /etc/letsencrypt:/etc/letsencrypt:ro
+    depends_on:
+      - backend
+    networks:
+      - rework-network
+
+networks:
+  rework-network:
+    driver: bridge
+
+# volumes:
+#   redis-data:

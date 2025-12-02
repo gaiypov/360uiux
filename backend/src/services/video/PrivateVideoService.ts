@@ -1,5 +1,5 @@
 /**
- * 360° РАБОТА - Private Video Service
+ * Rework - Private Video Service
  * Architecture v3: Приватные видео-резюме с лимитом просмотров
  */
 
@@ -106,10 +106,14 @@ export class PrivateVideoService {
    */
   async checkViewLimit(params: SecureVideoUrlParams): Promise<ViewLimitStatus> {
     try {
-      const result = await db.one<ViewLimitStatus>(
+      const result = await db.oneOrNone<ViewLimitStatus>(
         'SELECT * FROM check_video_view_limit($1, $2, $3)',
         [params.videoId, params.applicationId, params.employerId]
       );
+
+      if (!result) {
+        throw new Error('Лимит просмотров не найден');
+      }
 
       return result;
     } catch (error: any) {

@@ -1,5 +1,5 @@
 /**
- * 360° РАБОТА - Database Configuration
+ * Rework - Database Configuration
  * ПЕРЕКЛЮЧАЕМЫЕ ПРОВАЙДЕРЫ через DatabaseService
  */
 
@@ -29,6 +29,9 @@ export async function testConnection() {
 
 // Экспортируем singleton instance
 export { db };
+
+// Экспорт pool для health checks
+export const pool = db.pool;
 
 // Обратная совместимость со старым кодом
 export default db;
